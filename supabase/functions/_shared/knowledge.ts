@@ -88,7 +88,7 @@ afford after-school STEM?"
 - csi_local_camp_estimate (local alternatives, inverted)
 - csi_demand_adjusted_market (size of spendable market)
 
-**3. Franchisee Supply (TAM Teachers) (typical default weight ~30%)** —
+**3. Franchisee Supply (Operator & Venue Supply) (typical default weight ~30%)** —
 "Can we staff this location?"
 - public_elementary_teacher_count
 - public_elementary_school_count
@@ -279,7 +279,7 @@ these inputs, it's effectively a tie."
 | Pillar | City A | City B | Edge |
 |---|---|---|---|
 | Demand | XX | YY | City A by N pts |
-| TAM Teachers | XX | YY | City B by N pts |
+| Operator & Venue Supply | XX | YY | City B by N pts |
 | Competitive Opportunity | XX | YY | City A by N pts |
 
 ## Step 3 — Where the cities actually differ
@@ -295,7 +295,7 @@ franchisee."
 
 ## What breaks ties
 In rough order of importance for our recruiting motion:
-1. **Demand** wins over TAM Teachers, which wins over Competitive
+1. **Demand** wins over Operator & Venue Supply, which wins over Competitive
    Opportunity. We can build supply over time; we cannot build demand.
 2. Within the same pillar tier, prefer the market with the deeper teacher
    pool — staffing is the most common operational blocker.

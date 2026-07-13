@@ -49,7 +49,7 @@ type PillarKey = typeof PILLAR_KEYS[number];
 const PILLAR_LABELS: Record<PillarKey, string> = {
   demand: "Demand",
   competitiveLandscape: "Competitive Opportunity",
-  franchiseeSupply: "TAM Teachers",
+  franchiseeSupply: "Operator & Venue Supply",
 };
 
 const PILLAR_PURPOSE: Record<PillarKey, string> = {

@@ -135,7 +135,7 @@ Operator & Venue Supply ("Franchisee Supply") measures the size and squeeze of t
 - Backend: `TAM_WEIGHT_FTE / TAM_WEIGHT_RECRUITABILITY / TAM_WEIGHT_PRIVATE` in `supabase/functions/_shared/scoring.ts`.
 - Frontend mirror: same names in `src/lib/sowMetricRegistry.ts`.
 
-**Percentile columns** on `us_cities_scored`: `pct_rank_teacher_fte`, `pct_rank_private_elem`. Recomputed on every TAM rescore.
+**Percentile columns** on `us_cities_scored`: `pct_rank_teacher_fte`, `pct_rank_private_elem`. Recomputed on every Operator & Venue Supply rescore.
 
 **Null-safety:** partial coverage still produces a score. If a city is missing one of the three inputs, the remaining weights are re-normalized; if all three are missing, the pillar falls back to a neutral 50.
 

@@ -162,7 +162,7 @@ export function CityWeightsPanel({
             )}
           </div>
           <p className="text-[11.5px] text-[#526078] leading-snug">
-            Each preset is a recipe that sets the three sliders for you. For example, <span className="font-semibold text-[#07142f]">Demand-Heavy</span> makes Demand worth 60% of every city's overall score — so cities with lots of families looking for tutoring rise to the top, while TAM and Competition act as tie-breakers. Clicking a preset <span className="font-semibold">previews</span> the new ranking; click <span className="font-semibold">Apply Weights</span> to commit it. Drag any slider yourself and the strategy switches to <span className="font-semibold text-[#7c3aed]">Custom</span>.
+            Each preset is a recipe that sets the three sliders for you. For example, <span className="font-semibold text-[#07142f]">Demand-Heavy</span> makes Demand worth 60% of every city's overall score — so cities with lots of families looking for tutoring rise to the top, while Operator & Venue Supply and Competition act as tie-breakers. Clicking a preset <span className="font-semibold">previews</span> the new ranking; click <span className="font-semibold">Apply Weights</span> to commit it. Drag any slider yourself and the strategy switches to <span className="font-semibold text-[#7c3aed]">Custom</span>.
           </p>
         </div>
 

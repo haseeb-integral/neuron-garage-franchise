@@ -32,7 +32,7 @@ Not in scope: live scraping, provider counts (that's Feature 1A), site-level ana
 ## 2. The city universe (817 cities)
 
 - Source: \`public.us_cities_scored\` — one row per city, US-only, population ≥ ~25k.
-- Every city carries pre-computed pillar sub-signals: demand signals (families, income, growth), franchisee-supply signals (TAM teacher pool, education access), competitive-landscape signals (CSI counts — currently 0-weight).
+- Every city carries pre-computed pillar sub-signals: demand signals (families, income, growth), franchisee-supply signals (teacher pool, education access), competitive-landscape signals (CSI counts — currently 0-weight).
 - Scores are **recomputed client-side** through the shared marketView helper (\`src/lib/marketView.ts\`) every time weights or sub-weights change. **No stored composite** is trusted anywhere — table row, selected-market panel, compare modal, CSV, and PDF all read the same recomputed value (Brett's rule: "one calibrated number everywhere").
 
 ---
@@ -321,7 +321,7 @@ export default function CitySearchSpec() {
           <Section title="2. The city universe (817 cities)">
             <ul className="list-disc pl-6 space-y-1">
               <li>Source table: <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">public.us_cities_scored</code> — one row per city, US-only, population ≥ ~25k.</li>
-              <li>Every city carries pre-computed pillar sub-signals: demand (families, income, growth), franchisee-supply (TAM teacher pool, education access), and legacy competitive-landscape signals.</li>
+              <li>Every city carries pre-computed pillar sub-signals: demand (families, income, growth), franchisee-supply (teacher pool, education access), and legacy competitive-landscape signals.</li>
               <li>Scores are <strong>recomputed client-side</strong> through <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">src/lib/marketView.ts</code> every time weights or sub-weights change. <strong>No stored composite</strong> is trusted anywhere — table row, panel, compare, CSV, and PDF all read the same recomputed value (Brett's rule: "one calibrated number everywhere").</li>
             </ul>
           </Section>

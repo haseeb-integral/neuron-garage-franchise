@@ -68,7 +68,7 @@ Type a city, get a score out of 100. We look at the live SOW signals (12 metrics
 - **Adjust weighting sliders** if you care more about, say, school density than population. Master sliders auto-rebalance to 100%. Sub-metric weights are typed as relative importance and normalized on Apply.
 - **City Notes** — leave a comment on any city; teammates see it on the same drawer.
 - **Export Raw Signals** as XLSX for offline review.
-- **Ask AI** any question about the city ("What's the K-6 TAM?", "How do schools compare to the state average?"). Answers obey our **3-tier TAM rule** so the number you see on screen is the same number the AI quotes back to you.
+- **Ask AI** any question about the city ("What's the K-6 teacher pool?", "How do schools compare to the state average?"). Answers obey our **3-tier Operator & Venue Supply rule** so the number you see on screen is the same number the AI quotes back to you.
 
 ### One calibrated number everywhere
 

@@ -32,7 +32,7 @@ const TIER_STYLE: Record<string, { bg: string; color: string; label: string }> =
 
 const PILLARS: Array<{ key: "demand" | "franchiseeSupply" | "competitiveLandscape"; label: string; short: string }> = [
   { key: "demand", label: "Demand", short: "Demand" },
-  { key: "franchiseeSupply", label: "Operator & Venue Supply", short: "TAM" },
+  { key: "franchiseeSupply", label: "Operator & Venue Supply", short: "Op/Venue" },
   { key: "competitiveLandscape", label: "Competitive Opp", short: "Comp Opp" },
 ];
 
@@ -101,7 +101,7 @@ export function DrawerHeroSummary({ rawComposite, tier, categoryScores }: Props)
 
   const interpRows = [
     interpLine("Demand", pillars.demand.raw),
-    interpLine("TAM", pillars.franchiseeSupply.raw),
+    interpLine("Op/Venue", pillars.franchiseeSupply.raw),
     interpLine("Comp Opp", pillars.competitiveLandscape.raw),
     interpLine("Total", rawComposite),
   ].filter((r): r is { label: string; text: string; display: number } => r != null);

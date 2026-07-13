@@ -1509,6 +1509,7 @@ export type Database = {
       }
       mvs_operator_watchlist: {
         Row: {
+          aliases: string[]
           created_at: string
           id: string
           name: string
@@ -1517,6 +1518,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aliases?: string[]
           created_at?: string
           id?: string
           name: string
@@ -1525,6 +1527,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aliases?: string[]
           created_at?: string
           id?: string
           name?: string

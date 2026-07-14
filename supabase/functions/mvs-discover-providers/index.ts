@@ -664,7 +664,7 @@ ${PRICE_RULES}`;
     // Pricing-specific query gets richer payload: more results, larger blob.
     // B-revert: onlyMainContent stays true on pricing query — Phase 3.1 showed
     // that turning it off flooded Gemini with chrome and dropped prices kept.
-    const isPricingQuery = q.includes("prices per week tuition");
+    const isPricingQuery = q.includes("price per week");
     const searchLimit = isPricingQuery ? 10 : 6;
     const onlyMain = true;
     const perResultChars = isPricingQuery ? 12000 : 6000;

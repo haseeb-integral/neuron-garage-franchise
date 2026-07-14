@@ -1473,7 +1473,7 @@ ${PRICE_RULES}
                   headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
                   body: JSON.stringify({
                     url: parsedUrl.origin,
-                    search: "tuition rates pricing cost register faq camp",
+                    search: "rates pricing cost fees register camp summer weekly",
                     limit: 10,
                   }),
                 }, 15_000).catch(() => null);

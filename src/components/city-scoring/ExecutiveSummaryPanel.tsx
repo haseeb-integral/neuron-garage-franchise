@@ -240,7 +240,7 @@ function ExecutiveSummaryPanelImpl({
                 <ReactMarkdown>{narrative.report_demand}</ReactMarkdown>
                 <h3 className="text-[13px] font-bold text-[#07142f] mt-4 mb-1.5">Supply &amp; Competitive Read</h3>
                 <ReactMarkdown>{narrative.report_supply}</ReactMarkdown>
-                <h3 className="text-[13px] font-bold text-[#07142f] mt-4 mb-1.5">Recommended Next Move</h3>
+                <h3 className="text-[13px] font-bold text-[#07142f] mt-4 mb-1.5">Data Confidence</h3>
                 <ReactMarkdown>{narrative.report_next_move}</ReactMarkdown>
                 {narrative.model_id && (
                   <p className="mt-3 text-[10px] text-[#8794ab] not-prose">

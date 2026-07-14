@@ -203,7 +203,7 @@ export function buildMarketReportPdf(args: BuildPdfArgs): jsPDF {
     subheading("Supply & Competitive Read");
     paragraph(stripMarkdown(narrative.report_supply));
     y += 4;
-    subheading("Recommended Next Move");
+    subheading("Data Confidence");
     paragraph(stripMarkdown(narrative.report_next_move));
   } else {
     paragraph("Narrative not loaded. Open the report once before downloading the PDF to ensure the AI summary is included.", "#8794ab");

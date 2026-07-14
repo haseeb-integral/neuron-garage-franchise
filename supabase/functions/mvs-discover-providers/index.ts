@@ -1191,7 +1191,7 @@ Deno.serve(async (req) => {
 
       // Run all 5 sources in parallel — sequential calls exceeded the 150s edge function idle timeout.
       const sourceResults: SourceResult[] = await Promise.all([
-        runWithRetry("sawyer", () => runSawyer({ city, box, firecrawlKey, lovableKey, admin, runId })),
+        runWithRetry("sawyer", () => runSawyer({ city, state: stateAbbr, box, firecrawlKey, lovableKey, admin, runId })),
         runWithRetry("activityhero", () => runActivityHero({ city, state: stateAbbr, firecrawlKey, lovableKey })),
         runWithRetry("google_maps", () => runGoogleMaps({ city, state: stateAbbr })),
         runWithRetry("yelp", () => runYelp({ city, state: stateAbbr, firecrawlKey, lovableKey })),

@@ -1649,18 +1649,18 @@ ${PRICE_RULES}
                 if (gemRes2 && gemRes2.ok) {
                   const gj = await gemRes2.json().catch(() => ({}));
                   const parsed2 = JSON.parse(gj?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null };
-                  const valid = (v?: number | null) => typeof v === "number" && Number.isFinite(v) && v >= 40 && v <= 2500;
+                  const valid = (v?: number | null) => isPriceKept(v);
                   const cands: number[] = [];
                   if (valid(parsed2.price_min)) cands.push(parsed2.price_min!);
                   if (valid(parsed2.price_max)) cands.push(parsed2.price_max!);
                   for (const m of ai.text.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
                     const num = Number(m[1].replace(/,/g, ""));
-                    if (Number.isFinite(num) && num >= 40 && num <= 2500) cands.push(num);
+                    if (isPriceKept(num)) cands.push(num);
                   }
                   if (cands.length > 0) {
                     finalMax = Math.max(...cands);
                     finalMin = Math.min(...cands);
-                    if (finalMin < 100 && finalMax >= 150) finalMin = finalMax;
+                    if (finalMin < PRICE_MIN_ACCEPT && finalMax >= 150) finalMin = finalMax;
                     finalCat = parsed2.category_raw ?? finalCat;
                     finalConf = 0.6;
                     qDebug.b3_extracted = { price_min: finalMin, price_max: finalMax };

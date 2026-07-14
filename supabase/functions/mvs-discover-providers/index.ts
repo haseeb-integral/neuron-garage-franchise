@@ -1628,7 +1628,7 @@ ${PRICE_RULES}
             let b3Source: string | null = null;
             let b3Text: string | null = null;
             if (finalMin == null && finalMax == null) {
-              const aiQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week 2026`;
+              const aiQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week ${new Date().getFullYear()}`;
               const ai = await fetchGoogleAiOverview(aiQuery);
               qDebug.b3_ai_overview_hit = !!ai;
               if (ai && ai.text) {

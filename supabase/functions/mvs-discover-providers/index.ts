@@ -529,11 +529,10 @@ async function runGoogleMaps(args: {
     const url = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=90&memory=1024`;
     const body = {
       searchStringsArray: [
-        `kids summer camp ${city} ${state}`,
-        `kids classes ${city} ${state}`,
+        `summer day camps in ${city} ${state}`,
       ],
       locationQuery: `${city}, ${state}`,
-      maxCrawledPlacesPerSearch: 30,
+      maxCrawledPlacesPerSearch: 100,
       language: "en",
       countryCode: "us",
       skipClosedPlaces: true,

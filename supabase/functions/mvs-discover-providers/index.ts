@@ -36,6 +36,42 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Price guard zones (weekly camp price in USD).
+// ---------------------------------------------------------------------------
+// The pricing signal measures premium tolerance, so legitimate high-end
+// weekly prices ($1,500–$2,500 exists in specialty/coastal markets) must be
+// reviewable rather than silently discarded. Sub-$100 is almost never a
+// weekly camp price (daily rate, drop-in class, or deposit). Above $2,500 is
+// almost always a multi-week package total or a non-camp price.
+const PRICE_MIN_ACCEPT = 100;
+const PRICE_HIGH_REVIEW_THRESHOLD = 1500;
+const PRICE_MAX_ACCEPT = 2500;
+
+type PriceZone = "accept" | "review" | "reject";
+function classifyWeeklyPrice(val: number | null | undefined): PriceZone {
+  if (typeof val !== "number" || !Number.isFinite(val)) return "reject";
+  if (val < PRICE_MIN_ACCEPT) return "reject";
+  if (val > PRICE_MAX_ACCEPT) return "reject";
+  if (val >= PRICE_HIGH_REVIEW_THRESHOLD) return "review";
+  return "accept";
+}
+function isPriceKept(val: number | null | undefined): boolean {
+  const z = classifyWeeklyPrice(val);
+  return z === "accept" || z === "review";
+}
+function priceNeedsReviewZone(min: number | null, max: number | null): boolean {
+  return classifyWeeklyPrice(min) === "review" || classifyWeeklyPrice(max) === "review";
+}
+function providerDomainOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const raw = String(url).trim();
+    const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return u.hostname.replace(/^www\./, "").toLowerCase();
+  } catch { return null; }
+}
+
+// ---------------------------------------------------------------------------
 // B1: Brand price propagation (same-city siblings)
 // ---------------------------------------------------------------------------
 // When a well-known brand has ≥2 same-city locations with prices that agree
@@ -291,9 +327,11 @@ const PRICE_RULES = `PRICING RULES:
 - price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
 - Extract prices found in website text, tables, camp packages, registration flyers, or Google Search result snippets.
 - DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
-- Priority 4: If multiple weekly tuition amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly tuition amount.
+- Priority 4: If multiple weekly amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly amount.
 - If the page or search snippet shows a single weekly number, set both price_min and price_max to that number.
 - If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
+- ADJACENCY: When a page shows multiple dollar amounts, PREFER amounts that appear next to the words "week", "weekly", "per week", or "/week" over bare amounts.
+- NO ARITHMETIC: If only a total-with-weeks is shown (e.g. "$1,800 for 4 weeks", "$3,600 for 6 weeks", "full session $2,400"), DO NOT divide. Return nulls and let a later stage retry — silent arithmetic on scraped text is how wrong prices enter the dataset.
 - If no dollar amount is visible anywhere in the text or search snippets for that provider, set price_min=null and price_max=null. Never invent a value.`;
 
 type SourceResult = {
@@ -528,8 +566,12 @@ async function runGoogleMaps(args: {
   try {
     const url = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=90&memory=1024`;
     const body = {
+      // "kids classes" (older query) pulled non-camp businesses (studios,
+      // swim schools) that wasted pricing-crawler cycles. "Day camp" is the
+      // term of art and filters out overnight camps.
       searchStringsArray: [
-        `summer day camps in ${city} ${state}`,
+        `summer day camp ${city} ${state}`,
+        `summer camps for kids ${city} ${state}`,
       ],
       locationQuery: `${city}, ${state}`,
       maxCrawledPlacesPerSearch: 100,
@@ -593,7 +635,7 @@ async function runGoogleSearch(args: {
     `${cleanCity} ${state} after school programs enrichment kids`,
     `kids music art gymnastics studios ${cleanCity} ${state}`,
     `things to do with kids in ${cleanCity} ${state} indoor`,
-    `${cleanCity} ${state} kids summer camp prices per week tuition`,
+    `${cleanCity} ${state} summer day camp price per week ${new Date().getFullYear()}`,
   ];
 
   // Strip social/marketplace noise so listicle pages dominate results.
@@ -622,7 +664,7 @@ ${PRICE_RULES}`;
     // Pricing-specific query gets richer payload: more results, larger blob.
     // B-revert: onlyMainContent stays true on pricing query — Phase 3.1 showed
     // that turning it off flooded Gemini with chrome and dropped prices kept.
-    const isPricingQuery = q.includes("prices per week tuition");
+    const isPricingQuery = q.includes("price per week");
     const searchLimit = isPricingQuery ? 10 : 6;
     const onlyMain = true;
     const perResultChars = isPricingQuery ? 12000 : 6000;
@@ -773,8 +815,7 @@ async function extractWithGemini(args: {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
     const dollarMatches = new Set<number>();
-    const isValidCandidate = (val?: number | null): boolean =>
-      typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
+    const isValidCandidate = (val?: number | null): boolean => isPriceKept(val);
 
     for (const p of providers) {
       if (!isValidCandidate(p.price_min)) p.price_min = null;
@@ -795,7 +836,7 @@ async function extractWithGemini(args: {
 // so price tables in sidebars/accordions show up. Strict literal-price guard.
 // Capped at 5 extra Firecrawl calls per city.
 const TARGETED_PRICE_KEYWORDS =
-  /(camp|summer|tuition|fees?|rates?|pricing|registration|register|program|enroll|cost)/i;
+  /(camp|summer|fees?|rates?|pricing|price|registration|register|program|enroll|cost|weekly|week)/i;
 const TARGETED_BLOCKED_HOSTS =
   /(facebook|instagram|tiktok|pinterest|reddit|twitter|x\.com|yelp\.com|hisawyer\.com|activityhero\.com|google\.)/i;
 
@@ -1351,12 +1392,12 @@ Deno.serve(async (req) => {
     if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
-      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
+      const catchupSys = `You extract per-week or per-session pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
 Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
 - Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guide snippets.
-- Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly tuition.
-- If a clear dollar tuition amount is found in the search snippets or page text, extract it. Otherwise return nulls.`;
+- Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly price.
+- If a clear dollar weekly price is found in the search snippets or page text, extract it. Otherwise return nulls.`;
 
       const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
       const stateAbbr = city.split(",")[1]?.trim() || "";
@@ -1364,11 +1405,21 @@ ${PRICE_RULES}
 
       if (batchRows && batchRows.length > 0) {
         await Promise.all(batchRows.map(async (p) => {
-          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price tuition per week 2026`;
-          const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp register schedule tuition rates`;
+          const currentYear = new Date().getFullYear();
+          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week ${currentYear}`;
+          const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp registration weekly rates fees`;
           // B2: directory-first query — marketplaces almost always publish real dollar prices,
           // so we hit them explicitly before the generic Google fallback.
-          const directoryQuery = `${p.name} ${cleanCity} price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:campspot.com OR site:peerspace.com OR site:winnetka.com OR site:yelp.com OR site:facebook.com)`;
+          // peerspace.com (venue rentals — wrong-price contamination) and
+          // winnetka.com (city-specific leftover) were removed.
+          const directoryQuery = `${p.name} ${cleanCity} price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:campspot.com OR site:yelp.com OR site:facebook.com)`;
+
+          // Site-first: the provider's own website is ground truth for price,
+          // so we try it before directories/general search when we have a domain.
+          const providerDomain = providerDomainOf((p.website_url as string | null) || (p.url as string | null));
+          const siteQuery = providerDomain
+            ? `${p.name} summer camp ${currentYear} weekly price site:${providerDomain}`
+            : null;
 
           // B2.2: hybrid brand+directory query. When this provider matches a
           // known brand token with priced siblings elsewhere, add a brand-level
@@ -1390,7 +1441,7 @@ ${PRICE_RULES}
               .limit(6);
             const priced = (siblings ?? []).filter((s: any) => s.price_min > 0 && s.price_max > 0);
             if (priced.length >= 1) {
-              brandQuery = `"${brandTok}" summer camp weekly tuition price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:yelp.com OR site:facebook.com OR site:campspot.com)`;
+              brandQuery = `"${brandTok}" summer camp weekly price fees (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:yelp.com OR site:facebook.com OR site:campspot.com)`;
               const mins = priced.map((s: any) => s.price_min).sort((a: number, b: number) => a - b);
               const maxs = priced.map((s: any) => s.price_max).sort((a: number, b: number) => a - b);
               const medMin = mins[Math.floor(mins.length / 2)];
@@ -1398,7 +1449,7 @@ ${PRICE_RULES}
               siblingPriceHint = `\nBRAND CONTEXT: "${brandTok}" locations elsewhere charge roughly $${medMin}-$${medMax}/week (n=${priced.length}). Prefer amounts consistent with this range, but ONLY extract a price if it explicitly appears in the search or scrape text below. Do not invent numbers.`;
             }
           }
-          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [directoryQuery, bookingQuery, generalQuery, brandQuery].filter(Boolean), brand_token: brandTok || null, brand_hint_used: !!siblingPriceHint };
+          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [siteQuery, directoryQuery, bookingQuery, generalQuery, brandQuery].filter(Boolean), provider_domain: providerDomain, brand_token: brandTok || null, brand_hint_used: !!siblingPriceHint };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
             const { data: lockRow } = await admin.from("mvs_providers")
@@ -1422,7 +1473,7 @@ ${PRICE_RULES}
                   headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
                   body: JSON.stringify({
                     url: parsedUrl.origin,
-                    search: "tuition rates pricing cost register faq camp",
+                    search: "rates pricing cost fees register camp summer weekly",
                     limit: 10,
                   }),
                 }, 15_000).catch(() => null);
@@ -1430,7 +1481,7 @@ ${PRICE_RULES}
                   totalFirecrawl += 1;
                   const mapJson = await mapRes.json().catch(() => ({}));
                   const links: string[] = Array.isArray(mapJson?.data) ? mapJson.data : Array.isArray(mapJson?.data?.links) ? mapJson.data.links : [];
-                  const kw = /(rate|tuition|price|pricing|cost|register|registration|faq|camp|summer)/i;
+                  const kw = /(rate|price|pricing|cost|fees?|register|registration|camp|summer|weekly|week)/i;
                   for (const l of links) {
                     if (typeof l === "string" && kw.test(l)) mapUrlsToScrape.push(l);
                   }
@@ -1443,7 +1494,7 @@ ${PRICE_RULES}
 
             // Scrape top 1-2 mapped URLs + execute Priority 3 Booking Search & General Search concurrently
             const selectedMapUrls = mapUrlsToScrape.slice(0, 2);
-            const [mapScrapes, directorySearchRes, bookingSearchRes, generalSearchRes, brandSearchRes] = await Promise.all([
+            const [mapScrapes, siteSearchRes, directorySearchRes, bookingSearchRes, generalSearchRes, brandSearchRes] = await Promise.all([
               Promise.all(selectedMapUrls.map(async (sUrl) => {
                 const sRes = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
                   method: "POST",
@@ -1457,6 +1508,15 @@ ${PRICE_RULES}
                 }
                 return null;
               })),
+              // Site-first: the provider's own website is ground truth. Run
+              // this BEFORE directories/general so its results dominate.
+              siteQuery
+                ? fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ query: siteQuery, limit: 3, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
+                  }, FIRECRAWL_TIMEOUT_MS).catch(() => null)
+                : Promise.resolve(null),
               // B2: directory-first — hit ActivityHero/Sawyer/etc before generic Google.
               fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
                 method: "POST",
@@ -1483,6 +1543,7 @@ ${PRICE_RULES}
                 : Promise.resolve(null),
             ]);
 
+            if (siteSearchRes && siteSearchRes.ok) totalFirecrawl += 1;
             if (directorySearchRes && directorySearchRes.ok) totalFirecrawl += 1;
             if (bookingSearchRes && bookingSearchRes.ok) totalFirecrawl += 1;
             if (generalSearchRes && generalSearchRes.ok) totalFirecrawl += 1;
@@ -1494,21 +1555,24 @@ ${PRICE_RULES}
               return (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
             };
 
-            const [directoryItems, bookingItems, generalItems, brandItems] = await Promise.all([
+            const [siteItems, directoryItems, bookingItems, generalItems, brandItems] = await Promise.all([
+              parseSearch(siteSearchRes),
               parseSearch(directorySearchRes),
               parseSearch(bookingSearchRes),
               parseSearch(generalSearchRes),
               parseSearch(brandSearchRes),
             ]);
 
-            // Directory items come first — they usually have real dollar prices.
-            // Brand items come last as supporting context.
-            const searchItems = [...directoryItems, ...bookingItems, ...generalItems, ...brandItems];
+            // Site (own-domain) items come first — ground truth. Then directory
+            // items (usually have real dollar prices). Brand items last as
+            // supporting context.
+            const searchItems = [...siteItems, ...directoryItems, ...bookingItems, ...generalItems, ...brandItems];
             const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\nDESCRIPTION SNIPPET: ${it.description ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
             const blob = [...mapScrapes.filter(Boolean), searchBlob].filter(Boolean).join("\n\n");
 
-            // Prefer a directory URL as the evidence link when one exists — cleaner than a homepage.
-            const discoveredUrl = (directoryItems[0]?.url as string) || selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
+            // Prefer own-site or directory URL as the evidence link when one exists.
+            const discoveredUrl = (siteItems[0]?.url as string) || (directoryItems[0]?.url as string) || selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
+            qDebug.site_hits = siteItems.length;
             qDebug.directory_hits = directoryItems.length;
             qDebug.brand_hits = brandItems.length;
 
@@ -1534,7 +1598,7 @@ ${PRICE_RULES}
               const gemJson = await gemRes.json().catch(() => ({}));
               const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
               
-              const isValidPrice = (val?: number | null) => typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
+              const isValidPrice = (val?: number | null) => isPriceKept(val);
 
               const candidatePrices: number[] = [];
               if (isValidPrice(parsed.price_min)) candidatePrices.push(parsed.price_min!);
@@ -1542,14 +1606,14 @@ ${PRICE_RULES}
 
               for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
                 const num = Number(m[1].replace(/,/g, ""));
-                if (Number.isFinite(num) && num >= 40 && num <= 2500) candidatePrices.push(num);
+                if (isPriceKept(num)) candidatePrices.push(num);
               }
 
               if (candidatePrices.length > 0) {
-                // Priority 4: Pick HIGHEST recurring weekly tuition
+                // Priority 4: Pick HIGHEST recurring weekly price
                 finalMax = Math.max(...candidatePrices);
                 finalMin = Math.min(...candidatePrices);
-                if (finalMin < 100 && finalMax >= 150) finalMin = finalMax;
+                if (finalMin < PRICE_MIN_ACCEPT && finalMax >= 150) finalMin = finalMax;
               }
 
               finalCat = parsed.category_raw ?? null;
@@ -1564,7 +1628,7 @@ ${PRICE_RULES}
             let b3Source: string | null = null;
             let b3Text: string | null = null;
             if (finalMin == null && finalMax == null) {
-              const aiQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week 2026`;
+              const aiQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week ${new Date().getFullYear()}`;
               const ai = await fetchGoogleAiOverview(aiQuery);
               qDebug.b3_ai_overview_hit = !!ai;
               if (ai && ai.text) {
@@ -1585,18 +1649,18 @@ ${PRICE_RULES}
                 if (gemRes2 && gemRes2.ok) {
                   const gj = await gemRes2.json().catch(() => ({}));
                   const parsed2 = JSON.parse(gj?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null };
-                  const valid = (v?: number | null) => typeof v === "number" && Number.isFinite(v) && v >= 40 && v <= 2500;
+                  const valid = (v?: number | null) => isPriceKept(v);
                   const cands: number[] = [];
                   if (valid(parsed2.price_min)) cands.push(parsed2.price_min!);
                   if (valid(parsed2.price_max)) cands.push(parsed2.price_max!);
                   for (const m of ai.text.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
                     const num = Number(m[1].replace(/,/g, ""));
-                    if (Number.isFinite(num) && num >= 40 && num <= 2500) cands.push(num);
+                    if (isPriceKept(num)) cands.push(num);
                   }
                   if (cands.length > 0) {
                     finalMax = Math.max(...cands);
                     finalMin = Math.min(...cands);
-                    if (finalMin < 100 && finalMax >= 150) finalMin = finalMax;
+                    if (finalMin < PRICE_MIN_ACCEPT && finalMax >= 150) finalMin = finalMax;
                     finalCat = parsed2.category_raw ?? finalCat;
                     finalConf = 0.6;
                     qDebug.b3_extracted = { price_min: finalMin, price_max: finalMax };
@@ -1607,19 +1671,25 @@ ${PRICE_RULES}
 
             if (finalMin != null || finalMax != null) {
               const isB3 = !!b3Text;
+              const finalMinOut = finalMin ?? finalMax;
+              const finalMaxOut = finalMax ?? finalMin;
+              const highZone = priceNeedsReviewZone(finalMinOut, finalMaxOut);
               const patch: Record<string, unknown> = {
-                price_min: finalMin ?? finalMax,
-                price_max: finalMax ?? finalMin,
+                price_min: finalMinOut,
+                price_max: finalMaxOut,
                 category_raw: finalCat,
                 confidence: finalConf,
                 updated_at: new Date().toISOString(),
               };
+              // High-zone ($1,500–$2,500/week) prices are legitimate but rare
+              // — flag for human review rather than silently auto-accept.
+              // AI Overview (B3) results also require human review before
+              // they count toward MVS.
+              if (highZone || isB3) {
+                patch.price_needs_review = true;
+              }
               if (isB3) {
                 patch.platform = "google_ai_overview";
-                // AI Overview prices count in the MVS score right away (no
-                // human-review gate). Row is still visually flagged via
-                // platform=google_ai_overview so the UI can tint it.
-                patch.price_needs_review = false;
                 // B3 evidence lives in dedicated columns so it never gets
                 // confused with a search query text.
                 patch.ai_overview_snippet = b3Text!.slice(0, 1000);
@@ -1631,6 +1701,7 @@ ${PRICE_RULES}
               await admin.from("mvs_providers").update(patch).eq("id", p.id);
               qDebug.updated = true;
               qDebug.b3_saved = isB3;
+              qDebug.high_zone_review = highZone;
             } else {
               // No price found, revert lock so future runs can check again
               await admin.from("mvs_providers").update({ price_min: null, updated_at: new Date().toISOString() }).eq("id", p.id).eq("price_min", -1);

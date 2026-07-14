@@ -1671,19 +1671,25 @@ ${PRICE_RULES}
 
             if (finalMin != null || finalMax != null) {
               const isB3 = !!b3Text;
+              const finalMinOut = finalMin ?? finalMax;
+              const finalMaxOut = finalMax ?? finalMin;
+              const highZone = priceNeedsReviewZone(finalMinOut, finalMaxOut);
               const patch: Record<string, unknown> = {
-                price_min: finalMin ?? finalMax,
-                price_max: finalMax ?? finalMin,
+                price_min: finalMinOut,
+                price_max: finalMaxOut,
                 category_raw: finalCat,
                 confidence: finalConf,
                 updated_at: new Date().toISOString(),
               };
+              // High-zone ($1,500–$2,500/week) prices are legitimate but rare
+              // — flag for human review rather than silently auto-accept.
+              // AI Overview (B3) results also require human review before
+              // they count toward MVS.
+              if (highZone || isB3) {
+                patch.price_needs_review = true;
+              }
               if (isB3) {
                 patch.platform = "google_ai_overview";
-                // AI Overview prices count in the MVS score right away (no
-                // human-review gate). Row is still visually flagged via
-                // platform=google_ai_overview so the UI can tint it.
-                patch.price_needs_review = false;
                 // B3 evidence lives in dedicated columns so it never gets
                 // confused with a search query text.
                 patch.ai_overview_snippet = b3Text!.slice(0, 1000);
@@ -1695,6 +1701,7 @@ ${PRICE_RULES}
               await admin.from("mvs_providers").update(patch).eq("id", p.id);
               qDebug.updated = true;
               qDebug.b3_saved = isB3;
+              qDebug.high_zone_review = highZone;
             } else {
               // No price found, revert lock so future runs can check again
               await admin.from("mvs_providers").update({ price_min: null, updated_at: new Date().toISOString() }).eq("id", p.id).eq("price_min", -1);

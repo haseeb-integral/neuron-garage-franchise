@@ -1405,11 +1405,21 @@ ${PRICE_RULES}
 
       if (batchRows && batchRows.length > 0) {
         await Promise.all(batchRows.map(async (p) => {
-          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price tuition per week 2026`;
-          const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp register schedule tuition rates`;
+          const currentYear = new Date().getFullYear();
+          const generalQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp price per week ${currentYear}`;
+          const bookingQuery = `${p.name} ${cleanCity} ${stateAbbr} summer camp registration weekly rates fees`;
           // B2: directory-first query — marketplaces almost always publish real dollar prices,
           // so we hit them explicitly before the generic Google fallback.
-          const directoryQuery = `${p.name} ${cleanCity} price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:campspot.com OR site:peerspace.com OR site:winnetka.com OR site:yelp.com OR site:facebook.com)`;
+          // peerspace.com (venue rentals — wrong-price contamination) and
+          // winnetka.com (city-specific leftover) were removed.
+          const directoryQuery = `${p.name} ${cleanCity} price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:campspot.com OR site:yelp.com OR site:facebook.com)`;
+
+          // Site-first: the provider's own website is ground truth for price,
+          // so we try it before directories/general search when we have a domain.
+          const providerDomain = providerDomainOf((p.website_url as string | null) || (p.url as string | null));
+          const siteQuery = providerDomain
+            ? `${p.name} summer camp ${currentYear} weekly price site:${providerDomain}`
+            : null;
 
           // B2.2: hybrid brand+directory query. When this provider matches a
           // known brand token with priced siblings elsewhere, add a brand-level
@@ -1431,7 +1441,7 @@ ${PRICE_RULES}
               .limit(6);
             const priced = (siblings ?? []).filter((s: any) => s.price_min > 0 && s.price_max > 0);
             if (priced.length >= 1) {
-              brandQuery = `"${brandTok}" summer camp weekly tuition price (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:yelp.com OR site:facebook.com OR site:campspot.com)`;
+              brandQuery = `"${brandTok}" summer camp weekly price fees (site:activityhero.com OR site:hisawyer.com OR site:sawyer.com OR site:yelp.com OR site:facebook.com OR site:campspot.com)`;
               const mins = priced.map((s: any) => s.price_min).sort((a: number, b: number) => a - b);
               const maxs = priced.map((s: any) => s.price_max).sort((a: number, b: number) => a - b);
               const medMin = mins[Math.floor(mins.length / 2)];
@@ -1439,7 +1449,7 @@ ${PRICE_RULES}
               siblingPriceHint = `\nBRAND CONTEXT: "${brandTok}" locations elsewhere charge roughly $${medMin}-$${medMax}/week (n=${priced.length}). Prefer amounts consistent with this range, but ONLY extract a price if it explicitly appears in the search or scrape text below. Do not invent numbers.`;
             }
           }
-          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [directoryQuery, bookingQuery, generalQuery, brandQuery].filter(Boolean), brand_token: brandTok || null, brand_hint_used: !!siblingPriceHint };
+          const qDebug: Record<string, unknown> = { provider_id: p.id, provider_name: p.name, queries: [siteQuery, directoryQuery, bookingQuery, generalQuery, brandQuery].filter(Boolean), provider_domain: providerDomain, brand_token: brandTok || null, brand_hint_used: !!siblingPriceHint };
           try {
             // Atomic DB Lock guard to prevent duplicate background workers checking the same camp
             const { data: lockRow } = await admin.from("mvs_providers")

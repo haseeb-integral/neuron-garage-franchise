@@ -563,57 +563,75 @@ async function runGoogleMaps(args: {
     debug.error = "missing APIFY secrets";
     return { platform: "google_maps", providers: [], firecrawlCalls: 0, debug };
   }
-  try {
-    const url = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=90&memory=1024`;
-    const body = {
-      // "kids classes" (older query) pulled non-camp businesses (studios,
-      // swim schools) that wasted pricing-crawler cycles. "Day camp" is the
-      // term of art and filters out overnight camps.
-      searchStringsArray: [
-        `summer day camp ${city} ${state}`,
-        `summer camps for kids ${city} ${state}`,
-      ],
-      locationQuery: `${city}, ${state}`,
-      maxCrawledPlacesPerSearch: 100,
-      language: "en",
-      countryCode: "us",
-      skipClosedPlaces: true,
-    };
-    const res = await fetchWithTimeout(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }, APIFY_TIMEOUT_MS);
-    if (!res.ok) {
-      debug.error = `apify ${res.status}`;
-      debug.body = (await res.text()).slice(0, 300);
-      return { platform: "google_maps", providers: [], firecrawlCalls: 0, debug };
-    }
-    const items: unknown[] = await res.json().catch(() => []);
-    debug.items_returned = Array.isArray(items) ? items.length : 0;
-    const providers: ProviderExtract[] = (Array.isArray(items) ? items : [])
-      .map((raw) => {
+  // Run each query as its own Apify call (sequential). One call scraping
+  // 2×100 places blew past the 150s edge-function idle timeout; splitting
+  // it keeps each call well under the limit while preserving coverage.
+  const queries = [
+    `summer day camp ${city} ${state}`,
+    `summer camps for kids ${city} ${state}`,
+  ];
+  const url = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=60&memory=1024`;
+  const perQueryDebug: Record<string, unknown>[] = [];
+  const merged = new Map<string, ProviderExtract>(); // key = lowercased name
+  let totalItems = 0;
+
+  for (const q of queries) {
+    const qDebug: Record<string, unknown> = { query: q };
+    try {
+      const body = {
+        searchStringsArray: [q],
+        locationQuery: `${city}, ${state}`,
+        maxCrawledPlacesPerSearch: 100,
+        language: "en",
+        countryCode: "us",
+        skipClosedPlaces: true,
+      };
+      const res = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }, APIFY_TIMEOUT_MS);
+      if (!res.ok) {
+        qDebug.error = `apify ${res.status}`;
+        qDebug.body = (await res.text()).slice(0, 300);
+        perQueryDebug.push(qDebug);
+        continue;
+      }
+      const items: unknown[] = await res.json().catch(() => []);
+      const arr = Array.isArray(items) ? items : [];
+      qDebug.items_returned = arr.length;
+      totalItems += arr.length;
+      let added = 0;
+      for (const raw of arr) {
         const it = raw as Record<string, unknown>;
         const name = String(it.title ?? it.name ?? "").trim();
-        if (!name) return null;
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (merged.has(key)) continue;
         const website = (it.website ?? it.url ?? null) as string | null;
         const category = (it.categoryName ?? it.category ?? null) as string | null;
-        return {
+        merged.set(key, {
           name,
           url: website,
           price_min: null,
           price_max: null,
           category_raw: category,
           confidence: 0.7,
-        } as ProviderExtract;
-      })
-      .filter((p): p is ProviderExtract => p !== null);
-    debug.providers_extracted = providers.length;
-    return { platform: "google_maps", providers, firecrawlCalls: 0, debug };
-  } catch (e) {
-    debug.error = e instanceof Error ? e.message : String(e);
-    return { platform: "google_maps", providers: [], firecrawlCalls: 0, debug };
+        } as ProviderExtract);
+        added++;
+      }
+      qDebug.providers_added = added;
+    } catch (e) {
+      qDebug.error = e instanceof Error ? e.message : String(e);
+    }
+    perQueryDebug.push(qDebug);
   }
+
+  debug.per_query = perQueryDebug;
+  debug.items_returned = totalItems;
+  const providers = Array.from(merged.values());
+  debug.providers_extracted = providers.length;
+  return { platform: "google_maps", providers, firecrawlCalls: 0, debug };
 }
 
 // ----------------- Source: Google Search (via Firecrawl /v2/search) -----------------

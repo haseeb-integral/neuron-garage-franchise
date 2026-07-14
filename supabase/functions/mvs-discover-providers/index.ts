@@ -836,7 +836,7 @@ async function extractWithGemini(args: {
 // so price tables in sidebars/accordions show up. Strict literal-price guard.
 // Capped at 5 extra Firecrawl calls per city.
 const TARGETED_PRICE_KEYWORDS =
-  /(camp|summer|tuition|fees?|rates?|pricing|registration|register|program|enroll|cost)/i;
+  /(camp|summer|fees?|rates?|pricing|price|registration|register|program|enroll|cost|weekly|week)/i;
 const TARGETED_BLOCKED_HOSTS =
   /(facebook|instagram|tiktok|pinterest|reddit|twitter|x\.com|yelp\.com|hisawyer\.com|activityhero\.com|google\.)/i;
 

@@ -342,58 +342,64 @@ type SourceResult = {
   debug: Record<string, unknown>;
 };
 
-// ----------------- Source: Sawyer (existing 3-variant scrape) -----------------
+// ----------------- Source: Sawyer (summer-camps-for-kids category page only) -----------------
 async function runSawyer(args: {
   city: string;
+  state: string;
   box: Box;
   firecrawlKey: string;
   lovableKey: string;
   admin: ReturnType<typeof createClient>;
   runId: string;
 }): Promise<SourceResult> {
-  const { city, box, firecrawlKey, lovableKey, admin, runId } = args;
-  const variants = buildSawyerVariants();
+  const { city, state, firecrawlKey, lovableKey, admin, runId } = args;
   const collected: ProviderExtract[] = [];
   let screenshotPath: string | null = null;
   const variantDebug: unknown[] = [];
   let firecrawlCalls = 0;
 
-  const sys = `You extract kids' activity providers from a Sawyer marketplace listing page for ${city}.
+  const url = "https://www.hisawyer.com/s/summer-camps-for-kids";
+
+  const sys = `You extract summer camp providers from Sawyer's "Summer Camps for Kids" category page.
 Return strict JSON:
 { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 
 Rules:
-- A "provider" is a real business/brand offering kids' classes, camps, or activities.
+- A "provider" is a real business/brand that runs a summer day camp for kids.
+- ONLY include providers whose card, listing, or description clearly shows they operate in ${city}, ${state} (city name or nearby suburb visible in the address, location tag, or title). Skip any provider without a visible ${city}/${state} presence.
 - DO NOT include: search categories, location names, navigation links, ads, the marketplace platform itself ("Sawyer"), generic terms ("Kids Classes", "Music"), or individual class titles.
-- "url" MUST be the provider's OWN website (their own domain). If you cannot see the provider's own website on the page, return null for url.
-- "listing_url" MUST be the marketplace listing or activity-detail link on Sawyer (e.g. "https://www.hisawyer.com/marketplace/activity-set/..." or "/class/" or "/camp/"). If not visible, return null.
-- Prefer in-person providers serving ${city}. Skip online-only providers.
+- DO NOT include year-round studios, gyms, dojos, or tutoring centers that don't run a summer camp.
+- "url" MUST be the provider's OWN website (their own domain). If you cannot see it, return null.
+- "listing_url" MUST be the Sawyer listing or activity-detail link (e.g. "https://www.hisawyer.com/marketplace/activity-set/..." or "/class/" or "/camp/"). If not visible, return null.
+- Skip online-only providers.
 - Confidence 0..1.
 - Dedupe by provider name. Hard cap: 60 providers.
 ${PRICE_RULES}`;
 
-  for (let i = 0; i < variants.length; i++) {
-    const url = buildSawyerUrl(city, box, variants[i]);
-    const v: Record<string, unknown> = { variant: i, url };
-    try {
-      const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          formats: i === 0 ? ["markdown", "screenshot"] : ["markdown"],
-          onlyMainContent: true,
-          waitFor: 3000,
-        }),
-      }, FIRECRAWL_TIMEOUT_MS);
-      firecrawlCalls += 1;
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) { v.error = `firecrawl ${res.status}`; variantDebug.push(v); continue; }
+  const v: Record<string, unknown> = { url, category: "summer-camps-for-kids" };
+  try {
+    const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        formats: ["markdown", "screenshot"],
+        onlyMainContent: true,
+        waitFor: 3000,
+      }),
+    }, FIRECRAWL_TIMEOUT_MS);
+    firecrawlCalls += 1;
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      v.error = `firecrawl ${res.status}`;
+      variantDebug.push(v);
+    } else {
       const md: string = j?.data?.markdown ?? "";
       v.markdown_chars = md.length;
-      if (!md) { v.error = "empty markdown"; variantDebug.push(v); continue; }
-
-      if (i === 0 && !screenshotPath) {
+      if (!md) {
+        v.error = "empty markdown";
+        variantDebug.push(v);
+      } else {
         const shot: string | undefined = j?.data?.screenshot ?? j?.data?.screenshotUrl;
         if (shot) {
           try {
@@ -416,18 +422,18 @@ ${PRICE_RULES}`;
             }
           } catch { /* non-fatal */ }
         }
-      }
 
-      const got = await extractWithGemini({
-        lovableKey, sys, city, sourceUrl: url, markdown: md,
-      });
-      v.providers_extracted = got.length;
-      collected.push(...got);
-      variantDebug.push(v);
-    } catch (e) {
-      v.error = e instanceof Error ? e.message : String(e);
-      variantDebug.push(v);
+        const got = await extractWithGemini({
+          lovableKey, sys, city, sourceUrl: url, markdown: md,
+        });
+        v.providers_extracted = got.length;
+        collected.push(...got);
+        variantDebug.push(v);
+      }
     }
+  } catch (e) {
+    v.error = e instanceof Error ? e.message : String(e);
+    variantDebug.push(v);
   }
 
   return {

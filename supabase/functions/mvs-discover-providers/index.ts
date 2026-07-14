@@ -767,12 +767,17 @@ async function runYelp(args: {
   lovableKey: string;
 }): Promise<SourceResult> {
   const { city, state, firecrawlKey, lovableKey } = args;
+  // Use Yelp's dedicated "Summer Camps for Kids" category filter (cflt slug)
+  // instead of the generic "Kids Activities" keyword search. This restricts
+  // results to businesses Yelp itself has tagged as summer camps, matching
+  // the tightening we did for Google Maps discovery.
   const params = new URLSearchParams({
-    find_desc: "Kids Activities",
+    find_desc: "",
     find_loc: `${city}, ${state}`,
+    cflt: "summer_camps_for_kids",
   });
   const url = `https://www.yelp.com/search?${params.toString()}`;
-  const debug: Record<string, unknown> = { url };
+  const debug: Record<string, unknown> = { url, category: "summer_camps_for_kids" };
   let firecrawlCalls = 0;
   try {
     const res = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
@@ -787,12 +792,13 @@ async function runYelp(args: {
     debug.markdown_chars = md.length;
     if (!md) { debug.error = "empty markdown"; return { platform: "yelp", providers: [], firecrawlCalls, debug }; }
 
-    const sys = `You extract kids' activity providers from a Yelp search results page for ${city}, ${state}.
+    const sys = `You extract summer camp providers from a Yelp "Summer Camps for Kids" category page for ${city}, ${state}.
 Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
-- A "provider" is a real business offering kids' classes, camps, gymnastics, art, music, sports, etc.
-- EXCLUDE: Yelp itself, sponsored ads labeled "Ad", category nav, generic listings, restaurants, irrelevant businesses.
-- category_raw = the Yelp business category.
+- A "provider" is a real business that runs a summer day camp for kids in ${city}, ${state}.
+- EXCLUDE: Yelp itself, sponsored ads labeled "Ad", category nav headers, generic listings, restaurants, retail stores, party venues, and year-round studios / gyms / dojos / tutoring centers that do NOT run a summer camp.
+- If a listing looks like a year-round business with no camp offering visible, skip it.
+- category_raw = the Yelp business category shown on the listing.
 - Hard cap: 30.
 ${PRICE_RULES}
 - IMPORTANT: Yelp's "$", "$$", "$$$" symbols are NOT dollar amounts. Return price_min=null and price_max=null unless an actual numeric dollar amount appears in the markdown for that provider.`;

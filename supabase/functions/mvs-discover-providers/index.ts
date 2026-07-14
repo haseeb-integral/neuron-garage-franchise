@@ -566,8 +566,12 @@ async function runGoogleMaps(args: {
   try {
     const url = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=90&memory=1024`;
     const body = {
+      // "kids classes" (older query) pulled non-camp businesses (studios,
+      // swim schools) that wasted pricing-crawler cycles. "Day camp" is the
+      // term of art and filters out overnight camps.
       searchStringsArray: [
-        `summer day camps in ${city} ${state}`,
+        `summer day camp ${city} ${state}`,
+        `summer camps for kids ${city} ${state}`,
       ],
       locationQuery: `${city}, ${state}`,
       maxCrawledPlacesPerSearch: 100,

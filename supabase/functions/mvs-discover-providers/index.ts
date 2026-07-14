@@ -1481,7 +1481,7 @@ ${PRICE_RULES}
                   totalFirecrawl += 1;
                   const mapJson = await mapRes.json().catch(() => ({}));
                   const links: string[] = Array.isArray(mapJson?.data) ? mapJson.data : Array.isArray(mapJson?.data?.links) ? mapJson.data.links : [];
-                  const kw = /(rate|tuition|price|pricing|cost|register|registration|faq|camp|summer)/i;
+                  const kw = /(rate|price|pricing|cost|fees?|register|registration|camp|summer|weekly|week)/i;
                   for (const l of links) {
                     if (typeof l === "string" && kw.test(l)) mapUrlsToScrape.push(l);
                   }

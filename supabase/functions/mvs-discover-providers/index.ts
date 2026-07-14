@@ -36,6 +36,42 @@ async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Price guard zones (weekly camp price in USD).
+// ---------------------------------------------------------------------------
+// The pricing signal measures premium tolerance, so legitimate high-end
+// weekly prices ($1,500–$2,500 exists in specialty/coastal markets) must be
+// reviewable rather than silently discarded. Sub-$100 is almost never a
+// weekly camp price (daily rate, drop-in class, or deposit). Above $2,500 is
+// almost always a multi-week package total or a non-camp price.
+const PRICE_MIN_ACCEPT = 100;
+const PRICE_HIGH_REVIEW_THRESHOLD = 1500;
+const PRICE_MAX_ACCEPT = 2500;
+
+type PriceZone = "accept" | "review" | "reject";
+function classifyWeeklyPrice(val: number | null | undefined): PriceZone {
+  if (typeof val !== "number" || !Number.isFinite(val)) return "reject";
+  if (val < PRICE_MIN_ACCEPT) return "reject";
+  if (val > PRICE_MAX_ACCEPT) return "reject";
+  if (val >= PRICE_HIGH_REVIEW_THRESHOLD) return "review";
+  return "accept";
+}
+function isPriceKept(val: number | null | undefined): boolean {
+  const z = classifyWeeklyPrice(val);
+  return z === "accept" || z === "review";
+}
+function priceNeedsReviewZone(min: number | null, max: number | null): boolean {
+  return classifyWeeklyPrice(min) === "review" || classifyWeeklyPrice(max) === "review";
+}
+function providerDomainOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const raw = String(url).trim();
+    const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return u.hostname.replace(/^www\./, "").toLowerCase();
+  } catch { return null; }
+}
+
+// ---------------------------------------------------------------------------
 // B1: Brand price propagation (same-city siblings)
 // ---------------------------------------------------------------------------
 // When a well-known brand has ≥2 same-city locations with prices that agree

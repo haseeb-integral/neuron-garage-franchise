@@ -1494,7 +1494,7 @@ ${PRICE_RULES}
 
             // Scrape top 1-2 mapped URLs + execute Priority 3 Booking Search & General Search concurrently
             const selectedMapUrls = mapUrlsToScrape.slice(0, 2);
-            const [mapScrapes, directorySearchRes, bookingSearchRes, generalSearchRes, brandSearchRes] = await Promise.all([
+            const [mapScrapes, siteSearchRes, directorySearchRes, bookingSearchRes, generalSearchRes, brandSearchRes] = await Promise.all([
               Promise.all(selectedMapUrls.map(async (sUrl) => {
                 const sRes = await fetchWithTimeout(`${FIRECRAWL_V2}/scrape`, {
                   method: "POST",
@@ -1508,6 +1508,15 @@ ${PRICE_RULES}
                 }
                 return null;
               })),
+              // Site-first: the provider's own website is ground truth. Run
+              // this BEFORE directories/general so its results dominate.
+              siteQuery
+                ? fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ query: siteQuery, limit: 3, scrapeOptions: { formats: ["markdown"], onlyMainContent: false } }),
+                  }, FIRECRAWL_TIMEOUT_MS).catch(() => null)
+                : Promise.resolve(null),
               // B2: directory-first — hit ActivityHero/Sawyer/etc before generic Google.
               fetchWithTimeout(`${FIRECRAWL_V2}/search`, {
                 method: "POST",
@@ -1534,6 +1543,7 @@ ${PRICE_RULES}
                 : Promise.resolve(null),
             ]);
 
+            if (siteSearchRes && siteSearchRes.ok) totalFirecrawl += 1;
             if (directorySearchRes && directorySearchRes.ok) totalFirecrawl += 1;
             if (bookingSearchRes && bookingSearchRes.ok) totalFirecrawl += 1;
             if (generalSearchRes && generalSearchRes.ok) totalFirecrawl += 1;
@@ -1545,21 +1555,24 @@ ${PRICE_RULES}
               return (Array.isArray(j?.data?.web) ? j.data.web : Array.isArray(j?.data) ? j.data : []) as Array<Record<string, unknown>>;
             };
 
-            const [directoryItems, bookingItems, generalItems, brandItems] = await Promise.all([
+            const [siteItems, directoryItems, bookingItems, generalItems, brandItems] = await Promise.all([
+              parseSearch(siteSearchRes),
               parseSearch(directorySearchRes),
               parseSearch(bookingSearchRes),
               parseSearch(generalSearchRes),
               parseSearch(brandSearchRes),
             ]);
 
-            // Directory items come first — they usually have real dollar prices.
-            // Brand items come last as supporting context.
-            const searchItems = [...directoryItems, ...bookingItems, ...generalItems, ...brandItems];
+            // Site (own-domain) items come first — ground truth. Then directory
+            // items (usually have real dollar prices). Brand items last as
+            // supporting context.
+            const searchItems = [...siteItems, ...directoryItems, ...bookingItems, ...generalItems, ...brandItems];
             const searchBlob = searchItems.map((it, idx) => `=== SEARCH RESULT ${idx + 1} ===\nURL: ${it.url ?? ""}\nTITLE: ${it.title ?? ""}\nDESCRIPTION SNIPPET: ${it.description ?? ""}\n\n${String(it.markdown ?? it.content ?? "").slice(0, 6000)}`).join("\n\n");
             const blob = [...mapScrapes.filter(Boolean), searchBlob].filter(Boolean).join("\n\n");
 
-            // Prefer a directory URL as the evidence link when one exists — cleaner than a homepage.
-            const discoveredUrl = (directoryItems[0]?.url as string) || selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
+            // Prefer own-site or directory URL as the evidence link when one exists.
+            const discoveredUrl = (siteItems[0]?.url as string) || (directoryItems[0]?.url as string) || selectedMapUrls[0] || (bookingItems[0]?.url as string) || (generalItems[0]?.url as string) || null;
+            qDebug.site_hits = siteItems.length;
             qDebug.directory_hits = directoryItems.length;
             qDebug.brand_hits = brandItems.length;
 

@@ -327,9 +327,11 @@ const PRICE_RULES = `PRICING RULES:
 - price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
 - Extract prices found in website text, tables, camp packages, registration flyers, or Google Search result snippets.
 - DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
-- Priority 4: If multiple weekly tuition amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly tuition amount.
+- Priority 4: If multiple weekly amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly amount.
 - If the page or search snippet shows a single weekly number, set both price_min and price_max to that number.
 - If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
+- ADJACENCY: When a page shows multiple dollar amounts, PREFER amounts that appear next to the words "week", "weekly", "per week", or "/week" over bare amounts.
+- NO ARITHMETIC: If only a total-with-weeks is shown (e.g. "$1,800 for 4 weeks", "$3,600 for 6 weeks", "full session $2,400"), DO NOT divide. Return nulls and let a later stage retry — silent arithmetic on scraped text is how wrong prices enter the dataset.
 - If no dollar amount is visible anywhere in the text or search snippets for that provider, set price_min=null and price_max=null. Never invent a value.`;
 
 type SourceResult = {

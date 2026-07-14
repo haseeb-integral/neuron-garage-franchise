@@ -1598,7 +1598,7 @@ ${PRICE_RULES}
               const gemJson = await gemRes.json().catch(() => ({}));
               const parsed = JSON.parse(gemJson?.choices?.[0]?.message?.content ?? "{}") as { price_min?: number | null; price_max?: number | null; category_raw?: string | null; confidence?: number };
               
-              const isValidPrice = (val?: number | null) => typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
+              const isValidPrice = (val?: number | null) => isPriceKept(val);
 
               const candidatePrices: number[] = [];
               if (isValidPrice(parsed.price_min)) candidatePrices.push(parsed.price_min!);
@@ -1606,14 +1606,14 @@ ${PRICE_RULES}
 
               for (const m of blob.matchAll(/\$\s?(\d{1,3}(?:[,]?\d{3})*|\d+)/g)) {
                 const num = Number(m[1].replace(/,/g, ""));
-                if (Number.isFinite(num) && num >= 40 && num <= 2500) candidatePrices.push(num);
+                if (isPriceKept(num)) candidatePrices.push(num);
               }
 
               if (candidatePrices.length > 0) {
-                // Priority 4: Pick HIGHEST recurring weekly tuition
+                // Priority 4: Pick HIGHEST recurring weekly price
                 finalMax = Math.max(...candidatePrices);
                 finalMin = Math.min(...candidatePrices);
-                if (finalMin < 100 && finalMax >= 150) finalMin = finalMax;
+                if (finalMin < PRICE_MIN_ACCEPT && finalMax >= 150) finalMin = finalMax;
               }
 
               finalCat = parsed.category_raw ?? null;

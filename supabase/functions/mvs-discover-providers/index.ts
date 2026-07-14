@@ -815,8 +815,7 @@ async function extractWithGemini(args: {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
     const dollarMatches = new Set<number>();
-    const isValidCandidate = (val?: number | null): boolean =>
-      typeof val === "number" && Number.isFinite(val) && val >= 15 && val <= 5000;
+    const isValidCandidate = (val?: number | null): boolean => isPriceKept(val);
 
     for (const p of providers) {
       if (!isValidCandidate(p.price_min)) p.price_min = null;

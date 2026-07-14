@@ -635,7 +635,7 @@ async function runGoogleSearch(args: {
     `${cleanCity} ${state} after school programs enrichment kids`,
     `kids music art gymnastics studios ${cleanCity} ${state}`,
     `things to do with kids in ${cleanCity} ${state} indoor`,
-    `${cleanCity} ${state} kids summer camp prices per week tuition`,
+    `${cleanCity} ${state} summer day camp price per week ${new Date().getFullYear()}`,
   ];
 
   // Strip social/marketplace noise so listicle pages dominate results.

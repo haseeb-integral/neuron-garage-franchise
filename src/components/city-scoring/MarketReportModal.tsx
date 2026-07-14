@@ -236,7 +236,7 @@ export function MarketReportModal({ open, onClose, market, categoryScores, sigRo
                 <ReactMarkdown>{narrative.report_demand}</ReactMarkdown>
                 <h5 className="text-[12px] font-bold text-[#07142f] mt-3 mb-1">Supply &amp; Competitive Read</h5>
                 <ReactMarkdown>{narrative.report_supply}</ReactMarkdown>
-                <h5 className="text-[12px] font-bold text-[#07142f] mt-3 mb-1">Recommended Next Move</h5>
+                <h5 className="text-[12px] font-bold text-[#07142f] mt-3 mb-1">Data Confidence</h5>
                 <ReactMarkdown>{narrative.report_next_move}</ReactMarkdown>
                 {narrative.model_id && (
                   <p className="mt-3 text-[10px] text-[#8794ab] not-prose">

@@ -1392,12 +1392,12 @@ Deno.serve(async (req) => {
     if (catchupBatch && Array.isArray(catchupBatch) && catchupBatch.length > 0) {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
-      const catchupSys = `You extract per-week or per-session tuition pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
+      const catchupSys = `You extract per-week or per-session pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
 Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
 - Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guide snippets.
-- Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly tuition.
-- If a clear dollar tuition amount is found in the search snippets or page text, extract it. Otherwise return nulls.`;
+- Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly price.
+- If a clear dollar weekly price is found in the search snippets or page text, extract it. Otherwise return nulls.`;
 
       const cleanCity = city.replace(/,\s*[A-Za-z]{2}\s*$/i, "").trim();
       const stateAbbr = city.split(",")[1]?.trim() || "";

@@ -91,44 +91,33 @@ export async function fetchLiveMvs(cityKey: string): Promise<RawBundle> {
     weekRows = wRows ?? [];
   }
 
-  const { data: acsRows } = await supabase
-    .from("site_analysis_acs_cache")
-    .select("children_5_12, families_with_kids_5_12, pct_dual_income, pct_hh_above_150k")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
   const [cityName, stateAbbr] = cityKey.split(",").map((s) => s.trim());
 
+  // Read the city-scoped row once. `affluent_families_count` is the ACS
+  // B19131-derived count of families with children whose household income
+  // clears the cost-of-living-adjusted affluent threshold — the SAME number
+  // City Search displays in Key Market Signals (single source of truth).
+  //
+  // 2026-07-14 fix (Phase 1b): previously this pulled `families_with_kids ×
+  // pct_dual_income × pct_hh_above_150k` from `site_analysis_acs_cache`,
+  // which has no city column — it's keyed by polygon_hash and stores Site
+  // Analysis isochrones. That query returned unrelated polygons and, when
+  // it failed, fell back to `children_5_12 × dual_working_families_pct`
+  // (kids-of-dual-working, NOT affluent families — different concept). Both
+  // paths are removed; MVS now reads from `us_cities_scored` directly.
   const { data: cityRow } = await supabase
     .from("us_cities_scored")
-    .select("children_5_12, dual_working_families_pct")
+    .select("children_5_12, dual_working_families_pct, affluent_families_count")
     .ilike("city_name", cityName ?? cityKey)
     .eq("state_abbr", stateAbbr ?? "")
     .maybeSingle();
 
   const children5to12 = cityRow?.children_5_12 ?? null;
-
-  let affluentCount: number | null = null;
-  if (acsRows && acsRows.length > 0) {
-    const best = (acsRows as any[]).sort(
-      (a, b) => (b.children_5_12 ?? 0) - (a.children_5_12 ?? 0),
-    )[0];
-    const fams = best.families_with_kids_5_12 ?? 0;
-    const dualPct = (best.pct_dual_income ?? 0) / 100;
-    const above150 = (best.pct_hh_above_150k ?? 0) / 100;
-    if (fams > 0 && dualPct > 0 && above150 > 0) {
-      affluentCount = Math.round(fams * dualPct * above150);
-    }
-  }
-  if (
-    affluentCount == null &&
-    children5to12 != null &&
-    cityRow?.dual_working_families_pct != null
-  ) {
-    affluentCount = Math.round(
-      children5to12 * (cityRow.dual_working_families_pct / 100),
-    );
-  }
+  const affluentCountRaw = cityRow?.affluent_families_count ?? null;
+  const affluentCount =
+    typeof affluentCountRaw === "number" && Number.isFinite(affluentCountRaw) && affluentCountRaw > 0
+      ? affluentCountRaw
+      : null;
 
   let acsInput: MvsAcsInput | null = null;
   if (children5to12 != null && Number.isFinite(children5to12)) {

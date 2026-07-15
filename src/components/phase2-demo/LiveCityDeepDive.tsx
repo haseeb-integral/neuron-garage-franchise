@@ -1000,7 +1000,10 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
           const input = result?.inputs[meta.key] as any;
           const weight = weights[meta.key];
           const confidence = confidenceFor(meta.key);
-          const band = bandFor(meta.key, score, input?.coverageRatio);
+          const band = bandFor(meta.key, score, input);
+          const isMbi = meta.key === "marketBalance";
+          const mbiStatus = isMbi ? (input?.status as string | null | undefined) : null;
+          const mbiFlagged = isMbi && (mbiStatus === "saturated" || mbiStatus === "unproven");
           return (
             <div
               key={meta.key}
@@ -1016,8 +1019,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     <span
                       className={CHIP}
                       style={{ backgroundColor: SOFT, color: BLUE }}
+                      title={isMbi ? "Market Balance is a review flag — it does not contribute weight to the composite score." : undefined}
                     >
-                      {Math.round(weight * 100)}%
+                      {isMbi ? "Review flag · 0%" : `${Math.round(weight * 100)}%`}
                     </span>
                     {band && (
                       <span
@@ -1044,24 +1048,49 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div
-                    className="text-[24px] font-black leading-none tabular-nums"
-                    style={{ color: NAVY }}
-                  >
-                    {score != null ? score.toFixed(1) : "—"}
-                  </div>
-                  <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                    / 100
-                  </div>
-                  <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
-                    sub-score
-                  </div>
+                  {isMbi ? (
+                    <>
+                      <div
+                        className="text-[18px] font-black leading-tight tabular-nums"
+                        style={{ color: mbiFlagged ? "#a3142b" : NAVY }}
+                      >
+                        {mbiStatus === "saturated"
+                          ? "Saturated"
+                          : mbiStatus === "unproven"
+                          ? "Unproven"
+                          : mbiStatus === "healthy"
+                          ? "Healthy"
+                          : "—"}
+                      </div>
+                      <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                        review flag
+                      </div>
+                      <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
+                        no sub-score
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="text-[24px] font-black leading-none tabular-nums"
+                        style={{ color: NAVY }}
+                      >
+                        {score != null ? score.toFixed(1) : "—"}
+                      </div>
+                      <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                        / 100
+                      </div>
+                      <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
+                        sub-score
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Result */}
               {(() => {
-                const sentence = resultSentenceFor(meta.key, band?.tone);
+                const sentence = resultSentenceFor(meta.key, band?.tone, input);
                 return sentence ? (
                   <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
                     <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>

@@ -1787,7 +1787,9 @@ ${PRICE_RULES}
           .eq("city", city)
           .is("price_min", null)
           .is("price_max", null)
+          .is("category_excluded_reason", null)
           .limit(500);
+
 
         if (missingRows && missingRows.length > 0) {
           const allMissingIds = missingRows.map(r => r.id as string);

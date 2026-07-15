@@ -270,13 +270,11 @@ Deno.serve(async (req) => {
           tier = "mid";
         }
       } else {
-        if (sourceCount >= 3) {
-          tier = "premium";
-        } else if (sourceCount >= 2) {
-          tier = "mid";
-        } else {
-          tier = tier === "premium" ? "mid" : tier;
-        }
+        // Option A: no price + not a known national premium brand => never Premium.
+        // Source count alone is a findability signal, not a pricing signal, so
+        // we default unpriced rows to Mid and let QA/scraping upgrade them
+        // later once a real price is captured.
+        tier = tier === "premium" ? "mid" : tier;
       }
 
       const rawCat = (r.category_classified || src?.category_raw || "").toLowerCase();

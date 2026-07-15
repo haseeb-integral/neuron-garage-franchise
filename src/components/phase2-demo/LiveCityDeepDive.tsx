@@ -195,16 +195,19 @@ function bandWhyFor(
   score: number | null,
   input: any,
 ): string | null {
-  if (score == null) return null;
   if (key === "marketBalance") {
-    const cr = input?.coverageRatio;
-    if (cr == null) return null;
-    const crStr = Math.round(cr).toString();
-    if (cr >= 350) return `Why: coverage ratio ${crStr} kids per seat (≥ 350 = underserved).`;
-    if (cr >= 200) return `Why: coverage ratio ${crStr} kids per seat (200–349 = balanced).`;
-    if (cr >= 100) return `Why: coverage ratio ${crStr} kids per seat (100–199 = competitive).`;
-    return `Why: coverage ratio ${crStr} kids per seat (< 100 = saturated).`;
+    // MBI is a review flag now — "why" reads from status, not from a score.
+    const ratio = input?.marketBalanceRatio ?? input?.coverageRatio;
+    const status = input?.status;
+    if (ratio == null || status == null) return null;
+    const rStr = Math.round(ratio).toLocaleString();
+    if (status === "saturated")
+      return `Why: ${rStr} affluent families per premium provider (< 200 → saturated supply, review recommended).`;
+    if (status === "unproven")
+      return `Why: ${rStr} affluent families per premium provider (> 8,000 → unproven camp culture, review recommended).`;
+    return `Why: ${rStr} affluent families per premium provider (200–8,000 → healthy balance, no flag).`;
   }
+  if (score == null) return null;
   const word = bandLabelWord(score);
   const thr = bandThresholdWord(score);
   const s = score.toFixed(1);
@@ -233,12 +236,29 @@ function bandWhyFor(
   return null;
 }
 
-// Plain-English one-line "Result" sentence per pillar, driven by the
-// existing band tone. No math change — pure copy.
 function resultSentenceFor(
   key: string,
   tone: BandTone | null | undefined,
+  input?: any,
 ): string | null {
+  // Market Balance is driven by status, not a tone from a 0–100 score.
+  if (key === "marketBalance") {
+    const status = input?.status;
+    if (!status) return null;
+    if (status === "saturated")
+      return "Supply looks saturated for the affluent demand in this city — review before pursuing.";
+    if (status === "unproven")
+      return "Very few premium providers relative to affluent families — camp culture may be unproven. Review before pursuing.";
+    return "Supply and affluent demand look well balanced — no review flag.";
+  }
+  // Market Depth uses the raw premium-provider count for cleaner bands.
+  if (key === "marketDepth") {
+    const pc = input?.premiumProviderCount;
+    if (pc == null) return null;
+    if (pc < 8) return `Only ${pc} premium provider${pc === 1 ? "" : "s"} — the premium ecosystem is small.`;
+    if (pc < 15) return `${pc} premium providers — a moderate premium ecosystem, camp culture is emerging.`;
+    return `${pc} premium providers — a mature premium ecosystem with proven camp culture.`;
+  }
   if (!tone) return null;
   if (key === "pricingAcceptance") {
     if (tone === "weak") return "Most providers in this city are not charging premium prices yet.";
@@ -258,18 +278,6 @@ function resultSentenceFor(
     if (tone === "strong") return "Families here have a wide range of enrichment options to choose from.";
     return "Families here enjoy an unusually broad mix of enrichment options.";
   }
-  if (key === "marketDepth") {
-    if (tone === "weak") return "Very few premium providers exist in this city today.";
-    if (tone === "mid") return "A moderate number of premium providers operate in this city.";
-    if (tone === "strong") return "A healthy number of premium providers already operate here.";
-    return "This city has a deep, mature premium provider market.";
-  }
-  if (key === "marketBalance") {
-    if (tone === "weak") return "Supply looks saturated — limited room for new premium seats.";
-    if (tone === "mid") return "The market is competitive but not yet saturated.";
-    if (tone === "strong") return "Demand and supply look well matched, with room for new premium seats.";
-    return "Demand clearly outpaces supply — this market looks underserved.";
-  }
   return null;
 }
 
@@ -286,9 +294,11 @@ const INPUT_LABELS: Record<string, string> = {
   diversityRatio: "Diversity ratio",
   operatorValidation: "National operators (validating)",
   directCompetitorLoad: "Direct competitors / 10k kids",
-  coverageRatio: "Coverage ratio (kids / seat)",
+  marketBalanceRatio: "Affluent families per premium provider",
+  coverageRatio: "Affluent families per premium provider",
+  status: "Balance status",
   children5to12: "Children 5–12 (US Census ACS)",
-  affluentDualIncomeFamilyCount: "Affluent dual-income families (ACS)",
+  affluentDualIncomeFamilyCount: "Affluent families with children (ACS B19131)",
 };
 
 // Per-input freshness/source pill shown on the right of each input row so
@@ -298,6 +308,7 @@ const INPUT_LABELS: Record<string, string> = {
 function freshnessForInput(key: string, lastRefreshed: string | null): string {
   if (
     key === "coverageRatio" ||
+    key === "marketBalanceRatio" ||
     key === "children5to12" ||
     key === "affluentDualIncomeFamilyCount"
   ) {

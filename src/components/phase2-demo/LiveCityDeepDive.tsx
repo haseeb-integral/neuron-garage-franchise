@@ -1112,6 +1112,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <ul className="space-y-1">
                     {Object.entries(input).map(([k, v]) => {
                       if (v == null || k === "year2Signal" || k === "diversityRatio") return null;
+                      // MBI: skip fields already shown as the status chip or as
+                      // a duplicate of marketBalanceRatio.
+                      if (isMbi && (k === "coverageRatio" || k === "status")) return null;
                       const display =
                         typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
                       const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);

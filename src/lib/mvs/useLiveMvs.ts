@@ -248,7 +248,11 @@ export function useLiveMvs(
 
   const result = useMemo(() => {
     if (!raw.acs) return null;
-    return computeMvs(raw.providers, raw.weeks, raw.acs, {
+    // Strict Camp View: exclude daycares, parks, retail workshops, etc.
+    // from all MVS math so premium-provider counts (and every score that
+    // reads them) match the on-screen "premium providers" chip.
+    const campsOnly = raw.providers.filter((p) => classifyExclusion(p) === null);
+    return computeMvs(campsOnly, raw.weeks, raw.acs, {
       watchlist: raw.watchlist,
       overlapOverrides: raw.overrides,
       weights: options?.weights,

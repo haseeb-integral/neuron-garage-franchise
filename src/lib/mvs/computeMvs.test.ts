@@ -287,12 +287,24 @@ describe("Score 5: Market Depth", () => {
     expect(r.scores.marketDepth).toBeNull();
   });
 
-  it("normalizes provider count 4–40", () => {
-    // 10 providers → normalize(10, 4, 40) = (6/36)*100 = 16.667
+  it("normalizes provider count 4–15 (tightened 2026-07-14)", () => {
+    // 10 providers → normalize(10, 4, 15) = (6/11)*100 ≈ 54.545
     const providers = Array.from({ length: 10 }, () => makeProvider());
     const r = computeMvs(providers, [], defaultAcs);
-    expect(r.scores.marketDepth).toBeCloseTo(16.67, 1);
+    expect(r.scores.marketDepth).toBeCloseTo(54.55, 1);
     expect(r.inputs.marketDepth.premiumProviderCount).toBe(10);
+  });
+
+  it("saturates at 100 by 15 providers (proof-point threshold)", () => {
+    const providers = Array.from({ length: 15 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketDepth).toBe(100);
+  });
+
+  it("keeps 100 at 20 providers (past the threshold)", () => {
+    const providers = Array.from({ length: 20 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.scores.marketDepth).toBe(100);
   });
 
   it("caps at 0 for count below range", () => {
@@ -300,41 +312,51 @@ describe("Score 5: Market Depth", () => {
     const r = computeMvs(providers, [], defaultAcs);
     expect(r.scores.marketDepth).toBe(0);
   });
-
-  it("caps at 100 for count above range", () => {
-    const providers = Array.from({ length: 50 }, () => makeProvider());
-    const r = computeMvs(providers, [], defaultAcs);
-    expect(r.scores.marketDepth).toBe(100);
-  });
 });
 
 // ---------------------------------------------------------------------------
-// Score 6 — Market Balance
+// Score 6 — Market Balance (2026-07-14 rebuild: flag, not score)
 // ---------------------------------------------------------------------------
 
-describe("Score 6: Market Balance", () => {
-  it("scores null when no premium providers", () => {
-    const r = computeMvs([makeProvider({ tier: "budget" })], [], defaultAcs);
+describe("Score 6: Market Balance Index (review flag)", () => {
+  it("returns score:null in all cases — MBI no longer contributes points", () => {
+    const providers = Array.from({ length: 10 }, () => makeProvider());
+    const r = computeMvs(providers, [], defaultAcs);
     expect(r.scores.marketBalance).toBeNull();
   });
 
-  it("computes coverage ratio and normalizes 50–500", () => {
-    // 10 premium providers, 10_000 affluent families
-    // coverageRatio = 10000 / 10 = 1000
-    // normalize(1000, 50, 500) = 100 (capped)
+  it("emits 'healthy' status for a ratio in the healthy band", () => {
+    // 10 premium providers, 10_000 affluent families → ratio = 1000
+    // 1000 is between LOW=200 and HIGH=8000 → healthy.
     const providers = Array.from({ length: 10 }, () => makeProvider());
     const r = computeMvs(providers, [], defaultAcs);
-    expect(r.scores.marketBalance).toBe(100);
+    expect(r.inputs.marketBalance.marketBalanceRatio).toBe(1000);
+    expect(r.inputs.marketBalance.status).toBe("healthy");
+    // Legacy coverageRatio still mirrored for older readers.
     expect(r.inputs.marketBalance.coverageRatio).toBe(1000);
   });
 
-  it("is 0 when coverage ratio is at floor", () => {
-    // 200 premium providers, 10_000 affluent families
-    // coverageRatio = 10000 / 200 = 50
-    // normalize(50, 50, 500) = 0
+  it("flags 'saturated' when ratio is very low (dense supply)", () => {
+    // 200 premium providers, 10_000 affluent families → ratio = 50 → saturated
     const providers = Array.from({ length: 200 }, () => makeProvider());
     const r = computeMvs(providers, [], defaultAcs);
-    expect(r.scores.marketBalance).toBe(0);
+    expect(r.inputs.marketBalance.marketBalanceRatio).toBe(50);
+    expect(r.inputs.marketBalance.status).toBe("saturated");
+  });
+
+  it("flags 'unproven' when ratio is very high (near-empty market)", () => {
+    // 1 premium provider, 10_000 affluent families → ratio = 10_000 → unproven
+    const providers = [makeProvider()];
+    const r = computeMvs(providers, [], defaultAcs);
+    expect(r.inputs.marketBalance.marketBalanceRatio).toBe(10_000);
+    expect(r.inputs.marketBalance.status).toBe("unproven");
+  });
+
+  it("flags 'unproven' when zero premium providers were found", () => {
+    const r = computeMvs([makeProvider({ tier: "budget" })], [], defaultAcs);
+    expect(r.inputs.marketBalance.premiumProviderCount).toBe(0);
+    expect(r.inputs.marketBalance.status).toBe("unproven");
+    expect(r.inputs.marketBalance.marketBalanceRatio).toBeNull();
   });
 });
 
@@ -405,10 +427,11 @@ describe("Composite MVS", () => {
     expect(typeof r.mvs).toBe("number");
     expect(r.mvs).toBeGreaterThanOrEqual(0);
     expect(r.mvs).toBeLessThanOrEqual(100);
-    expect(r.normalizationVersion).toBe("1.0-fixed");
+    expect(r.normalizationVersion).toBe("1.1-mbi-flag");
   });
 
-  it("respects custom weights", () => {
+  it("ignores marketBalance in the composite even if callers pass a weight", () => {
+    // MBI's `score` is always null now, so any weight on it is effectively 0.
     const pid = "p-w";
     const providers = [makeProvider({ id: pid })];
     const weeks = [makeWeek({ provider_id: pid, status: "sold_out" })];
@@ -422,7 +445,9 @@ describe("Composite MVS", () => {
         marketBalance: 1.0,
       },
     });
-    expect(r.mvs).toBe(r.scores.marketBalance);
+    // With all real weights at 0, the composite math sums to 0.
+    expect(r.mvs).toBe(0);
+    expect(r.scores.marketBalance).toBeNull();
   });
 
   it("caps composite at 0/100 even with extreme inputs", () => {
@@ -435,8 +460,9 @@ describe("Composite MVS", () => {
     const r = computeMvs(providers, weeks, defaultAcs);
     expect(r.scores.pricingAcceptance).toBe(0);
     expect(r.scores.marketAbsorption).toBe(0);
-    expect(r.scores.marketDepth).toBe(100); // 200 > 40, capped at 100
-    expect(r.scores.marketBalance).toBe(0);  // 200 providers → coverageRatio = 50
+    expect(r.scores.marketDepth).toBe(100); // 200 > 15, capped at 100
+    expect(r.scores.marketBalance).toBeNull(); // MBI is a flag, not a score
+    expect(r.inputs.marketBalance.status).toBe("saturated"); // ratio = 50
   });
 });
 

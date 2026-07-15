@@ -9,24 +9,36 @@ export const MVS_ENRICHMENT_MAX_CATEGORIES = 10;
 // the math does not change.
 export const MVS_ENRICHMENT_THIN_MARKET_THRESHOLD = 4;
 
-export const MVS_NORMALIZATION_VERSION = "1.0-fixed";
+export const MVS_NORMALIZATION_VERSION = "1.1-mbi-flag";
 
-// Market Absorption (formerly 0.25) was removed June 24, 2026. Remaining
-// weights re-normalized proportionally so the 5 cards still sum to 1.0:
-//   PA  0.20 / 0.75 = 0.2667
-//   SO  0.20 / 0.75 = 0.2667
-//   ED  0.10 / 0.75 = 0.1333
-//   MD  0.10 / 0.75 = 0.1333
-//   MB  0.15 / 0.75 = 0.2000
-// `marketAbsorption: 0` is kept as a legacy key so callers that still pass it
-// in `options.weights` don't crash; it is ignored in the composite below.
+// Market Balance Index (MBI) thresholds — 2026-07-14 rebuild.
+// MBI is now a two-sided review flag, NOT a scored contribution to the
+// composite. Ratio = affluent_families_with_children / premiumProviderCount.
+// PLACEHOLDER — calibrate from live distribution: initialize LOW=200,
+// HIGH=8000 and tune after deployment so Austin lands comfortably in
+// "healthy" and both flags land at genuinely extreme ratios.
+export const MBI_LOW_THRESHOLD = 200;   // PLACEHOLDER — calibrate from live distribution
+export const MBI_HIGH_THRESHOLD = 8000; // PLACEHOLDER — calibrate from live distribution
+
+// Market Depth normalization cap — 2026-07-14. Depth answers "is the
+// premium ecosystem large enough to prove camp culture?" — a threshold
+// question. Range capped at 15 because past that, additional providers
+// are context, not additional validation.
+export const MVS_MARKET_DEPTH_LOW = 4;
+export const MVS_MARKET_DEPTH_HIGH = 15;
+
+// Weights after 2026-07-14 rebuild: MBI's former 0.20 moved to Enrichment
+// Diversity (0.1333 + 0.20 = 0.3333). Others unchanged. Sum = 1.0.
+// `marketAbsorption` and `marketBalance` kept as legacy 0-weight keys so
+// callers that pass them in `options.weights` don't crash. The MBI card
+// stays visible in the UI as a review-triggering flag with no sub-score.
 export const DEFAULT_WEIGHTS: Record<string, number> = {
   pricingAcceptance: 0.2667,
   marketAbsorption: 0,
   scaledOperator: 0.2667,
-  enrichmentDiversity: 0.1333,
+  enrichmentDiversity: 0.3333,
   marketDepth: 0.1333,
-  marketBalance: 0.2000,
+  marketBalance: 0,
 };
 
 export const ELIGIBLE_CATEGORIES = new Set([
@@ -66,6 +78,8 @@ export type MvsWeekStatus =
   | "unknown";
 
 export type MvsOverlap = "direct" | "adjacent" | "distant";
+
+export type MbiStatus = "saturated" | "healthy" | "unproven";
 
 export type MvsProviderInput = {
   id: string;
@@ -129,6 +143,12 @@ export type MvsScoreInputs = {
     premiumProviderCount: number | null;
   };
   marketBalance: {
+    // 2026-07-14: MBI is a review flag, not a score. `marketBalanceRatio`
+    // is affluent_families_with_children / premiumProviderCount.
+    // `coverageRatio` is kept as a mirror of the same number so any legacy
+    // reader (exports, briefs) still finds a value in the old field.
+    marketBalanceRatio: number | null;
+    status: MbiStatus | null;
     coverageRatio: number | null;
     affluentDualIncomeFamilyCount: number | null;
     premiumProviderCount: number | null;
@@ -396,48 +416,73 @@ function score5MarketDepth(
     };
   }
 
-  const n = normalize(premiumCount, 4, 40);
+  // Tightened 2026-07-14: range capped at 15 (was 40) because Market Depth
+  // answers "is the premium ecosystem large enough to prove camp culture?"
+  // — a threshold question that saturates quickly. Density beyond ~15 is
+  // context, not additional validation.
+  const clamped = Math.max(
+    MVS_MARKET_DEPTH_LOW,
+    Math.min(MVS_MARKET_DEPTH_HIGH, premiumCount),
+  );
+  const n = normalize(clamped, MVS_MARKET_DEPTH_LOW, MVS_MARKET_DEPTH_HIGH);
   return {
     score: n != null ? Math.max(0, Math.min(100, n)) : null,
     inputs: { premiumProviderCount: premiumCount },
   };
 }
 
+// 2026-07-14 rebuild: MBI is no longer a scored contribution. It returns
+// `score: null` and instead emits a two-sided review status:
+//   ratio < MBI_LOW_THRESHOLD  → "saturated" (dense supply vs. affluent demand)
+//   ratio > MBI_HIGH_THRESHOLD → "unproven"  (near-empty market — validate camp culture first)
+//   otherwise                  → "healthy"
+// If no premium providers were found, status is "unproven" with a null ratio.
 function score6MarketBalance(
   providers: MvsProviderInput[],
   acs: MvsAcsInput,
 ): { score: number | null; inputs: MvsScoreInputs["marketBalance"] } {
   const premiumCount = providers.filter((p) => p.tier === "premium").length;
+  const affluentCount = acs.affluent_dual_income_family_count;
+  const affluentValid = Number.isFinite(affluentCount) && affluentCount > 0;
+
   if (premiumCount === 0) {
     return {
       score: null,
       inputs: {
+        marketBalanceRatio: null,
+        status: "unproven",
         coverageRatio: null,
-        affluentDualIncomeFamilyCount: null,
-        premiumProviderCount: null,
+        affluentDualIncomeFamilyCount: affluentValid ? affluentCount : null,
+        premiumProviderCount: 0,
       },
     };
   }
 
-  const affluentCount = acs.affluent_dual_income_family_count;
-  if (!Number.isFinite(affluentCount) || affluentCount <= 0) {
+  if (!affluentValid) {
     return {
       score: null,
       inputs: {
+        marketBalanceRatio: null,
+        status: null,
         coverageRatio: null,
-        affluentDualIncomeFamilyCount: affluentCount,
+        affluentDualIncomeFamilyCount: affluentValid ? affluentCount : null,
         premiumProviderCount: premiumCount,
       },
     };
   }
 
-  const coverageRatio = affluentCount / premiumCount;
-  const n = normalize(coverageRatio, 50, 500);
+  const ratio = affluentCount / premiumCount;
+  let status: MbiStatus;
+  if (ratio < MBI_LOW_THRESHOLD) status = "saturated";
+  else if (ratio > MBI_HIGH_THRESHOLD) status = "unproven";
+  else status = "healthy";
 
   return {
-    score: n != null ? Math.max(0, Math.min(100, n)) : null,
+    score: null, // MBI no longer contributes points to the composite.
     inputs: {
-      coverageRatio,
+      marketBalanceRatio: ratio,
+      status,
+      coverageRatio: ratio, // legacy mirror for older readers
       affluentDualIncomeFamilyCount: affluentCount,
       premiumProviderCount: premiumCount,
     },
@@ -487,15 +532,14 @@ export function computeMvs(
     marketBalance: s6.inputs,
   };
 
-  // Market Absorption (allScores index 1) is intentionally excluded from the
-  // composite as of June 24, 2026 — the card was removed and its 25% weight
-  // was proportionally redistributed across the 5 remaining pillars.
+  // Market Absorption (removed June 24, 2026) and Market Balance (rebuilt
+  // 2026-07-14 as a review flag) are intentionally excluded from the
+  // composite. MBI's former 20% weight was moved to Enrichment Diversity.
   const compositeScores = [
     scores.pricingAcceptance,
     scores.scaledOperator,
     scores.enrichmentDiversity,
     scores.marketDepth,
-    scores.marketBalance,
   ];
 
   // If any contributing score is null, the composite is null (incomplete data)
@@ -507,8 +551,7 @@ export function computeMvs(
     weights.pricingAcceptance * compositeScores[0]! +
     weights.scaledOperator * compositeScores[1]! +
     weights.enrichmentDiversity * compositeScores[2]! +
-    weights.marketDepth * compositeScores[3]! +
-    weights.marketBalance * compositeScores[4]!;
+    weights.marketDepth * compositeScores[3]!;
 
   return {
     mvs: Math.max(0, Math.min(100, Number(mvs.toFixed(1)))),

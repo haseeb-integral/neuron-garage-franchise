@@ -79,6 +79,8 @@ export type MvsWeekStatus =
 
 export type MvsOverlap = "direct" | "adjacent" | "distant";
 
+export type MbiStatus = "saturated" | "healthy" | "unproven";
+
 export type MvsProviderInput = {
   id: string;
   name: string;

@@ -532,15 +532,14 @@ export function computeMvs(
     marketBalance: s6.inputs,
   };
 
-  // Market Absorption (allScores index 1) is intentionally excluded from the
-  // composite as of June 24, 2026 — the card was removed and its 25% weight
-  // was proportionally redistributed across the 5 remaining pillars.
+  // Market Absorption (removed June 24, 2026) and Market Balance (rebuilt
+  // 2026-07-14 as a review flag) are intentionally excluded from the
+  // composite. MBI's former 20% weight was moved to Enrichment Diversity.
   const compositeScores = [
     scores.pricingAcceptance,
     scores.scaledOperator,
     scores.enrichmentDiversity,
     scores.marketDepth,
-    scores.marketBalance,
   ];
 
   // If any contributing score is null, the composite is null (incomplete data)
@@ -552,8 +551,7 @@ export function computeMvs(
     weights.pricingAcceptance * compositeScores[0]! +
     weights.scaledOperator * compositeScores[1]! +
     weights.enrichmentDiversity * compositeScores[2]! +
-    weights.marketDepth * compositeScores[3]! +
-    weights.marketBalance * compositeScores[4]!;
+    weights.marketDepth * compositeScores[3]!;
 
   return {
     mvs: Math.max(0, Math.min(100, Number(mvs.toFixed(1)))),

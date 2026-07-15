@@ -465,22 +465,21 @@ function proofForInput(
       ],
     };
   }
-  if (key === "coverageRatio") {
+  if (key === "coverageRatio" || key === "marketBalanceRatio") {
     const affluent = acs?.affluent_dual_income_family_count ?? 0;
     const premCount = premiumProviders.length;
     const ratio = premCount > 0 ? affluent / premCount : 0;
-    let band = "Saturated";
-    if (ratio >= 350) band = "Underserved";
-    else if (ratio >= 200) band = "Balanced";
-    else if (ratio >= 100) band = "Competitive";
+    let band = "Healthy";
+    if (ratio < 200) band = "Saturated — review";
+    else if (ratio > 8000) band = "Unproven — review";
     return {
-      title: "Coverage ratio (kids per seat)",
-      subtitle: "Affluent dual-income families ÷ premium providers",
+      title: "Affluent families per premium provider",
+      subtitle: "Affluent families with children (ACS B19131) ÷ premium providers",
       rows: [
-        { label: "Affluent dual-income families", value: affluent.toLocaleString() },
+        { label: "Affluent families with children (ACS B19131)", value: affluent.toLocaleString() },
         { label: "Premium providers", value: premCount },
-        { label: "Coverage ratio", value: ratio.toFixed(2) },
-        { label: "Market band", value: band },
+        { label: "Ratio", value: Math.round(ratio).toLocaleString() },
+        { label: "Status", value: band },
       ],
     };
   }

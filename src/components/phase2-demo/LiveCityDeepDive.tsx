@@ -638,8 +638,8 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
 
 
   const premiumProviders = useMemo(
-    () => providers.filter((p) => p.tier === "premium"),
-    [providers],
+    () => activeCamps.filter((p) => p.tier === "premium"),
+    [activeCamps],
   );
 
   // Category breakdown of premium providers — rendered as small chips inside

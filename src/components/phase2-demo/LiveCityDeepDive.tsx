@@ -84,8 +84,9 @@ const SUB_SCORE_META: {
   {
     key: "marketDepth",
     title: "Market Depth",
-    subtitle: "How large is the premium ecosystem?",
-    formula: "normalize(Premium Provider Count, 4–40)",
+    subtitle: "Is the premium ecosystem large enough to prove camp culture?",
+    formula:
+      "normalize(clamp(Premium Provider Count, 4, 15), 4, 15) × 100. Depth is a threshold question — beyond ~15 premium providers, additional density is context, not further validation, so the score saturates at 15.",
     sources: [
       { label: "5-source discovery", detail: "Deduplicated count from Sawyer + ActivityHero + Google Maps + Google Search + local directories." },
       { label: "Tier classifier", detail: "Only providers classified 'premium' by the tier rules are counted here." },
@@ -94,11 +95,11 @@ const SUB_SCORE_META: {
   {
     key: "marketBalance",
     title: "Market Balance Index",
-    subtitle: "Is there still room in this market?",
+    subtitle: "Two-sided review flag — checks for saturated supply or unproven demand. Does not contribute to the composite score.",
     formula:
-      "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
+      "Affluent families per premium provider = affluent families with children ÷ premium provider count. Ratio < 200 → Saturated (review). Ratio > 8,000 → Unproven camp culture (review). Otherwise Healthy (no flag). Weight = 0% — this pillar does not enter the composite.",
     sources: [
-      { label: "US Census ACS (5-yr)", detail: "Affluent dual-income family count + children 5–12 from American Community Survey." },
+      { label: "US Census ACS (B19131)", detail: "Affluent families with children, cost-of-living-adjusted, from us_cities_scored." },
       { label: "mvs_providers table", detail: "Premium provider count (denominator) from the same live providers table." },
     ],
   },
@@ -122,8 +123,12 @@ const DIVERSITY_BAND_LABELS = [
   "very broad enrichment mix",
 ];
 
+// 2026-07-14: "thin provider market" wording removed from the Depth chip —
+// the "Thin market — low confidence" flag now only appears on Enrichment
+// Diversity. Depth uses neutral size wording so the two cards don't
+// duplicate the same warning.
 const DEPTH_BAND_LABELS = [
-  "thin provider market",
+  "small provider market",
   "moderate provider market",
   "deep provider market",
   "very deep provider market",
@@ -145,14 +150,16 @@ function bandIndexFromScore(score: number): number {
 function bandFor(
   key: string,
   score: number | null,
-  coverageRatio: number | null | undefined,
+  input: any,
 ): { label: string; tone: BandTone } | null {
   if (key === "marketBalance") {
-    if (coverageRatio == null) return null;
-    if (coverageRatio >= 350) return { label: "Underserved", tone: "top" };
-    if (coverageRatio >= 200) return { label: "Balanced", tone: "strong" };
-    if (coverageRatio >= 100) return { label: "Competitive", tone: "mid" };
-    return { label: "Saturated", tone: "weak" };
+    // 2026-07-14 rebuild: MBI is a two-sided review flag driven by `status`,
+    // not by a 0–100 score. Healthy → no chip. Saturated/Unproven → review chip.
+    const status = input?.status;
+    if (!status || status === "healthy") return null;
+    if (status === "saturated") return { label: "Saturated — review", tone: "weak" };
+    if (status === "unproven") return { label: "Unproven camp culture — review", tone: "mid" };
+    return null;
   }
   if (score == null) return null;
   const idx = Math.max(0, bandIndexFromScore(score));

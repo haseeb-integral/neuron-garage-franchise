@@ -84,8 +84,9 @@ const SUB_SCORE_META: {
   {
     key: "marketDepth",
     title: "Market Depth",
-    subtitle: "How large is the premium ecosystem?",
-    formula: "normalize(Premium Provider Count, 4–40)",
+    subtitle: "Is the premium ecosystem large enough to prove camp culture?",
+    formula:
+      "normalize(clamp(Premium Provider Count, 4, 15), 4, 15) × 100. Depth is a threshold question — beyond ~15 premium providers, additional density is context, not further validation, so the score saturates at 15.",
     sources: [
       { label: "5-source discovery", detail: "Deduplicated count from Sawyer + ActivityHero + Google Maps + Google Search + local directories." },
       { label: "Tier classifier", detail: "Only providers classified 'premium' by the tier rules are counted here." },
@@ -94,11 +95,11 @@ const SUB_SCORE_META: {
   {
     key: "marketBalance",
     title: "Market Balance Index",
-    subtitle: "Is there still room in this market?",
+    subtitle: "Two-sided review flag — checks for saturated supply or unproven demand. Does not contribute to the composite score.",
     formula:
-      "normalize(Coverage Ratio, 50–500); ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated",
+      "Affluent families per premium provider = affluent families with children ÷ premium provider count. Ratio < 200 → Saturated (review). Ratio > 8,000 → Unproven camp culture (review). Otherwise Healthy (no flag). Weight = 0% — this pillar does not enter the composite.",
     sources: [
-      { label: "US Census ACS (5-yr)", detail: "Affluent dual-income family count + children 5–12 from American Community Survey." },
+      { label: "US Census ACS (B19131)", detail: "Affluent families with children, cost-of-living-adjusted, from us_cities_scored." },
       { label: "mvs_providers table", detail: "Premium provider count (denominator) from the same live providers table." },
     ],
   },
@@ -122,8 +123,12 @@ const DIVERSITY_BAND_LABELS = [
   "very broad enrichment mix",
 ];
 
+// 2026-07-14: "thin provider market" wording removed from the Depth chip —
+// the "Thin market — low confidence" flag now only appears on Enrichment
+// Diversity. Depth uses neutral size wording so the two cards don't
+// duplicate the same warning.
 const DEPTH_BAND_LABELS = [
-  "thin provider market",
+  "small provider market",
   "moderate provider market",
   "deep provider market",
   "very deep provider market",
@@ -145,14 +150,16 @@ function bandIndexFromScore(score: number): number {
 function bandFor(
   key: string,
   score: number | null,
-  coverageRatio: number | null | undefined,
+  input: any,
 ): { label: string; tone: BandTone } | null {
   if (key === "marketBalance") {
-    if (coverageRatio == null) return null;
-    if (coverageRatio >= 350) return { label: "Underserved", tone: "top" };
-    if (coverageRatio >= 200) return { label: "Balanced", tone: "strong" };
-    if (coverageRatio >= 100) return { label: "Competitive", tone: "mid" };
-    return { label: "Saturated", tone: "weak" };
+    // 2026-07-14 rebuild: MBI is a two-sided review flag driven by `status`,
+    // not by a 0–100 score. Healthy → no chip. Saturated/Unproven → review chip.
+    const status = input?.status;
+    if (!status || status === "healthy") return null;
+    if (status === "saturated") return { label: "Saturated — review", tone: "weak" };
+    if (status === "unproven") return { label: "Unproven camp culture — review", tone: "mid" };
+    return null;
   }
   if (score == null) return null;
   const idx = Math.max(0, bandIndexFromScore(score));
@@ -188,16 +195,19 @@ function bandWhyFor(
   score: number | null,
   input: any,
 ): string | null {
-  if (score == null) return null;
   if (key === "marketBalance") {
-    const cr = input?.coverageRatio;
-    if (cr == null) return null;
-    const crStr = Math.round(cr).toString();
-    if (cr >= 350) return `Why: coverage ratio ${crStr} kids per seat (≥ 350 = underserved).`;
-    if (cr >= 200) return `Why: coverage ratio ${crStr} kids per seat (200–349 = balanced).`;
-    if (cr >= 100) return `Why: coverage ratio ${crStr} kids per seat (100–199 = competitive).`;
-    return `Why: coverage ratio ${crStr} kids per seat (< 100 = saturated).`;
+    // MBI is a review flag now — "why" reads from status, not from a score.
+    const ratio = input?.marketBalanceRatio ?? input?.coverageRatio;
+    const status = input?.status;
+    if (ratio == null || status == null) return null;
+    const rStr = Math.round(ratio).toLocaleString();
+    if (status === "saturated")
+      return `Why: ${rStr} affluent families per premium provider (< 200 → saturated supply, review recommended).`;
+    if (status === "unproven")
+      return `Why: ${rStr} affluent families per premium provider (> 8,000 → unproven camp culture, review recommended).`;
+    return `Why: ${rStr} affluent families per premium provider (200–8,000 → healthy balance, no flag).`;
   }
+  if (score == null) return null;
   const word = bandLabelWord(score);
   const thr = bandThresholdWord(score);
   const s = score.toFixed(1);
@@ -226,12 +236,29 @@ function bandWhyFor(
   return null;
 }
 
-// Plain-English one-line "Result" sentence per pillar, driven by the
-// existing band tone. No math change — pure copy.
 function resultSentenceFor(
   key: string,
   tone: BandTone | null | undefined,
+  input?: any,
 ): string | null {
+  // Market Balance is driven by status, not a tone from a 0–100 score.
+  if (key === "marketBalance") {
+    const status = input?.status;
+    if (!status) return null;
+    if (status === "saturated")
+      return "Supply looks saturated for the affluent demand in this city — review before pursuing.";
+    if (status === "unproven")
+      return "Very few premium providers relative to affluent families — camp culture may be unproven. Review before pursuing.";
+    return "Supply and affluent demand look well balanced — no review flag.";
+  }
+  // Market Depth uses the raw premium-provider count for cleaner bands.
+  if (key === "marketDepth") {
+    const pc = input?.premiumProviderCount;
+    if (pc == null) return null;
+    if (pc < 8) return `Only ${pc} premium provider${pc === 1 ? "" : "s"} — the premium ecosystem is small.`;
+    if (pc < 15) return `${pc} premium providers — a moderate premium ecosystem, camp culture is emerging.`;
+    return `${pc} premium providers — a mature premium ecosystem with proven camp culture.`;
+  }
   if (!tone) return null;
   if (key === "pricingAcceptance") {
     if (tone === "weak") return "Most providers in this city are not charging premium prices yet.";
@@ -251,18 +278,6 @@ function resultSentenceFor(
     if (tone === "strong") return "Families here have a wide range of enrichment options to choose from.";
     return "Families here enjoy an unusually broad mix of enrichment options.";
   }
-  if (key === "marketDepth") {
-    if (tone === "weak") return "Very few premium providers exist in this city today.";
-    if (tone === "mid") return "A moderate number of premium providers operate in this city.";
-    if (tone === "strong") return "A healthy number of premium providers already operate here.";
-    return "This city has a deep, mature premium provider market.";
-  }
-  if (key === "marketBalance") {
-    if (tone === "weak") return "Supply looks saturated — limited room for new premium seats.";
-    if (tone === "mid") return "The market is competitive but not yet saturated.";
-    if (tone === "strong") return "Demand and supply look well matched, with room for new premium seats.";
-    return "Demand clearly outpaces supply — this market looks underserved.";
-  }
   return null;
 }
 
@@ -279,9 +294,11 @@ const INPUT_LABELS: Record<string, string> = {
   diversityRatio: "Diversity ratio",
   operatorValidation: "National operators (validating)",
   directCompetitorLoad: "Direct competitors / 10k kids",
-  coverageRatio: "Coverage ratio (kids / seat)",
+  marketBalanceRatio: "Affluent families per premium provider",
+  coverageRatio: "Affluent families per premium provider",
+  status: "Balance status",
   children5to12: "Children 5–12 (US Census ACS)",
-  affluentDualIncomeFamilyCount: "Affluent dual-income families (ACS)",
+  affluentDualIncomeFamilyCount: "Affluent families with children (ACS B19131)",
 };
 
 // Per-input freshness/source pill shown on the right of each input row so
@@ -291,6 +308,7 @@ const INPUT_LABELS: Record<string, string> = {
 function freshnessForInput(key: string, lastRefreshed: string | null): string {
   if (
     key === "coverageRatio" ||
+    key === "marketBalanceRatio" ||
     key === "children5to12" ||
     key === "affluentDualIncomeFamilyCount"
   ) {
@@ -447,22 +465,21 @@ function proofForInput(
       ],
     };
   }
-  if (key === "coverageRatio") {
+  if (key === "coverageRatio" || key === "marketBalanceRatio") {
     const affluent = acs?.affluent_dual_income_family_count ?? 0;
     const premCount = premiumProviders.length;
     const ratio = premCount > 0 ? affluent / premCount : 0;
-    let band = "Saturated";
-    if (ratio >= 350) band = "Underserved";
-    else if (ratio >= 200) band = "Balanced";
-    else if (ratio >= 100) band = "Competitive";
+    let band = "Healthy";
+    if (ratio < 200) band = "Saturated — review";
+    else if (ratio > 8000) band = "Unproven — review";
     return {
-      title: "Coverage ratio (kids per seat)",
-      subtitle: "Affluent dual-income families ÷ premium providers",
+      title: "Affluent families per premium provider",
+      subtitle: "Affluent families with children (ACS B19131) ÷ premium providers",
       rows: [
-        { label: "Affluent dual-income families", value: affluent.toLocaleString() },
+        { label: "Affluent families with children (ACS B19131)", value: affluent.toLocaleString() },
         { label: "Premium providers", value: premCount },
-        { label: "Coverage ratio", value: ratio.toFixed(2) },
-        { label: "Market band", value: band },
+        { label: "Ratio", value: Math.round(ratio).toLocaleString() },
+        { label: "Status", value: band },
       ],
     };
   }
@@ -982,7 +999,10 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
           const input = result?.inputs[meta.key] as any;
           const weight = weights[meta.key];
           const confidence = confidenceFor(meta.key);
-          const band = bandFor(meta.key, score, input?.coverageRatio);
+          const band = bandFor(meta.key, score, input);
+          const isMbi = meta.key === "marketBalance";
+          const mbiStatus = isMbi ? (input?.status as string | null | undefined) : null;
+          const mbiFlagged = isMbi && (mbiStatus === "saturated" || mbiStatus === "unproven");
           return (
             <div
               key={meta.key}
@@ -998,8 +1018,9 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                     <span
                       className={CHIP}
                       style={{ backgroundColor: SOFT, color: BLUE }}
+                      title={isMbi ? "Market Balance is a review flag — it does not contribute weight to the composite score." : undefined}
                     >
-                      {Math.round(weight * 100)}%
+                      {isMbi ? "Review flag · 0%" : `${Math.round(weight * 100)}%`}
                     </span>
                     {band && (
                       <span
@@ -1026,24 +1047,49 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div
-                    className="text-[24px] font-black leading-none tabular-nums"
-                    style={{ color: NAVY }}
-                  >
-                    {score != null ? score.toFixed(1) : "—"}
-                  </div>
-                  <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                    / 100
-                  </div>
-                  <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
-                    sub-score
-                  </div>
+                  {isMbi ? (
+                    <>
+                      <div
+                        className="text-[18px] font-black leading-tight tabular-nums"
+                        style={{ color: mbiFlagged ? "#a3142b" : NAVY }}
+                      >
+                        {mbiStatus === "saturated"
+                          ? "Saturated"
+                          : mbiStatus === "unproven"
+                          ? "Unproven"
+                          : mbiStatus === "healthy"
+                          ? "Healthy"
+                          : "—"}
+                      </div>
+                      <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                        review flag
+                      </div>
+                      <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
+                        no sub-score
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="text-[24px] font-black leading-none tabular-nums"
+                        style={{ color: NAVY }}
+                      >
+                        {score != null ? score.toFixed(1) : "—"}
+                      </div>
+                      <div className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                        / 100
+                      </div>
+                      <div className="mt-0.5 text-[9px] italic" style={{ color: MUTED }}>
+                        sub-score
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Result */}
               {(() => {
-                const sentence = resultSentenceFor(meta.key, band?.tone);
+                const sentence = resultSentenceFor(meta.key, band?.tone, input);
                 return sentence ? (
                   <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
                     <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
@@ -1065,8 +1111,17 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                   <ul className="space-y-1">
                     {Object.entries(input).map(([k, v]) => {
                       if (v == null || k === "year2Signal" || k === "diversityRatio") return null;
+                      // MBI: skip fields already shown as the status chip or as
+                      // a duplicate of marketBalanceRatio.
+                      if (isMbi && (k === "coverageRatio" || k === "status")) return null;
                       const display =
-                        typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
+                        typeof v === "number"
+                          ? k === "marketBalanceRatio" || k === "affluentDualIncomeFamilyCount" || k === "premiumProviderCount" || k === "children5to12"
+                            ? Math.round(v).toLocaleString()
+                            : Number.isInteger(v)
+                            ? v
+                            : v.toFixed(2)
+                          : String(v);
                       const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);
                       return (
                         <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
@@ -1174,64 +1229,89 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </div>
               )}
 
-              {/* Trust */}
-              <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
-                <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                  Trust
+              {/* Trust — MBI shows "Review recommended" when a flag is set,
+                  otherwise a short "No flag" note. All other pillars keep the
+                  original confidence stamp. */}
+              {isMbi ? (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Trust
+                  </div>
+                  <p
+                    className="text-[12px] font-semibold leading-snug"
+                    style={{ color: mbiFlagged ? "#a3142b" : NAVY }}
+                  >
+                    {mbiFlagged ? "Review recommended" : "No review flag"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    {mbiFlagged
+                      ? "This is a two-sided check on supply vs. affluent demand. The composite score is unaffected — treat this as a diligence signal."
+                      : "Supply and affluent demand fall inside the healthy band. No follow-up needed."}
+                  </p>
                 </div>
-                <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
-                  {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                </p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
-                  <span>{confidence.detail}</span>
-                  <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
-                </p>
-              </div>
-
-              {/* Weight (preview) */}
-              <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
-                <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                  <span>Weight (preview)</span>
-                  <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-                    {Math.round(weight * 100)}%
-                  </span>
+              ) : (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Trust
+                  </div>
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
+                    {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span>{confidence.detail}</span>
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                  </p>
                 </div>
-                <Slider
-                  value={[Math.round(weight * 100)]}
-                  min={5}
-                  max={40}
-                  step={1}
-                  aria-label={`${meta.title} weight`}
-                  onValueChange={(vals) => {
-                    const pct = vals[0] / 100;
-                    setWeights((w) => ({ ...w, [meta.key]: pct }));
-                  }}
-                />
-              </div>
-              {score != null && (() => {
+              )}
 
-                  const contrib = score * weight;
-                  const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
-                  const delta = contrib - defaultContrib;
-                  const showDelta = Math.abs(delta) >= 0.05;
-                  return (
-                    <div className="mt-1.5 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                      <span>
-                        Contributes <span className="font-semibold tabular-nums" style={{ color: NAVY }}>{contrib.toFixed(1)}</span> of 100 to MVS
+              {/* Weight (preview) — hidden for MBI since it does not contribute
+                  weight to the composite. */}
+              {!isMbi && (
+                <>
+                  <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+                    <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                      <span>Weight (preview)</span>
+                      <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+                        {Math.round(weight * 100)}%
                       </span>
-                      {showDelta ? (
-                        <span
-                          className="font-semibold tabular-nums"
-                          style={{ color: delta > 0 ? "#1d6b32" : "#a3142b" }}
-                        >
-                          {delta > 0 ? "+" : ""}{delta.toFixed(1)} vs default
-                        </span>
-                      ) : (
-                        <span className="italic">drag to preview</span>
-                      )}
                     </div>
-                  );
-                })()}
+                    <Slider
+                      value={[Math.round(weight * 100)]}
+                      min={5}
+                      max={40}
+                      step={1}
+                      aria-label={`${meta.title} weight`}
+                      onValueChange={(vals) => {
+                        const pct = vals[0] / 100;
+                        setWeights((w) => ({ ...w, [meta.key]: pct }));
+                      }}
+                    />
+                  </div>
+                  {score != null && (() => {
+                    const contrib = score * weight;
+                    const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
+                    const delta = contrib - defaultContrib;
+                    const showDelta = Math.abs(delta) >= 0.05;
+                    return (
+                      <div className="mt-1.5 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                        <span>
+                          Contributes <span className="font-semibold tabular-nums" style={{ color: NAVY }}>{contrib.toFixed(1)}</span> of 100 to MVS
+                        </span>
+                        {showDelta ? (
+                          <span
+                            className="font-semibold tabular-nums"
+                            style={{ color: delta > 0 ? "#1d6b32" : "#a3142b" }}
+                          >
+                            {delta > 0 ? "+" : ""}{delta.toFixed(1)} vs default
+                          </span>
+                        ) : (
+                          <span className="italic">drag to preview</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
 
 
 

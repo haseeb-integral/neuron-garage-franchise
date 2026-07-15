@@ -1224,64 +1224,89 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                 </div>
               )}
 
-              {/* Trust */}
-              <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
-                <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
-                  Trust
+              {/* Trust — MBI shows "Review recommended" when a flag is set,
+                  otherwise a short "No flag" note. All other pillars keep the
+                  original confidence stamp. */}
+              {isMbi ? (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Trust
+                  </div>
+                  <p
+                    className="text-[12px] font-semibold leading-snug"
+                    style={{ color: mbiFlagged ? "#a3142b" : NAVY }}
+                  >
+                    {mbiFlagged ? "Review recommended" : "No review flag"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    {mbiFlagged
+                      ? "This is a two-sided check on supply vs. affluent demand. The composite score is unaffected — treat this as a diligence signal."
+                      : "Supply and affluent demand fall inside the healthy band. No follow-up needed."}
+                  </p>
                 </div>
-                <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
-                  {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
-                </p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
-                  <span>{confidence.detail}</span>
-                  <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
-                </p>
-              </div>
-
-              {/* Weight (preview) */}
-              <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
-                <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                  <span>Weight (preview)</span>
-                  <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
-                    {Math.round(weight * 100)}%
-                  </span>
+              ) : (
+                <div className="mt-3 border-t border-dashed pt-2" style={{ borderColor: BORDER }}>
+                  <div className="mb-1 text-[10px] uppercase tracking-wide" style={{ color: MUTED }}>
+                    Trust
+                  </div>
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: NAVY }}>
+                    {confidence.level === "high" ? "High confidence" : confidence.level === "medium" ? "Medium confidence" : "Low confidence"}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-snug" style={{ color: MUTED }}>
+                    <span>{confidence.detail}</span>
+                    <ConfidenceStamp level={confidence.level} detail={confidence.detail} />
+                  </p>
                 </div>
-                <Slider
-                  value={[Math.round(weight * 100)]}
-                  min={5}
-                  max={40}
-                  step={1}
-                  aria-label={`${meta.title} weight`}
-                  onValueChange={(vals) => {
-                    const pct = vals[0] / 100;
-                    setWeights((w) => ({ ...w, [meta.key]: pct }));
-                  }}
-                />
-              </div>
-              {score != null && (() => {
+              )}
 
-                  const contrib = score * weight;
-                  const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
-                  const delta = contrib - defaultContrib;
-                  const showDelta = Math.abs(delta) >= 0.05;
-                  return (
-                    <div className="mt-1.5 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
-                      <span>
-                        Contributes <span className="font-semibold tabular-nums" style={{ color: NAVY }}>{contrib.toFixed(1)}</span> of 100 to MVS
+              {/* Weight (preview) — hidden for MBI since it does not contribute
+                  weight to the composite. */}
+              {!isMbi && (
+                <>
+                  <div className="mt-3 rounded-md border border-dashed p-2" style={{ borderColor: BORDER }}>
+                    <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                      <span>Weight (preview)</span>
+                      <span className="font-semibold tabular-nums" style={{ color: NAVY }}>
+                        {Math.round(weight * 100)}%
                       </span>
-                      {showDelta ? (
-                        <span
-                          className="font-semibold tabular-nums"
-                          style={{ color: delta > 0 ? "#1d6b32" : "#a3142b" }}
-                        >
-                          {delta > 0 ? "+" : ""}{delta.toFixed(1)} vs default
-                        </span>
-                      ) : (
-                        <span className="italic">drag to preview</span>
-                      )}
                     </div>
-                  );
-                })()}
+                    <Slider
+                      value={[Math.round(weight * 100)]}
+                      min={5}
+                      max={40}
+                      step={1}
+                      aria-label={`${meta.title} weight`}
+                      onValueChange={(vals) => {
+                        const pct = vals[0] / 100;
+                        setWeights((w) => ({ ...w, [meta.key]: pct }));
+                      }}
+                    />
+                  </div>
+                  {score != null && (() => {
+                    const contrib = score * weight;
+                    const defaultContrib = score * DEFAULT_WEIGHTS[meta.key];
+                    const delta = contrib - defaultContrib;
+                    const showDelta = Math.abs(delta) >= 0.05;
+                    return (
+                      <div className="mt-1.5 flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
+                        <span>
+                          Contributes <span className="font-semibold tabular-nums" style={{ color: NAVY }}>{contrib.toFixed(1)}</span> of 100 to MVS
+                        </span>
+                        {showDelta ? (
+                          <span
+                            className="font-semibold tabular-nums"
+                            style={{ color: delta > 0 ? "#1d6b32" : "#a3142b" }}
+                          >
+                            {delta > 0 ? "+" : ""}{delta.toFixed(1)} vs default
+                          </span>
+                        ) : (
+                          <span className="italic">drag to preview</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
 
 
 

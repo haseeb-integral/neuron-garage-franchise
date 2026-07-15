@@ -271,6 +271,60 @@ Deno.serve(async (req) => {
           aborted_at_batch: classifyJson.aborted_at_batch ?? null,
         };
       }
+
+      // Step 0 (Provider Pricing Accuracy plan, Phase 0): cheap name-based
+      // exclusion sweep. Marks obvious non-camp rows (Home Depot workshops,
+      // public libraries, retail workshops, Boys & Girls Club) with
+      // `category_excluded_reason` so the paid Firecrawl catch-up skips them.
+      // Mirrors src/lib/mvs/classifyExclusion.ts (kept inline because edge
+      // functions can't import from src/). Never deletes — audit-friendly.
+      try {
+        const excludeSweep = async () => {
+          const { data: rows } = await admin
+            .from("mvs_providers")
+            .select("id, name, category_classified, category_excluded_reason")
+            .eq("city", city)
+            .is("category_excluded_reason", null)
+            .limit(1000);
+          if (!rows || rows.length === 0) return { scanned: 0, excluded: 0 };
+          let excluded = 0;
+          for (const p of rows) {
+            const name = String(p?.name ?? "").toLowerCase();
+            const rawName = String(p?.name ?? "");
+            const isCampish =
+              /(camp|academy|school|studio|gym|dance|art|stem|music|tutor|after[- ]?school)/i.test(rawName);
+            let reason: string | null = null;
+            const cat = String(p?.category_classified ?? "").toLowerCase().replace(/[^a-z]/g, "");
+            if (cat === "childcareexcluded") {
+              reason = "Baby Daycare / Year-round Childcare";
+            } else if (
+              /\b(park|garden|zoo|harbor|harbour|beach|reservation|sanctuary|public\s+library)\b/.test(name) &&
+              !isCampish
+            ) {
+              reason = "Public Park / Public Space";
+            } else if (
+              /\b(home\s*depot|lowe'?s|michael'?s|apple\s+store|barnes\s*&?\s*noble)\b/.test(name)
+            ) {
+              reason = "Free Retail Workshop";
+            } else if (/\bboys\s*&?\s*girls\s+club\b/.test(name)) {
+              reason = "Free / Charity Drop-in Club";
+            }
+            if (reason) {
+              await admin
+                .from("mvs_providers")
+                .update({ category_excluded_reason: reason })
+                .eq("id", p.id);
+              excluded += 1;
+            }
+          }
+          return { scanned: rows.length, excluded };
+        };
+        sourceCounts.step0_exclusions = await excludeSweep();
+      } catch (excErr) {
+        console.warn("[mvs-run-pipeline] step0 exclusion sweep failed (non-fatal):", excErr);
+        sourceCounts.step0_exclusions = { ok: false };
+      }
+
       // Stage 4: ensure ACS denominators are populated before scoring.
       // Non-fatal: if ACS lookup fails the pipeline still completes.
       try {

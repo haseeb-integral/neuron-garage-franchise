@@ -1116,7 +1116,13 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                       // a duplicate of marketBalanceRatio.
                       if (isMbi && (k === "coverageRatio" || k === "status")) return null;
                       const display =
-                        typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : String(v);
+                        typeof v === "number"
+                          ? k === "marketBalanceRatio" || k === "affluentDualIncomeFamilyCount" || k === "premiumProviderCount" || k === "children5to12"
+                            ? Math.round(v).toLocaleString()
+                            : Number.isInteger(v)
+                            ? v
+                            : v.toFixed(2)
+                          : String(v);
                       const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay);
                       return (
                         <li key={k} className="flex items-center justify-between gap-2 text-[11px]">

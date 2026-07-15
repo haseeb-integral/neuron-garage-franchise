@@ -1587,6 +1587,7 @@ export type Database = {
           ai_overview_snippet: string | null
           ai_overview_source_url: string | null
           category_classified: string | null
+          category_excluded_reason: string | null
           category_raw: string | null
           city: string
           confidence: number | null
@@ -1594,6 +1595,7 @@ export type Database = {
           id: string
           name: string
           platform: string
+          price_confidence: string | null
           price_derivation_meta: Json | null
           price_derived_from_brand: boolean
           price_max: number | null
@@ -1601,6 +1603,10 @@ export type Database = {
           price_needs_review: boolean
           price_original_max: number | null
           price_original_min: number | null
+          price_source: string | null
+          price_source_quote: string | null
+          price_source_url: string | null
+          price_unit_raw: string | null
           screenshot_url: string | null
           source_listing_url: string | null
           source_run_id: string | null
@@ -1618,6 +1624,7 @@ export type Database = {
           ai_overview_snippet?: string | null
           ai_overview_source_url?: string | null
           category_classified?: string | null
+          category_excluded_reason?: string | null
           category_raw?: string | null
           city: string
           confidence?: number | null
@@ -1625,6 +1632,7 @@ export type Database = {
           id?: string
           name: string
           platform: string
+          price_confidence?: string | null
           price_derivation_meta?: Json | null
           price_derived_from_brand?: boolean
           price_max?: number | null
@@ -1632,6 +1640,10 @@ export type Database = {
           price_needs_review?: boolean
           price_original_max?: number | null
           price_original_min?: number | null
+          price_source?: string | null
+          price_source_quote?: string | null
+          price_source_url?: string | null
+          price_unit_raw?: string | null
           screenshot_url?: string | null
           source_listing_url?: string | null
           source_run_id?: string | null
@@ -1649,6 +1661,7 @@ export type Database = {
           ai_overview_snippet?: string | null
           ai_overview_source_url?: string | null
           category_classified?: string | null
+          category_excluded_reason?: string | null
           category_raw?: string | null
           city?: string
           confidence?: number | null
@@ -1656,6 +1669,7 @@ export type Database = {
           id?: string
           name?: string
           platform?: string
+          price_confidence?: string | null
           price_derivation_meta?: Json | null
           price_derived_from_brand?: boolean
           price_max?: number | null
@@ -1663,6 +1677,10 @@ export type Database = {
           price_needs_review?: boolean
           price_original_max?: number | null
           price_original_min?: number | null
+          price_source?: string | null
+          price_source_quote?: string | null
+          price_source_url?: string | null
+          price_unit_raw?: string | null
           screenshot_url?: string | null
           source_listing_url?: string | null
           source_run_id?: string | null

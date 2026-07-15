@@ -416,48 +416,73 @@ function score5MarketDepth(
     };
   }
 
-  const n = normalize(premiumCount, 4, 40);
+  // Tightened 2026-07-14: range capped at 15 (was 40) because Market Depth
+  // answers "is the premium ecosystem large enough to prove camp culture?"
+  // — a threshold question that saturates quickly. Density beyond ~15 is
+  // context, not additional validation.
+  const clamped = Math.max(
+    MVS_MARKET_DEPTH_LOW,
+    Math.min(MVS_MARKET_DEPTH_HIGH, premiumCount),
+  );
+  const n = normalize(clamped, MVS_MARKET_DEPTH_LOW, MVS_MARKET_DEPTH_HIGH);
   return {
     score: n != null ? Math.max(0, Math.min(100, n)) : null,
     inputs: { premiumProviderCount: premiumCount },
   };
 }
 
+// 2026-07-14 rebuild: MBI is no longer a scored contribution. It returns
+// `score: null` and instead emits a two-sided review status:
+//   ratio < MBI_LOW_THRESHOLD  → "saturated" (dense supply vs. affluent demand)
+//   ratio > MBI_HIGH_THRESHOLD → "unproven"  (near-empty market — validate camp culture first)
+//   otherwise                  → "healthy"
+// If no premium providers were found, status is "unproven" with a null ratio.
 function score6MarketBalance(
   providers: MvsProviderInput[],
   acs: MvsAcsInput,
 ): { score: number | null; inputs: MvsScoreInputs["marketBalance"] } {
   const premiumCount = providers.filter((p) => p.tier === "premium").length;
+  const affluentCount = acs.affluent_dual_income_family_count;
+  const affluentValid = Number.isFinite(affluentCount) && affluentCount > 0;
+
   if (premiumCount === 0) {
     return {
       score: null,
       inputs: {
+        marketBalanceRatio: null,
+        status: "unproven",
         coverageRatio: null,
-        affluentDualIncomeFamilyCount: null,
-        premiumProviderCount: null,
+        affluentDualIncomeFamilyCount: affluentValid ? affluentCount : null,
+        premiumProviderCount: 0,
       },
     };
   }
 
-  const affluentCount = acs.affluent_dual_income_family_count;
-  if (!Number.isFinite(affluentCount) || affluentCount <= 0) {
+  if (!affluentValid) {
     return {
       score: null,
       inputs: {
+        marketBalanceRatio: null,
+        status: null,
         coverageRatio: null,
-        affluentDualIncomeFamilyCount: affluentCount,
+        affluentDualIncomeFamilyCount: affluentValid ? affluentCount : null,
         premiumProviderCount: premiumCount,
       },
     };
   }
 
-  const coverageRatio = affluentCount / premiumCount;
-  const n = normalize(coverageRatio, 50, 500);
+  const ratio = affluentCount / premiumCount;
+  let status: MbiStatus;
+  if (ratio < MBI_LOW_THRESHOLD) status = "saturated";
+  else if (ratio > MBI_HIGH_THRESHOLD) status = "unproven";
+  else status = "healthy";
 
   return {
-    score: n != null ? Math.max(0, Math.min(100, n)) : null,
+    score: null, // MBI no longer contributes points to the composite.
     inputs: {
-      coverageRatio,
+      marketBalanceRatio: ratio,
+      status,
+      coverageRatio: ratio, // legacy mirror for older readers
       affluentDualIncomeFamilyCount: affluentCount,
       premiumProviderCount: premiumCount,
     },

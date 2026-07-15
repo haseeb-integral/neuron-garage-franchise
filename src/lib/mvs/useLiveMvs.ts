@@ -9,6 +9,7 @@ import {
   type MvsResult,
   type MvsWeekInput,
 } from "@/lib/mvs/computeMvs";
+import { classifyExclusion } from "@/lib/mvs/classifyExclusion";
 
 export type LiveMvsCityFlag = {
   city: string;

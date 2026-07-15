@@ -427,10 +427,11 @@ describe("Composite MVS", () => {
     expect(typeof r.mvs).toBe("number");
     expect(r.mvs).toBeGreaterThanOrEqual(0);
     expect(r.mvs).toBeLessThanOrEqual(100);
-    expect(r.normalizationVersion).toBe("1.0-fixed");
+    expect(r.normalizationVersion).toBe("1.1-mbi-flag");
   });
 
-  it("respects custom weights", () => {
+  it("ignores marketBalance in the composite even if callers pass a weight", () => {
+    // MBI's `score` is always null now, so any weight on it is effectively 0.
     const pid = "p-w";
     const providers = [makeProvider({ id: pid })];
     const weeks = [makeWeek({ provider_id: pid, status: "sold_out" })];
@@ -444,7 +445,9 @@ describe("Composite MVS", () => {
         marketBalance: 1.0,
       },
     });
-    expect(r.mvs).toBe(r.scores.marketBalance);
+    // With all real weights at 0, the composite math sums to 0.
+    expect(r.mvs).toBe(0);
+    expect(r.scores.marketBalance).toBeNull();
   });
 
   it("caps composite at 0/100 even with extreme inputs", () => {
@@ -457,8 +460,9 @@ describe("Composite MVS", () => {
     const r = computeMvs(providers, weeks, defaultAcs);
     expect(r.scores.pricingAcceptance).toBe(0);
     expect(r.scores.marketAbsorption).toBe(0);
-    expect(r.scores.marketDepth).toBe(100); // 200 > 40, capped at 100
-    expect(r.scores.marketBalance).toBe(0);  // 200 providers → coverageRatio = 50
+    expect(r.scores.marketDepth).toBe(100); // 200 > 15, capped at 100
+    expect(r.scores.marketBalance).toBeNull(); // MBI is a flag, not a score
+    expect(r.inputs.marketBalance.status).toBe("saturated"); // ratio = 50
   });
 });
 

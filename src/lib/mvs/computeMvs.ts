@@ -141,6 +141,12 @@ export type MvsScoreInputs = {
     premiumProviderCount: number | null;
   };
   marketBalance: {
+    // 2026-07-14: MBI is a review flag, not a score. `marketBalanceRatio`
+    // is affluent_families_with_children / premiumProviderCount.
+    // `coverageRatio` is kept as a mirror of the same number so any legacy
+    // reader (exports, briefs) still finds a value in the old field.
+    marketBalanceRatio: number | null;
+    status: MbiStatus | null;
     coverageRatio: number | null;
     affluentDualIncomeFamilyCount: number | null;
     premiumProviderCount: number | null;

@@ -9,24 +9,36 @@ export const MVS_ENRICHMENT_MAX_CATEGORIES = 10;
 // the math does not change.
 export const MVS_ENRICHMENT_THIN_MARKET_THRESHOLD = 4;
 
-export const MVS_NORMALIZATION_VERSION = "1.0-fixed";
+export const MVS_NORMALIZATION_VERSION = "1.1-mbi-flag";
 
-// Market Absorption (formerly 0.25) was removed June 24, 2026. Remaining
-// weights re-normalized proportionally so the 5 cards still sum to 1.0:
-//   PA  0.20 / 0.75 = 0.2667
-//   SO  0.20 / 0.75 = 0.2667
-//   ED  0.10 / 0.75 = 0.1333
-//   MD  0.10 / 0.75 = 0.1333
-//   MB  0.15 / 0.75 = 0.2000
-// `marketAbsorption: 0` is kept as a legacy key so callers that still pass it
-// in `options.weights` don't crash; it is ignored in the composite below.
+// Market Balance Index (MBI) thresholds — 2026-07-14 rebuild.
+// MBI is now a two-sided review flag, NOT a scored contribution to the
+// composite. Ratio = affluent_families_with_children / premiumProviderCount.
+// PLACEHOLDER — calibrate from live distribution: initialize LOW=200,
+// HIGH=8000 and tune after deployment so Austin lands comfortably in
+// "healthy" and both flags land at genuinely extreme ratios.
+export const MBI_LOW_THRESHOLD = 200;   // PLACEHOLDER — calibrate from live distribution
+export const MBI_HIGH_THRESHOLD = 8000; // PLACEHOLDER — calibrate from live distribution
+
+// Market Depth normalization cap — 2026-07-14. Depth answers "is the
+// premium ecosystem large enough to prove camp culture?" — a threshold
+// question. Range capped at 15 because past that, additional providers
+// are context, not additional validation.
+export const MVS_MARKET_DEPTH_LOW = 4;
+export const MVS_MARKET_DEPTH_HIGH = 15;
+
+// Weights after 2026-07-14 rebuild: MBI's former 0.20 moved to Enrichment
+// Diversity (0.1333 + 0.20 = 0.3333). Others unchanged. Sum = 1.0.
+// `marketAbsorption` and `marketBalance` kept as legacy 0-weight keys so
+// callers that pass them in `options.weights` don't crash. The MBI card
+// stays visible in the UI as a review-triggering flag with no sub-score.
 export const DEFAULT_WEIGHTS: Record<string, number> = {
   pricingAcceptance: 0.2667,
   marketAbsorption: 0,
   scaledOperator: 0.2667,
-  enrichmentDiversity: 0.1333,
+  enrichmentDiversity: 0.3333,
   marketDepth: 0.1333,
-  marketBalance: 0.2000,
+  marketBalance: 0,
 };
 
 export const ELIGIBLE_CATEGORIES = new Set([

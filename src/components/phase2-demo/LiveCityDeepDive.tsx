@@ -166,7 +166,14 @@ function bandFor(
   const tone = BAND_TONES[idx] ?? "mid";
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   if (key === "enrichmentDiversity") return { label: cap(DIVERSITY_BAND_LABELS[idx]), tone };
-  if (key === "marketDepth") return { label: cap(DEPTH_BAND_LABELS[idx]), tone };
+  if (key === "marketDepth") {
+    // Depth band comes from raw provider count so the chip matches the RESULT
+    // sentence bands (<8 small, 8–14 moderate, 15–19 deep, 20+ very deep).
+    const pc = input?.premiumProviderCount;
+    if (pc == null) return { label: cap(DEPTH_BAND_LABELS[idx]), tone };
+    const depthIdx = pc < 8 ? 0 : pc < 15 ? 1 : pc < 20 ? 2 : 3;
+    return { label: cap(DEPTH_BAND_LABELS[depthIdx]), tone: BAND_TONES[depthIdx] };
+  }
   const suffix = PILLAR_BAND_SUFFIX[key];
   if (!suffix) return null;
   return { label: `${GENERIC_BAND_LABELS[idx]} ${suffix}`, tone };

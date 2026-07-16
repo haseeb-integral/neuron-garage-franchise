@@ -333,11 +333,15 @@ Deno.serve(async (req) => {
     const { data: providers, error: pErr } = await query;
     if (pErr) throw new Error(`providers query: ${pErr.message}`);
 
-    const results: PriceResult[] = [];
     let apifyCalls = 0;
     let geminiCalls = 0;
 
-    for (const p of (providers ?? []) as ProviderRow[]) {
+    // Process providers in parallel batches so a big city doesn't stall the
+    // tool caller. Apify calls are I/O bound and each takes ~30-45s.
+    const CONCURRENCY = 6;
+    const providerList = (providers ?? []) as ProviderRow[];
+
+    async function processOne(p: ProviderRow): Promise<PriceResult> {
       const result: PriceResult = {
         provider_id: p.id,
         name: p.name,
@@ -361,7 +365,6 @@ Deno.serve(async (req) => {
         result.raw_ai_overview_len = text.length;
         result.source_url = sourceUrl;
 
-        // First pass: regex
         const r = regexParse(text);
         result.price_min = r.price_min;
         result.price_max = r.price_max;
@@ -370,8 +373,6 @@ Deno.serve(async (req) => {
         result.is_summer_camp = guessIsCamp(text, p.name);
         result.parser = r.price_min != null ? "regex" : "none";
 
-        // Fall back to Gemini when regex is missing a unit, missing a price,
-        // or the camp/not-camp signal is unsure.
         const needsAi =
           (r.price_min == null && text.length > 40) ||
           r.unit === "unknown" ||
@@ -399,9 +400,6 @@ Deno.serve(async (req) => {
         result.error = (e as Error).message;
       }
 
-      results.push(result);
-
-      // Write back to mvs_providers unless this is a dry run.
       if (!dryRun) {
         const update: Record<string, unknown> = {
           price_source: "Google AI Overview",
@@ -414,15 +412,20 @@ Deno.serve(async (req) => {
         };
         if (result.weekly_min != null) update.price_min = result.weekly_min;
         if (result.weekly_max != null) update.price_max = result.weekly_max;
-
-        // If B3 said clearly "not a camp", mark it excluded (never delete).
         if (result.is_summer_camp === "no") {
           update.category_excluded_reason = "B3: not a summer camp";
         }
-
         const { error: uErr } = await admin.from("mvs_providers").update(update).eq("id", p.id);
         if (uErr) result.error = `update failed: ${uErr.message}`;
       }
+      return result;
+    }
+
+    const results: PriceResult[] = [];
+    for (let i = 0; i < providerList.length; i += CONCURRENCY) {
+      const batch = providerList.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(batch.map(processOne));
+      results.push(...batchResults);
     }
 
     return new Response(JSON.stringify({

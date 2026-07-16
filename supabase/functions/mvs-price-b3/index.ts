@@ -158,18 +158,21 @@ async function fetchAiOverview(
   apifyToken: string,
   actorId: string,
 ): Promise<{ text: string; sourceUrl: string | null; raw: unknown }> {
-  const query = `${provider.name} ${city} ${state} summer camp price per week`;
-  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${encodeURIComponent(apifyToken)}&timeout=60`;
+  const currentYear = new Date().getFullYear();
+  const query = `${provider.name} ${city} ${state} summer camp price per week ${currentYear}`;
+  // Match the exact Apify call shape used by mvs-discover-providers' working
+  // B3 audit (resultsPerPage=10, timeout=45, memory=1024, no mobileResults or
+  // saveHtmlToKeyValueStore flags). Deviations caused aiOverview to come back
+  // empty during Phase 1 verification.
+  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${encodeURIComponent(apifyToken)}&timeout=45&memory=1024`;
   const body = {
     queries: query,
-    resultsPerPage: 5,
+    resultsPerPage: 10,
     maxPagesPerQuery: 1,
     countryCode: "us",
     languageCode: "en",
-    mobileResults: false,
     includeUnfilteredResults: false,
     saveHtml: false,
-    saveHtmlToKeyValueStore: false,
   };
 
   const ctrl = new AbortController();
@@ -194,11 +197,7 @@ async function fetchAiOverview(
 
   // Actor returns an array of items — one per query. Look for aiOverview.
   const item = Array.isArray(json) ? json[0] : json;
-  const aio =
-    item?.aiOverview ??
-    item?.ai_overview ??
-    item?.aioSnippet ??
-    null;
+  const aio = item?.aiOverview ?? item?.ai_overview ?? null;
 
   let text = "";
   let sourceUrl: string | null = null;
@@ -206,10 +205,10 @@ async function fetchAiOverview(
   if (typeof aio === "string") {
     text = aio;
   } else if (aio && typeof aio === "object") {
-    text = String(aio.content ?? aio.text ?? aio.snippet ?? "");
-    const links = aio.sourceLinks ?? aio.source_links ?? aio.sources ?? [];
-    if (Array.isArray(links) && links.length > 0) {
-      sourceUrl = links[0]?.url ?? links[0]?.link ?? null;
+    text = String((aio as any).content ?? (aio as any).text ?? (aio as any).snippet ?? "").trim();
+    const linksRaw = (aio as any).source ?? (aio as any).sources ?? (aio as any).sourceLinks ?? [];
+    if (Array.isArray(linksRaw) && linksRaw.length > 0) {
+      sourceUrl = String(linksRaw[0]?.url ?? linksRaw[0]?.link ?? "") || null;
     }
   }
 

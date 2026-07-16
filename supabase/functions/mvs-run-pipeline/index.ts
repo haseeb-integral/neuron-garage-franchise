@@ -325,6 +325,48 @@ Deno.serve(async (req) => {
         sourceCounts.step0_exclusions = { ok: false };
       }
 
+      // Step B3 (Provider Pricing Accuracy plan, Phase 2): Google AI Overview
+      // price pass via Apify. Runs BEFORE the Firecrawl catch-up so any camp
+      // priced here is skipped by catch-up (saves Firecrawl money). Gated by
+      // MVS_B3_PRIMARY_ENABLED env flag — default OFF. Non-fatal.
+      if (Deno.env.get("MVS_B3_PRIMARY_ENABLED") === "true") {
+        try {
+          const b3Url = `${supabaseUrl}/functions/v1/mvs-price-b3`;
+          const b3Auth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
+          const b3Res = await fetch(b3Url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: b3Auth,
+              apikey: anonKey,
+            },
+            body: JSON.stringify({ city, limit: 100, dryRun: false, concurrency: 3, parent_run_id: run.id }),
+          });
+          const b3Text = await b3Res.text();
+          let b3Json: any = null;
+          try { b3Json = JSON.parse(b3Text); } catch { /* keep raw */ }
+          if (!b3Res.ok) {
+            console.warn(`[mvs-run-pipeline] b3 price pass HTTP ${b3Res.status}: ${b3Text?.slice(0, 300)}`);
+            sourceCounts.b3_price_pass = { ok: false, http_status: b3Res.status };
+          } else {
+            sourceCounts.b3_price_pass = {
+              ok: true,
+              scanned: b3Json?.scanned ?? null,
+              high_conf: b3Json?.high_conf ?? null,
+              medium_conf: b3Json?.medium_conf ?? null,
+              needs_review: b3Json?.needs_review ?? null,
+              apify_calls: b3Json?.apify_calls ?? null,
+              gemini_calls: b3Json?.gemini_calls ?? null,
+            };
+          }
+        } catch (b3Err) {
+          console.warn("[mvs-run-pipeline] b3 price pass failed (non-fatal):", b3Err);
+          sourceCounts.b3_price_pass = { ok: false, error: String(b3Err).slice(0, 300) };
+        }
+      }
+
+
+
       // Stage 4: ensure ACS denominators are populated before scoring.
       // Non-fatal: if ACS lookup fails the pipeline still completes.
       try {

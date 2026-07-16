@@ -197,11 +197,7 @@ async function fetchAiOverview(
 
   // Actor returns an array of items — one per query. Look for aiOverview.
   const item = Array.isArray(json) ? json[0] : json;
-  const aio =
-    item?.aiOverview ??
-    item?.ai_overview ??
-    item?.aioSnippet ??
-    null;
+  const aio = item?.aiOverview ?? item?.ai_overview ?? null;
 
   let text = "";
   let sourceUrl: string | null = null;
@@ -209,10 +205,10 @@ async function fetchAiOverview(
   if (typeof aio === "string") {
     text = aio;
   } else if (aio && typeof aio === "object") {
-    text = String(aio.content ?? aio.text ?? aio.snippet ?? "");
-    const links = aio.sourceLinks ?? aio.source_links ?? aio.sources ?? [];
-    if (Array.isArray(links) && links.length > 0) {
-      sourceUrl = links[0]?.url ?? links[0]?.link ?? null;
+    text = String((aio as any).content ?? (aio as any).text ?? (aio as any).snippet ?? "").trim();
+    const linksRaw = (aio as any).source ?? (aio as any).sources ?? (aio as any).sourceLinks ?? [];
+    if (Array.isArray(linksRaw) && linksRaw.length > 0) {
+      sourceUrl = String(linksRaw[0]?.url ?? linksRaw[0]?.link ?? "") || null;
     }
   }
 

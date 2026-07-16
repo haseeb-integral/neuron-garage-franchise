@@ -158,18 +158,21 @@ async function fetchAiOverview(
   apifyToken: string,
   actorId: string,
 ): Promise<{ text: string; sourceUrl: string | null; raw: unknown }> {
-  const query = `${provider.name} ${city} ${state} summer camp price per week`;
-  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${encodeURIComponent(apifyToken)}&timeout=60`;
+  const currentYear = new Date().getFullYear();
+  const query = `${provider.name} ${city} ${state} summer camp price per week ${currentYear}`;
+  // Match the exact Apify call shape used by mvs-discover-providers' working
+  // B3 audit (resultsPerPage=10, timeout=45, memory=1024, no mobileResults or
+  // saveHtmlToKeyValueStore flags). Deviations caused aiOverview to come back
+  // empty during Phase 1 verification.
+  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${encodeURIComponent(apifyToken)}&timeout=45&memory=1024`;
   const body = {
     queries: query,
-    resultsPerPage: 5,
+    resultsPerPage: 10,
     maxPagesPerQuery: 1,
     countryCode: "us",
     languageCode: "en",
-    mobileResults: false,
     includeUnfilteredResults: false,
     saveHtml: false,
-    saveHtmlToKeyValueStore: false,
   };
 
   const ctrl = new AbortController();

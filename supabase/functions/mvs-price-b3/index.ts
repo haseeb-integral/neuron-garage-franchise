@@ -321,14 +321,14 @@ Deno.serve(async (req) => {
     // Pick providers to price.
     const cityLabel = `${city}, ${state}`;
     let query = admin.from("mvs_providers")
-      .select("id,name,city,website,category_excluded_reason")
+      .select("id,name,city,category_excluded_reason")
       .eq("city", cityLabel)
       .is("category_excluded_reason", null)
       .order("created_at", { ascending: true })
       .limit(limit);
     if (providerIds && providerIds.length > 0) {
       query = admin.from("mvs_providers")
-        .select("id,name,city,website,category_excluded_reason")
+        .select("id,name,city,category_excluded_reason")
         .in("id", providerIds);
     }
     const { data: providers, error: pErr } = await query;

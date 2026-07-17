@@ -311,28 +311,40 @@ function safeProviderUrl(url: string | null | undefined, name: string, city: str
   return `https://www.google.com/search?q=${q}`;
 }
 
+type PriceUnit = "per_week" | "per_session" | "per_month" | "per_summer" | "unknown";
+
 type ProviderExtract = {
   name: string;
   url?: string | null;
   listing_url?: string | null;
   price_min?: number | null;
   price_max?: number | null;
+  price_unit?: PriceUnit | null;
+  weeks_in_session?: number | null;
   category_raw?: string | null;
   confidence: number;
 };
 
 // Shared pricing extraction rules — appended to every source's system prompt.
-// Phase 2: enforce literal-source-only pricing (no inference, no Yelp "$$").
-const PRICE_RULES = `PRICING RULES:
-- price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
-- Extract prices found in website text, tables, camp packages, registration flyers, or Google Search result snippets.
-- DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
-- Priority 4: If multiple weekly amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly amount.
-- If the page or search snippet shows a single weekly number, set both price_min and price_max to that number.
-- If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
-- ADJACENCY: When a page shows multiple dollar amounts, PREFER amounts that appear next to the words "week", "weekly", "per week", or "/week" over bare amounts.
-- NO ARITHMETIC: If only a total-with-weeks is shown (e.g. "$1,800 for 4 weeks", "$3,600 for 6 weeks", "full session $2,400"), DO NOT divide. Return nulls and let a later stage retry — silent arithmetic on scraped text is how wrong prices enter the dataset.
-- If no dollar amount is visible anywhere in the text or search snippets for that provider, set price_min=null and price_max=null. Never invent a value.`;
+// Phase 3 (unit-aware): every price MUST include an explicit unit. No unit ⇒
+// no price stored. Post-extraction normalization converts per_session /
+// per_month / per_summer to weekly using fixed divisors. This blocks the old
+// bug where a multi-week or monthly total was silently written as weekly.
+const PRICE_RULES = `PRICING RULES (STRICT — unit-aware):
+- Every extracted price MUST include a unit. Return "price_unit" as EXACTLY one of:
+  "per_week"    — a per-week rate is explicitly shown (e.g. "$500/week", "$500 per week")
+  "per_session" — a total for a multi-week session/camp is shown; also return "weeks_in_session" (integer)
+  "per_month"   — a monthly rate is explicitly shown (e.g. "$400/month")
+  "per_summer"  — a single price for the full summer or "full session" with no week count
+  "unknown"     — a dollar amount appears but the unit/duration is not stated
+- price_min and price_max are the raw dollar amounts AS SHOWN, in the unit above. DO NOT divide, multiply, or convert. The server normalizes to weekly.
+- If only one dollar amount is shown, set price_min = price_max = that amount.
+- If a range is shown ("$300–$650"), set price_min=300, price_max=650.
+- For per_session, weeks_in_session MUST be the integer number of weeks in that session (from text like "4-week camp", "2 week session"). If not stated, use "unknown" instead of "per_session".
+- DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts.
+- ADJACENCY: prefer amounts that appear next to "week", "weekly", "per week", "/week", "month", "session", "camp", "summer".
+- If no dollar amount is visible anywhere for a provider, set price_min=null, price_max=null, price_unit=null.
+- Never invent a value. Better to return nulls than to guess.`;
 
 type SourceResult = {
   platform: Platform;

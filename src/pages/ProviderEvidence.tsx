@@ -307,6 +307,9 @@ export default function ProviderEvidence() {
           csvEscape(guardDetails),
           csvEscape(r.ai_overview_snippet ?? ""),
           csvEscape(r.ai_overview_source_url ?? ""),
+          csvEscape(r.price_confidence ?? ""),
+          csvEscape(r.price_source_url ?? ""),
+          csvEscape(r.price_source_quote ?? ""),
         ].join(",")
       );
     }

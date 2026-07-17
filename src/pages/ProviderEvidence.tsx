@@ -42,6 +42,15 @@ function fmtPrice(min: number | null | undefined, max: number | null | undefined
   return `$${min ?? max}`;
 }
 
+function confidenceTone(c: string | null | undefined): { bg: string; fg: string; label: string } | null {
+  if (!c) return null;
+  const k = String(c).toLowerCase();
+  if (k === "high") return { bg: "#dcfce7", fg: "#166534", label: "High confidence" };
+  if (k === "medium" || k === "med") return { bg: "#fef3c7", fg: "#92400e", label: "Medium confidence" };
+  if (k === "low") return { bg: "#fee2e2", fg: "#991b1b", label: "Low confidence" };
+  return { bg: "#eef2f7", fg: "#526078", label: `${c} confidence` };
+}
+
 function csvEscape(v: unknown) {
   if (v == null) return "";
   const s = String(v).replace(/"/g, '""');
@@ -255,6 +264,9 @@ export default function ProviderEvidence() {
       "guard_dropped_details",
       "ai_overview_snippet",
       "ai_overview_source_url",
+      "price_confidence",
+      "price_source_url",
+      "price_source_quote",
     ];
     const lines = [headers.join(",")];
     for (const { row: r, exclusion } of filtered) {
@@ -295,6 +307,9 @@ export default function ProviderEvidence() {
           csvEscape(guardDetails),
           csvEscape(r.ai_overview_snippet ?? ""),
           csvEscape(r.ai_overview_source_url ?? ""),
+          csvEscape(r.price_confidence ?? ""),
+          csvEscape(r.price_source_url ?? ""),
+          csvEscape(r.price_source_quote ?? ""),
         ].join(",")
       );
     }
@@ -762,6 +777,65 @@ export default function ProviderEvidence() {
                       style={{ borderColor: BORDER, color: NAVY }}
                     >
                       <div>{fmtPrice(r.price_min, r.price_max)}</div>
+                      {(() => {
+                        const tone = confidenceTone(r.price_confidence);
+                        const hasReceipt = !!(r.price_source_url || r.price_source_quote);
+                        if (!tone && !hasReceipt) return null;
+                        const pill = (
+                          <span
+                            className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              backgroundColor: tone?.bg ?? "#eef2f7",
+                              color: tone?.fg ?? MUTED,
+                              cursor: hasReceipt ? "help" : "default",
+                            }}
+                            title={hasReceipt ? "Click to see the source page and quote" : tone?.label}
+                          >
+                            {tone?.label ?? "Price receipt"}
+                            {hasReceipt && <span aria-hidden>·</span>}
+                            {hasReceipt && <span className="underline">receipt</span>}
+                          </span>
+                        );
+                        if (!hasReceipt) return <div className="mt-1">{pill}</div>;
+                        return (
+                          <div className="mt-1">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="inline-block text-left">
+                                  {pill}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 text-xs" style={{ color: NAVY }}>
+                                <div className="mb-1 font-semibold" style={{ color: NAVY }}>
+                                  Price receipt
+                                </div>
+                                {r.price_source_quote && (
+                                  <div
+                                    className="mb-2 rounded border p-2 italic"
+                                    style={{ borderColor: BORDER, backgroundColor: SOFT, color: MUTED }}
+                                  >
+                                    "{r.price_source_quote}"
+                                  </div>
+                                )}
+                                {r.price_source_url ? (
+                                  <a
+                                    href={r.price_source_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 underline"
+                                    style={{ color: BLUE }}
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    Open source page
+                                  </a>
+                                ) : (
+                                  <div style={{ color: MUTED }}>No source URL captured.</div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        );
+                      })()}
                       {r.guard_drop && r.guard_drop.length > 0 && (
                         <div
                           className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold"

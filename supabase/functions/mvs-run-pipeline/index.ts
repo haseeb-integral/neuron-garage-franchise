@@ -216,6 +216,31 @@ Deno.serve(async (req) => {
   }
 
   // ----- Background work — does not block the HTTP response -----
+  // Per-step HTTP timeout. If a child function hangs (Apify stall, upstream
+  // socket death), the parent must not hang with it — otherwise the run row
+  // stays "running" indefinitely and the UI locks the city. 4 min per step
+  // covers legit long child runs (discover with 5 queries × 100 places) while
+  // still surfacing a hang within the overall pipeline budget.
+  const STEP_TIMEOUT_MS = 4 * 60 * 1000;
+  // Overall hard ceiling on the background pipeline. Anything longer means
+  // something is wrong — fail loudly instead of leaving a stuck row.
+  const PIPELINE_TIMEOUT_MS = 20 * 60 * 1000;
+
+  const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: number, label: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        throw new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   const work = (async () => {
     let totalCalls = 0;
     const stepResults: Record<string, unknown> = {};
@@ -223,15 +248,20 @@ Deno.serve(async (req) => {
     const invokeStep = async (step: StepName, payload: Record<string, unknown>) => {
       const url = `${supabaseUrl}/functions/v1/${STEP_FUNCTIONS[step]}`;
       const stepAuth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: stepAuth,
-          apikey: anonKey,
+      const res = await fetchWithTimeout(
+        url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: stepAuth,
+            apikey: anonKey,
+          },
+          body: JSON.stringify({ ...payload, parent_run_id: run.id }),
         },
-        body: JSON.stringify({ ...payload, parent_run_id: run.id }),
-      });
+        STEP_TIMEOUT_MS,
+        `step '${step}'`,
+      );
       const text = await res.text();
       let json: any = null;
       try { json = JSON.parse(text); } catch { /* keep raw */ }
@@ -333,15 +363,20 @@ Deno.serve(async (req) => {
         try {
           const b3Url = `${supabaseUrl}/functions/v1/mvs-price-b3`;
           const b3Auth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
-          const b3Res = await fetch(b3Url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: b3Auth,
-              apikey: anonKey,
+          const b3Res = await fetchWithTimeout(
+            b3Url,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: b3Auth,
+                apikey: anonKey,
+              },
+              body: JSON.stringify({ city, limit: 100, dryRun: false, concurrency: 3, parent_run_id: run.id }),
             },
-            body: JSON.stringify({ city, limit: 100, dryRun: false, concurrency: 3, parent_run_id: run.id }),
-          });
+            STEP_TIMEOUT_MS,
+            "b3 price pass",
+          );
           const b3Text = await b3Res.text();
           let b3Json: any = null;
           try { b3Json = JSON.parse(b3Text); } catch { /* keep raw */ }
@@ -504,11 +539,37 @@ Deno.serve(async (req) => {
 
   })();
 
+  // Overall pipeline watchdog: if `work` doesn't resolve within
+  // PIPELINE_TIMEOUT_MS, mark the run failed so the UI doesn't lock forever.
+  const watchdog = (async () => {
+    let timedOut = false;
+    const timer = new Promise<void>((resolve) => {
+      setTimeout(() => { timedOut = true; resolve(); }, PIPELINE_TIMEOUT_MS);
+    });
+    await Promise.race([work.catch(() => { /* handled inside work */ }), timer]);
+    if (timedOut) {
+      console.warn(`[mvs-run-pipeline] watchdog: run ${run.id} exceeded ${PIPELINE_TIMEOUT_MS}ms — marking failed`);
+      try {
+        await admin
+          .from("mvs_pipeline_runs")
+          .update({
+            status: "failed",
+            error: `pipeline watchdog: exceeded ${Math.round(PIPELINE_TIMEOUT_MS / 60000)} min ceiling`,
+            finished_at: new Date().toISOString(),
+          })
+          .eq("id", run.id)
+          .in("status", ["queued", "running"]);
+      } catch (wdErr) {
+        console.warn("[mvs-run-pipeline] watchdog update failed:", wdErr);
+      }
+    }
+  })();
+
   if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-    EdgeRuntime.waitUntil(work);
+    EdgeRuntime.waitUntil(watchdog);
   } else {
     // Fallback for local/test environments without EdgeRuntime — fire-and-forget.
-    work.catch(() => { /* errors are already persisted to the run row */ });
+    watchdog.catch(() => { /* errors are already persisted to the run row */ });
   }
 
   return new Response(

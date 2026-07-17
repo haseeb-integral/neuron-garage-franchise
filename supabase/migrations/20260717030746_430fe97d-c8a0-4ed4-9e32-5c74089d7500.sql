@@ -1,0 +1,1 @@
+UPDATE mvs_pipeline_runs SET status='failed', error='orphaned by edge runtime shutdown; retrying with b3 city-parse fix', finished_at=now() WHERE id='6b29e3fe-4ddf-41ca-b87e-0b1dfa57a84d' AND status='running';

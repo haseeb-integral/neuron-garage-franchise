@@ -42,6 +42,15 @@ function fmtPrice(min: number | null | undefined, max: number | null | undefined
   return `$${min ?? max}`;
 }
 
+function confidenceTone(c: string | null | undefined): { bg: string; fg: string; label: string } | null {
+  if (!c) return null;
+  const k = String(c).toLowerCase();
+  if (k === "high") return { bg: "#dcfce7", fg: "#166534", label: "High confidence" };
+  if (k === "medium" || k === "med") return { bg: "#fef3c7", fg: "#92400e", label: "Medium confidence" };
+  if (k === "low") return { bg: "#fee2e2", fg: "#991b1b", label: "Low confidence" };
+  return { bg: "#eef2f7", fg: "#526078", label: `${c} confidence` };
+}
+
 function csvEscape(v: unknown) {
   if (v == null) return "";
   const s = String(v).replace(/"/g, '""');

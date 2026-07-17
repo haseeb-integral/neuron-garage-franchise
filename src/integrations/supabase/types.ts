@@ -1548,8 +1548,11 @@ export type Database = {
           firecrawl_calls: number
           id: string
           source_counts: Json | null
+          stage: string | null
+          stage_started_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["mvs_run_status"]
+          triggering_user_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1562,8 +1565,11 @@ export type Database = {
           firecrawl_calls?: number
           id?: string
           source_counts?: Json | null
+          stage?: string | null
+          stage_started_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["mvs_run_status"]
+          triggering_user_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1576,8 +1582,11 @@ export type Database = {
           firecrawl_calls?: number
           id?: string
           source_counts?: Json | null
+          stage?: string | null
+          stage_started_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["mvs_run_status"]
+          triggering_user_id?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -293,8 +293,17 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const city = String(body.city ?? "").trim();
-    const state = String(body.state ?? "TX").trim();
+    // Accept either { city: "Austin", state: "TX" } or { city: "Austin, TX" }.
+    // The pipeline orchestrator passes the combined "City, ST" form.
+    const rawCity = String(body.city ?? "").trim();
+    let city = rawCity;
+    let state = String(body.state ?? "").trim();
+    if (rawCity.includes(",")) {
+      const parts = rawCity.split(",").map((s) => s.trim()).filter(Boolean);
+      city = parts[0] ?? "";
+      if (!state && parts[1]) state = parts[1];
+    }
+    if (!state) state = "TX";
     const limit = Math.min(Math.max(Number(body.limit ?? 25), 1), 100);
     const providerIds: string[] | undefined = Array.isArray(body.providerIds) ? body.providerIds : undefined;
     const dryRun = Boolean(body.dryRun ?? false);

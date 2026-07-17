@@ -363,15 +363,20 @@ Deno.serve(async (req) => {
         try {
           const b3Url = `${supabaseUrl}/functions/v1/mvs-price-b3`;
           const b3Auth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
-          const b3Res = await fetch(b3Url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: b3Auth,
-              apikey: anonKey,
+          const b3Res = await fetchWithTimeout(
+            b3Url,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: b3Auth,
+                apikey: anonKey,
+              },
+              body: JSON.stringify({ city, limit: 100, dryRun: false, concurrency: 3, parent_run_id: run.id }),
             },
-            body: JSON.stringify({ city, limit: 100, dryRun: false, concurrency: 3, parent_run_id: run.id }),
-          });
+            STEP_TIMEOUT_MS,
+            "b3 price pass",
+          );
           const b3Text = await b3Res.text();
           let b3Json: any = null;
           try { b3Json = JSON.parse(b3Text); } catch { /* keep raw */ }

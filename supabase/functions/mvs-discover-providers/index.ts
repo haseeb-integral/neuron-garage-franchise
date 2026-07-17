@@ -374,7 +374,7 @@ async function runSawyer(args: {
 
   const sys = `You extract summer camp providers from Sawyer's "Summer Camps for Kids" category page.
 Return strict JSON:
-{ "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+{ "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 
 Rules:
 - A "provider" is a real business/brand that runs a summer day camp for kids.
@@ -497,7 +497,7 @@ async function runActivityHero(args: {
 
       const linksBlob = links.slice(0, 200).join("\n");
       const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio, music school, art camp).
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
@@ -685,7 +685,7 @@ async function runGoogleSearch(args: {
   let firecrawlCalls = 0;
 
   const sys = `You extract real local kids-activity provider businesses mentioned in listicle, blog, and local-news pages for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real local business offering kids' classes, camps, gymnastics, art, music, sports, STEM, dance, etc. that physically operates in ${city}.
 - EXCLUDE: the publication itself (e.g. "Mommy Poppins", "Red Tricycle", "Boston Globe"), generic categories ("Summer Camps"), national chains' national websites (use the local branch name if mentioned), individual class titles, navigation links, restaurants, museums, parks, public libraries, public schools.
@@ -811,7 +811,7 @@ async function runYelp(args: {
     if (!md) { debug.error = "empty markdown"; return { platform: "yelp", providers: [], firecrawlCalls, debug }; }
 
     const sys = `You extract summer camp providers from a Yelp "Summer Camps for Kids" category page for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real business that runs a summer day camp for kids in ${city}, ${state}.
 - EXCLUDE: Yelp itself, sponsored ads labeled "Ad", category nav headers, generic listings, restaurants, retail stores, party venues, and year-round studios / gyms / dojos / tutoring centers that do NOT run a summer camp.
@@ -934,7 +934,7 @@ async function runTargetedPriceScrapes(args: {
   }
 
   const sys = `You extract per-week or per-session pricing for kids' camp/class providers from a single source page in ${city}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 ${PRICE_RULES}
 - Only extract providers whose own listed price appears literally as a dollar amount on THIS page.
 - If the page is a forum, social post, news article without prices, or unrelated, return providers: [].
@@ -1435,7 +1435,7 @@ Deno.serve(async (req) => {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
       const catchupSys = `You extract per-week or per-session pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
-Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
+Return strict JSON: { "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
 - Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guide snippets.
 - Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly price.

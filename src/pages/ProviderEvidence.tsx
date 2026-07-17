@@ -264,6 +264,9 @@ export default function ProviderEvidence() {
       "guard_dropped_details",
       "ai_overview_snippet",
       "ai_overview_source_url",
+      "price_confidence",
+      "price_source_url",
+      "price_source_quote",
     ];
     const lines = [headers.join(",")];
     for (const { row: r, exclusion } of filtered) {

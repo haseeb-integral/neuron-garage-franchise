@@ -539,11 +539,37 @@ Deno.serve(async (req) => {
 
   })();
 
+  // Overall pipeline watchdog: if `work` doesn't resolve within
+  // PIPELINE_TIMEOUT_MS, mark the run failed so the UI doesn't lock forever.
+  const watchdog = (async () => {
+    let timedOut = false;
+    const timer = new Promise<void>((resolve) => {
+      setTimeout(() => { timedOut = true; resolve(); }, PIPELINE_TIMEOUT_MS);
+    });
+    await Promise.race([work.catch(() => { /* handled inside work */ }), timer]);
+    if (timedOut) {
+      console.warn(`[mvs-run-pipeline] watchdog: run ${run.id} exceeded ${PIPELINE_TIMEOUT_MS}ms — marking failed`);
+      try {
+        await admin
+          .from("mvs_pipeline_runs")
+          .update({
+            status: "failed",
+            error: `pipeline watchdog: exceeded ${Math.round(PIPELINE_TIMEOUT_MS / 60000)} min ceiling`,
+            finished_at: new Date().toISOString(),
+          })
+          .eq("id", run.id)
+          .in("status", ["queued", "running"]);
+      } catch (wdErr) {
+        console.warn("[mvs-run-pipeline] watchdog update failed:", wdErr);
+      }
+    }
+  })();
+
   if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-    EdgeRuntime.waitUntil(work);
+    EdgeRuntime.waitUntil(watchdog);
   } else {
     // Fallback for local/test environments without EdgeRuntime — fire-and-forget.
-    work.catch(() => { /* errors are already persisted to the run row */ });
+    watchdog.catch(() => { /* errors are already persisted to the run row */ });
   }
 
   return new Response(

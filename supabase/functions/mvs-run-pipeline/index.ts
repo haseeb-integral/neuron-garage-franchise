@@ -216,6 +216,31 @@ Deno.serve(async (req) => {
   }
 
   // ----- Background work — does not block the HTTP response -----
+  // Per-step HTTP timeout. If a child function hangs (Apify stall, upstream
+  // socket death), the parent must not hang with it — otherwise the run row
+  // stays "running" indefinitely and the UI locks the city. 4 min per step
+  // covers legit long child runs (discover with 5 queries × 100 places) while
+  // still surfacing a hang within the overall pipeline budget.
+  const STEP_TIMEOUT_MS = 4 * 60 * 1000;
+  // Overall hard ceiling on the background pipeline. Anything longer means
+  // something is wrong — fail loudly instead of leaving a stuck row.
+  const PIPELINE_TIMEOUT_MS = 20 * 60 * 1000;
+
+  const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: number, label: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        throw new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   const work = (async () => {
     let totalCalls = 0;
     const stepResults: Record<string, unknown> = {};
@@ -223,15 +248,20 @@ Deno.serve(async (req) => {
     const invokeStep = async (step: StepName, payload: Record<string, unknown>) => {
       const url = `${supabaseUrl}/functions/v1/${STEP_FUNCTIONS[step]}`;
       const stepAuth = isServiceRole ? `Bearer ${serviceKey}` : authHeader;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: stepAuth,
-          apikey: anonKey,
+      const res = await fetchWithTimeout(
+        url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: stepAuth,
+            apikey: anonKey,
+          },
+          body: JSON.stringify({ ...payload, parent_run_id: run.id }),
         },
-        body: JSON.stringify({ ...payload, parent_run_id: run.id }),
-      });
+        STEP_TIMEOUT_MS,
+        `step '${step}'`,
+      );
       const text = await res.text();
       let json: any = null;
       try { json = JSON.parse(text); } catch { /* keep raw */ }

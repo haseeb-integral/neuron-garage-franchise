@@ -31,6 +31,9 @@ export type EvidenceProvider = {
   price_original_max?: number | null;
   ai_overview_snippet?: string | null;
   ai_overview_source_url?: string | null;
+  price_confidence?: "high" | "medium" | "low" | string | null;
+  price_source_url?: string | null;
+  price_source_quote?: string | null;
 };
 
 export type DroppedPrice = {

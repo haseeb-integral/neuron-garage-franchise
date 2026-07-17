@@ -311,28 +311,40 @@ function safeProviderUrl(url: string | null | undefined, name: string, city: str
   return `https://www.google.com/search?q=${q}`;
 }
 
+type PriceUnit = "per_week" | "per_session" | "per_month" | "per_summer" | "unknown";
+
 type ProviderExtract = {
   name: string;
   url?: string | null;
   listing_url?: string | null;
   price_min?: number | null;
   price_max?: number | null;
+  price_unit?: PriceUnit | null;
+  weeks_in_session?: number | null;
   category_raw?: string | null;
   confidence: number;
 };
 
 // Shared pricing extraction rules — appended to every source's system prompt.
-// Phase 2: enforce literal-source-only pricing (no inference, no Yelp "$$").
-const PRICE_RULES = `PRICING RULES:
-- price_min / price_max are in USD per WEEK for camps, or per CLASS / SESSION for ongoing programs. Choose the weekly figure when both are shown.
-- Extract prices found in website text, tables, camp packages, registration flyers, or Google Search result snippets.
-- DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts. Those are not prices.
-- Priority 4: If multiple weekly amounts, session fees, or tiered options appear, ALWAYS select the HIGHEST recurring weekly amount.
-- If the page or search snippet shows a single weekly number, set both price_min and price_max to that number.
-- If the page shows a range like "$300–$650" or "$300 to $650", set price_min=300 and price_max=650.
-- ADJACENCY: When a page shows multiple dollar amounts, PREFER amounts that appear next to the words "week", "weekly", "per week", or "/week" over bare amounts.
-- NO ARITHMETIC: If only a total-with-weeks is shown (e.g. "$1,800 for 4 weeks", "$3,600 for 6 weeks", "full session $2,400"), DO NOT divide. Return nulls and let a later stage retry — silent arithmetic on scraped text is how wrong prices enter the dataset.
-- If no dollar amount is visible anywhere in the text or search snippets for that provider, set price_min=null and price_max=null. Never invent a value.`;
+// Phase 3 (unit-aware): every price MUST include an explicit unit. No unit ⇒
+// no price stored. Post-extraction normalization converts per_session /
+// per_month / per_summer to weekly using fixed divisors. This blocks the old
+// bug where a multi-week or monthly total was silently written as weekly.
+const PRICE_RULES = `PRICING RULES (STRICT — unit-aware):
+- Every extracted price MUST include a unit. Return "price_unit" as EXACTLY one of:
+  "per_week"    — a per-week rate is explicitly shown (e.g. "$500/week", "$500 per week")
+  "per_session" — a total for a multi-week session/camp is shown; also return "weeks_in_session" (integer)
+  "per_month"   — a monthly rate is explicitly shown (e.g. "$400/month")
+  "per_summer"  — a single price for the full summer or "full session" with no week count
+  "unknown"     — a dollar amount appears but the unit/duration is not stated
+- price_min and price_max are the raw dollar amounts AS SHOWN, in the unit above. DO NOT divide, multiply, or convert. The server normalizes to weekly.
+- If only one dollar amount is shown, set price_min = price_max = that amount.
+- If a range is shown ("$300–$650"), set price_min=300, price_max=650.
+- For per_session, weeks_in_session MUST be the integer number of weeks in that session (from text like "4-week camp", "2 week session"). If not stated, use "unknown" instead of "per_session".
+- DO NOT convert price-tier symbols ("$", "$$", "$$$") into dollar amounts.
+- ADJACENCY: prefer amounts that appear next to "week", "weekly", "per week", "/week", "month", "session", "camp", "summer".
+- If no dollar amount is visible anywhere for a provider, set price_min=null, price_max=null, price_unit=null.
+- Never invent a value. Better to return nulls than to guess.`;
 
 type SourceResult = {
   platform: Platform;
@@ -362,7 +374,7 @@ async function runSawyer(args: {
 
   const sys = `You extract summer camp providers from Sawyer's "Summer Camps for Kids" category page.
 Return strict JSON:
-{ "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+{ "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 
 Rules:
 - A "provider" is a real business/brand that runs a summer day camp for kids.
@@ -485,7 +497,7 @@ async function runActivityHero(args: {
 
       const linksBlob = links.slice(0, 200).join("\n");
       const sys = `You extract kids' activity providers from an ActivityHero marketplace page for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "listing_url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real business offering kids' classes/camps (e.g. a gymnastics studio, music school, art camp).
 - EXCLUDE: the marketplace itself ("ActivityHero"), category navigation, generic labels, individual class titles, blog posts.
@@ -673,7 +685,7 @@ async function runGoogleSearch(args: {
   let firecrawlCalls = 0;
 
   const sys = `You extract real local kids-activity provider businesses mentioned in listicle, blog, and local-news pages for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real local business offering kids' classes, camps, gymnastics, art, music, sports, STEM, dance, etc. that physically operates in ${city}.
 - EXCLUDE: the publication itself (e.g. "Mommy Poppins", "Red Tricycle", "Boston Globe"), generic categories ("Summer Camps"), national chains' national websites (use the local branch name if mentioned), individual class titles, navigation links, restaurants, museums, parks, public libraries, public schools.
@@ -799,7 +811,7 @@ async function runYelp(args: {
     if (!md) { debug.error = "empty markdown"; return { platform: "yelp", providers: [], firecrawlCalls, debug }; }
 
     const sys = `You extract summer camp providers from a Yelp "Summer Camps for Kids" category page for ${city}, ${state}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 Rules:
 - A "provider" is a real business that runs a summer day camp for kids in ${city}, ${state}.
 - EXCLUDE: Yelp itself, sponsored ads labeled "Ad", category nav headers, generic listings, restaurants, retail stores, party venues, and year-round studios / gyms / dojos / tutoring centers that do NOT run a summer camp.
@@ -844,15 +856,44 @@ async function extractWithGemini(args: {
   try {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
-    const dollarMatches = new Set<number>();
-    const isValidCandidate = (val?: number | null): boolean => isPriceKept(val);
+
+    // Phase 3: unit-aware normalization. Convert per_session / per_month /
+    // per_summer to weekly using fixed divisors. Reject prices with missing
+    // or "unknown" units — better to store no price than a wrong one.
+    // per_month  → ÷ 4.33 (weeks per month)
+    // per_summer → ÷ 10   (typical summer camp season length)
+    // per_session→ ÷ weeks_in_session (integer required, else drop)
+    let normalizedCount = 0;
+    let droppedForUnit = 0;
+    const normalize = (val: number | null | undefined, unit: PriceUnit | null | undefined, weeks: number | null | undefined): number | null => {
+      if (val == null || !Number.isFinite(Number(val))) return null;
+      const n = Number(val);
+      if (unit === "per_week") return n;
+      if (unit === "per_month") { normalizedCount++; return Math.round(n / 4.33); }
+      if (unit === "per_summer") { normalizedCount++; return Math.round(n / 10); }
+      if (unit === "per_session") {
+        const w = Number(weeks);
+        if (!Number.isFinite(w) || w < 1 || w > 12) { droppedForUnit++; return null; }
+        normalizedCount++;
+        return Math.round(n / w);
+      }
+      // "unknown" or missing unit → drop rather than guess.
+      droppedForUnit++;
+      return null;
+    };
 
     for (const p of providers) {
-      if (!isValidCandidate(p.price_min)) p.price_min = null;
-      if (!isValidCandidate(p.price_max)) p.price_max = null;
+      const unit = (p.price_unit ?? null) as PriceUnit | null;
+      const weeks = p.weeks_in_session ?? null;
+      const normMin = normalize(p.price_min ?? null, unit, weeks);
+      const normMax = normalize(p.price_max ?? null, unit, weeks);
+      p.price_min = isPriceKept(normMin) ? normMin : null;
+      p.price_max = isPriceKept(normMax) ? normMax : null;
     }
     if (debugOut) {
       debugOut.raw_provider_count = providers.length;
+      debugOut.price_normalized = normalizedCount;
+      debugOut.price_dropped_for_unit = droppedForUnit;
     }
     return providers;
   } catch {
@@ -922,7 +963,7 @@ async function runTargetedPriceScrapes(args: {
   }
 
   const sys = `You extract per-week or per-session pricing for kids' camp/class providers from a single source page in ${city}.
-Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number } ] }
+Return strict JSON: { "providers": [ { "name": string, "url": string|null, "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number } ] }
 ${PRICE_RULES}
 - Only extract providers whose own listed price appears literally as a dollar amount on THIS page.
 - If the page is a forum, social post, news article without prices, or unrelated, return providers: [].
@@ -1423,7 +1464,7 @@ Deno.serve(async (req) => {
       // Background worker mode: process only the specific 5 camp IDs passed in catchupBatch
       const catchupResults: Record<string, unknown>[] = [];
       const catchupSys = `You extract per-week or per-session pricing for a kids' camp/class provider from official website markdown and natural Google search snippets.
-Return strict JSON: { "price_min": number|null, "price_max": number|null, "category_raw": string|null, "confidence": number }
+Return strict JSON: { "price_min": number|null, "price_max": number|null, "price_unit": "per_week"|"per_session"|"per_month"|"per_summer"|"unknown"|null, "weeks_in_session": number|null, "category_raw": string|null, "confidence": number }
 ${PRICE_RULES}
 - Look for pricing on official website subpages, Sawyer, Enrollsy, ActivityHero, Facebook, or city camp guide snippets.
 - Priority 4: When multiple dollar amounts or tier options appear, always select the HIGHEST recurring weekly price.

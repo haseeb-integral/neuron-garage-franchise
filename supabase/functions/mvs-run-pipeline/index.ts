@@ -342,7 +342,7 @@ async function advanceRun(
             headers: {
               "Content-Type": "application/json",
               Authorization: stepAuth,
-              apikey: anonKey,
+              apikey: serviceKey,
             },
             body: JSON.stringify({ ...payload, parent_run_id: runId }),
           },

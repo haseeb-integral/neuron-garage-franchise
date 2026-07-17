@@ -856,15 +856,44 @@ async function extractWithGemini(args: {
   try {
     const parsed = JSON.parse(raw) as { providers?: ProviderExtract[] };
     const providers = (parsed.providers ?? []).filter((p) => p?.name);
-    const dollarMatches = new Set<number>();
-    const isValidCandidate = (val?: number | null): boolean => isPriceKept(val);
+
+    // Phase 3: unit-aware normalization. Convert per_session / per_month /
+    // per_summer to weekly using fixed divisors. Reject prices with missing
+    // or "unknown" units — better to store no price than a wrong one.
+    // per_month  → ÷ 4.33 (weeks per month)
+    // per_summer → ÷ 10   (typical summer camp season length)
+    // per_session→ ÷ weeks_in_session (integer required, else drop)
+    let normalizedCount = 0;
+    let droppedForUnit = 0;
+    const normalize = (val: number | null | undefined, unit: PriceUnit | null | undefined, weeks: number | null | undefined): number | null => {
+      if (val == null || !Number.isFinite(Number(val))) return null;
+      const n = Number(val);
+      if (unit === "per_week") return n;
+      if (unit === "per_month") { normalizedCount++; return Math.round(n / 4.33); }
+      if (unit === "per_summer") { normalizedCount++; return Math.round(n / 10); }
+      if (unit === "per_session") {
+        const w = Number(weeks);
+        if (!Number.isFinite(w) || w < 1 || w > 12) { droppedForUnit++; return null; }
+        normalizedCount++;
+        return Math.round(n / w);
+      }
+      // "unknown" or missing unit → drop rather than guess.
+      droppedForUnit++;
+      return null;
+    };
 
     for (const p of providers) {
-      if (!isValidCandidate(p.price_min)) p.price_min = null;
-      if (!isValidCandidate(p.price_max)) p.price_max = null;
+      const unit = (p.price_unit ?? null) as PriceUnit | null;
+      const weeks = p.weeks_in_session ?? null;
+      const normMin = normalize(p.price_min ?? null, unit, weeks);
+      const normMax = normalize(p.price_max ?? null, unit, weeks);
+      p.price_min = isPriceKept(normMin) ? normMin : null;
+      p.price_max = isPriceKept(normMax) ? normMax : null;
     }
     if (debugOut) {
       debugOut.raw_provider_count = providers.length;
+      debugOut.price_normalized = normalizedCount;
+      debugOut.price_dropped_for_unit = droppedForUnit;
     }
     return providers;
   } catch {

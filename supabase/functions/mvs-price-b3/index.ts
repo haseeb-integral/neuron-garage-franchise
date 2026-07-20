@@ -288,13 +288,14 @@ Rules:
 
 // --- main handler ---------------------------------------------------------
 
+// EdgeRuntime is provided by Supabase's edge runtime.
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));
-    // Accept either { city: "Austin", state: "TX" } or { city: "Austin, TX" }.
-    // The pipeline orchestrator passes the combined "City, ST" form.
     const rawCity = String(body.city ?? "").trim();
     let city = rawCity;
     let state = String(body.state ?? "").trim();
@@ -304,7 +305,12 @@ Deno.serve(async (req) => {
       if (!state && parts[1]) state = parts[1];
     }
     if (!state) state = "TX";
-    const limit = Math.min(Math.max(Number(body.limit ?? 25), 1), 100);
+
+    // Chunked / self-chaining params.
+    const batchSize = Math.min(Math.max(Number(body.batchSize ?? 8), 1), 20);
+    const offset = Math.max(Number(body.offset ?? 0), 0);
+    const totalLimit = Math.min(Math.max(Number(body.totalLimit ?? body.limit ?? 200), 1), 500);
+    const parentRunId: string | null = typeof body.parent_run_id === "string" ? body.parent_run_id : null;
     const providerIds: string[] | undefined = Array.isArray(body.providerIds) ? body.providerIds : undefined;
     const dryRun = Boolean(body.dryRun ?? false);
 
@@ -326,14 +332,14 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    // Pick providers to price.
+    // Pick providers for this batch.
     const cityLabel = `${city}, ${state}`;
     let query = admin.from("mvs_providers")
       .select("id,name,city,category_excluded_reason")
       .eq("city", cityLabel)
       .is("category_excluded_reason", null)
       .order("created_at", { ascending: true })
-      .limit(limit);
+      .range(offset, offset + batchSize - 1);
     if (providerIds && providerIds.length > 0) {
       query = admin.from("mvs_providers")
         .select("id,name,city,category_excluded_reason")
@@ -344,10 +350,7 @@ Deno.serve(async (req) => {
 
     let apifyCalls = 0;
     let geminiCalls = 0;
-
-    // Process providers in parallel batches so a big city doesn't stall the
-    // tool caller. Apify calls are I/O bound and each takes ~30-45s.
-    const CONCURRENCY = 6;
+    const CONCURRENCY = 4;
     const providerList = (providers ?? []) as ProviderRow[];
 
     async function processOne(p: ProviderRow): Promise<PriceResult> {
@@ -437,15 +440,88 @@ Deno.serve(async (req) => {
       results.push(...batchResults);
     }
 
+    const batchSummary = {
+      scanned: results.length,
+      high: results.filter((r) => r.confidence === "high").length,
+      medium: results.filter((r) => r.confidence === "medium").length,
+      review: results.filter((r) => r.confidence === "review").length,
+      excluded: results.filter((r) => r.is_summer_camp === "no").length,
+    };
+
+    const nextOffset = offset + providerList.length;
+    const hasMore =
+      !providerIds &&
+      providerList.length === batchSize &&
+      nextOffset < totalLimit;
+
+    // Merge cumulative progress into parent pipeline run (best-effort).
+    if (parentRunId) {
+      try {
+        const { data: runRow } = await admin
+          .from("mvs_pipeline_runs")
+          .select("source_counts")
+          .eq("id", parentRunId)
+          .maybeSingle();
+        const sc: Record<string, any> = (runRow?.source_counts as any) ?? {};
+        const prev = sc.b3_price_pass ?? {};
+        sc.b3_price_pass = {
+          ok: true,
+          in_progress: hasMore,
+          batches: (prev.batches ?? 0) + 1,
+          scanned: (prev.scanned ?? 0) + batchSummary.scanned,
+          high_conf: (prev.high_conf ?? 0) + batchSummary.high,
+          medium_conf: (prev.medium_conf ?? 0) + batchSummary.medium,
+          needs_review: (prev.needs_review ?? 0) + batchSummary.review,
+          excluded: (prev.excluded ?? 0) + batchSummary.excluded,
+          apify_calls: (prev.apify_calls ?? 0) + apifyCalls,
+          gemini_calls: (prev.gemini_calls ?? 0) + geminiCalls,
+          last_offset: nextOffset,
+          updated_at: new Date().toISOString(),
+        };
+        await admin.from("mvs_pipeline_runs").update({ source_counts: sc }).eq("id", parentRunId);
+      } catch (progressErr) {
+        console.warn("[mvs-price-b3] progress update failed (non-fatal):", progressErr);
+      }
+    }
+
+    // Fire-and-forget next batch so this HTTP request returns quickly.
+    if (hasMore) {
+      const nextBody = {
+        city: cityLabel,
+        offset: nextOffset,
+        batchSize,
+        totalLimit,
+        dryRun,
+        parent_run_id: parentRunId,
+      };
+      const chainP = fetch(`${supabaseUrl}/functions/v1/mvs-price-b3`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+        },
+        body: JSON.stringify(nextBody),
+      }).catch((err) => console.warn("[mvs-price-b3] chain failed:", err));
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+        EdgeRuntime.waitUntil(chainP);
+      }
+    }
+
     return new Response(JSON.stringify({
       city: cityLabel,
+      offset,
+      batchSize,
+      totalLimit,
+      hasMore,
+      nextOffset: hasMore ? nextOffset : null,
       providers_scanned: results.length,
       apify_calls: apifyCalls,
       gemini_calls: geminiCalls,
-      priced_high: results.filter((r) => r.confidence === "high").length,
-      priced_medium: results.filter((r) => r.confidence === "medium").length,
-      needs_review: results.filter((r) => r.confidence === "review").length,
-      excluded_by_b3: results.filter((r) => r.is_summer_camp === "no").length,
+      priced_high: batchSummary.high,
+      priced_medium: batchSummary.medium,
+      needs_review: batchSummary.review,
+      excluded_by_b3: batchSummary.excluded,
       dryRun,
       results,
     }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

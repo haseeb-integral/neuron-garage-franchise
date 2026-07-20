@@ -1474,7 +1474,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
             <thead>
               <tr style={{ color: MUTED }}>
                 <th className="px-4 py-2 text-left font-semibold">Provider</th>
-                <th className="px-4 py-2 text-left font-semibold">Source(s)</th>
+                <th className="px-4 py-2 text-left font-semibold">Discovery source(s)</th>
                 <th className="px-4 py-2 text-right font-semibold">$ min/wk</th>
                 <th className="px-4 py-2 text-right font-semibold">$ max/wk</th>
                 <th className="px-4 py-2 text-left font-semibold">Category</th>

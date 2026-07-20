@@ -377,28 +377,42 @@ async function advanceRun(
         }
       } else if (stage === "b3") {
         if (Deno.env.get("MVS_B3_PRIMARY_ENABLED") === "true") {
-          try {
-            const j = await invokeStep(
-              "mvs-price-b3",
-              { city, limit: 100, dryRun: false, concurrency: 3 },
-              "b3 price pass",
-            );
-            sourceCounts.b3_price_pass = {
-              ok: true,
-              scanned: j?.scanned ?? null,
-              high_conf: j?.high_conf ?? null,
-              medium_conf: j?.medium_conf ?? null,
-              needs_review: j?.needs_review ?? null,
-              apify_calls: j?.apify_calls ?? null,
-              gemini_calls: j?.gemini_calls ?? null,
-            };
-          } catch (b3Err) {
-            console.warn("[mvs-run-pipeline] b3 failed (non-fatal):", b3Err);
-            sourceCounts.b3_price_pass = { ok: false, error: String(b3Err).slice(0, 300) };
+          // b3 self-chains its own batches. Fire the FIRST batch as
+          // fire-and-forget so this stage returns fast and the orchestrator
+          // can move on to acs/catchup while b3 keeps running in the
+          // background. Progress is written to source_counts.b3_price_pass
+          // by each b3 batch.
+          const firstBody = {
+            city,
+            offset: 0,
+            batchSize: 8,
+            totalLimit: 200,
+            dryRun: false,
+            parent_run_id: runId,
+          };
+          const kickoff = fetch(`${supabaseUrl}/functions/v1/mvs-price-b3`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: stepAuth,
+              apikey: serviceKey,
+            },
+            body: JSON.stringify(firstBody),
+          }).catch((err) => console.warn("[mvs-run-pipeline] b3 kickoff failed:", err));
+          if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+            EdgeRuntime.waitUntil(kickoff);
           }
+          sourceCounts.b3_price_pass = {
+            ok: true,
+            in_progress: true,
+            batches: 0,
+            scanned: 0,
+            kicked_off_at: new Date().toISOString(),
+          };
         } else {
           sourceCounts.b3_price_pass = { skipped: true, reason: "MVS_B3_PRIMARY_ENABLED not true" };
         }
+
       } else if (stage === "acs") {
         try {
           await invokeStep("mvs-acs-pull", { city }, "acs");

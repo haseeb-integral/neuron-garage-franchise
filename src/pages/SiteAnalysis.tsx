@@ -49,6 +49,7 @@ import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
 import {
   recomputeSiteScores,
   siteComposite,
+  normalizeSchoolType,
   type SchoolType,
   type GradeBand,
 } from "@/lib/sasMath";
@@ -121,7 +122,8 @@ const SCHOOL_TYPE_LABEL: Record<SchoolType, string> = {
   private_elementary: "Private elementary",
   public_elementary: "Public elementary",
   charter_elementary: "Charter elementary",
-  montessori: "Montessori",
+  montessori_elementary: "Montessori elementary",
+  montessori_preschool: "Montessori pre-school",
   daycare: "Daycare",
   other_k8: "Other K-8",
   other: "Other",
@@ -195,7 +197,7 @@ function WhyDifferentChip({
   const snap = savedMatch.snapshot_json ?? {};
   const savedComposite =
     snap.pillars ? recomputeSiteScores(snap.pillars).composite : snap.composite ?? null;
-  const savedType = (savedMatch.site_type ?? "") as SchoolType;
+  const savedType = normalizeSchoolType(savedMatch.site_type ?? "");
   const savedGrade = (savedMatch.grade_band ?? "") as GradeBand;
   const savedEnroll = savedMatch.enrollment != null ? String(savedMatch.enrollment) : "";
 
@@ -1394,7 +1396,10 @@ export default function SiteAnalysis() {
   // snapshot instantly (no auto re-run) — user can click "Re-run" to refresh.
   const handleLoadSavedSite = useCallback(
     async (row: SavedSiteRow) => {
-      const inputs = row.inputs_json;
+      const inputs = {
+        ...row.inputs_json,
+        schoolType: normalizeSchoolType(row.inputs_json?.schoolType),
+      };
       const snap = row.snapshot_json ?? {};
       // Build a SiteScoreResult from the saved snapshot so the card renders
       // immediately. The map/isochrones won't be present (they aren't stored

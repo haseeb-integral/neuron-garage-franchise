@@ -73,8 +73,10 @@ function getEnrollmentTooltipLine(schoolType: SchoolType): string {
       return "Typical real-world average for private elementary: ~110 students.";
     case "public_elementary":
       return "Typical real-world average for public elementary: ~432 students.";
-    case "montessori":
-      return "Typical real-world average for Montessori: ~40 students.";
+    case "montessori_elementary":
+      return "Typical real-world average for Montessori elementary: ~90 students.";
+    case "montessori_preschool":
+      return "Montessori pre-schools are usually small (20–60). Pre-school = poor K–6 camp fit.";
     case "charter_elementary":
       return "Charter elementary enrollment is not separately published and varies widely by network.";
     case "daycare":
@@ -278,7 +280,8 @@ export function LiveEngineCard({ onSaveToSlot, canSave = true, replaceTargetLabe
             <option value="private_elementary">Private elementary</option>
             <option value="public_elementary">Public elementary</option>
             <option value="charter_elementary">Charter elementary</option>
-            <option value="montessori">Montessori</option>
+            <option value="montessori_elementary">Montessori elementary</option>
+            <option value="montessori_preschool">Montessori pre-school</option>
             <option value="daycare">Daycare</option>
             <option value="other_k8">Other K-8</option>
             <option value="other">Other</option>

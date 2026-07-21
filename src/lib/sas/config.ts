@@ -19,10 +19,11 @@ export const SITE_CONFIDENCE_THRESHOLDS = {
 export const SCHOOL_PROFILE_FACTORS = {
   schoolType: [
     { type: "Private elementary", factor: 100 },
-    { type: "Montessori", factor: 85 },
+    { type: "Montessori elementary", factor: 85 },
     { type: "Charter elementary", factor: 75 },
     { type: "Public elementary", factor: 70 },
     { type: "Other K-8", factor: 50 },
+    { type: "Montessori pre-school", factor: 30 },
     { type: "Other (incl. daycare)", factor: 30 },
   ],
   enrollmentRange: "150–800",
@@ -30,6 +31,6 @@ export const SCHOOL_PROFILE_FACTORS = {
     { label: "K-5 or K-6", factor: 100 },
     { label: "Pre-K through 5", factor: 95 },
     { label: "K-8", factor: 80 },
-    { label: "Other", factor: 50 },
+    { label: "Other", factor: 20 },
   ],
 } as const;

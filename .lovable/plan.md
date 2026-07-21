@@ -1,72 +1,46 @@
+# Site Analysis — School Profile calibration tweaks
 
-# Plan — Option C: Tighten the Premium Tier Classifier
+## What we're changing and why
+Right now every Montessori school gets 85 for the school-type factor. Many Montessori sites are pre-schools, which are a bad fit for Neuron Garage's K–6 camp. We will split Montessori into two options so the user tells us which one it is:
 
-## The bug in plain words
+- **Montessori elementary** → 85 (unchanged, good fit)
+- **Montessori pre-school** → 30 (bad fit, same tier as daycare)
 
-Right now a provider is called **Premium** if EITHER its min price OR its max price is $400 or more. So a camp that lists **$100–$500** (a $100 drop-in day rate with a $500 full-week option) becomes Premium, and its $100 gets counted as the "premium weekly price". That is why Austin's Pricing Acceptance score fell to 6.8: the median premium price came out at $175 because dozens of Premium rows are $100-min drop-in listings.
+We are also punishing unknown grade bands harder. Under grade_alignment_factor, **Other** drops from **50 → 20**. A site with an unclear grade band should not sit in the middle — it should score near the bottom.
 
-The two-gate rule ("min ≥ $300 AND max ≥ $400") was discussed earlier but it was never actually put into the classifier. The classifier still uses the OR rule.
+## Where it shows up
+- Site Analysis page dropdown (school type picker)
+- Live SAS engine math (edge function) — score changes for these types
+- UI copy of the same math (must stay in lockstep)
+- SAS Methodology page (the factor table on the /sas-methodology screen the user just screenshotted)
+- Any place that renders a friendly label for the school type
 
-## What we will change
+## Files touched
+1. `supabase/functions/_shared/sas-math.ts` — add `montessori_elementary` + `montessori_preschool` to `SchoolType`, remove `montessori`. Factors: 85 and 30. Change grade `other` from 50 → 20.
+2. `src/lib/sasMath.ts` — mirror the exact same change (must stay byte-identical to the engine).
+3. `src/lib/sas/config.ts` — update the documented `SCHOOL_PROFILE_FACTORS.schoolType` table.
+4. `src/pages/SASMethodology.tsx` — verify it renders from `SCHOOL_PROFILE_FACTORS` (if it hard-codes numbers, update them too).
+5. `src/components/site-analysis/LiveEngineCard.tsx` — replace the single `<option value="montessori">Montessori</option>` with two options; update `getEnrollmentTooltipLine` and the default demo cards that use `"montessori"` (if any).
+6. `src/pages/SiteAnalysis.tsx` — update `SCHOOL_TYPE_LABEL` map so both new keys have friendly labels.
 
-**One file only:** `supabase/functions/mvs-classify-tier/index.ts`
-
-Change the price-based tier decision from:
-
-```
-if (pMax >= 400 OR pMin >= 400) → Premium
-```
-
-to a two-gate rule:
-
-```
-if (pMin >= 300 AND pMax >= 400) → Premium
-else if (pMin < 200 AND pMax < 200) → Budget
-else → Mid
-```
-
-Special cases stay the same:
-- Community/childcare-like names → Community (unchanged)
-- No price + known national premium brand → Premium (unchanged)
-- No price + unknown brand → Mid (unchanged, Option A rule)
-
-## Pages/features affected
-
-1. **Premium provider count** everywhere (Market Validation card, Deep Dive "170 premium providers" chip, exports).
-2. **Pricing Acceptance score** — should climb because the low-$100 min outliers stop dragging the median down.
-3. **Market Depth score** — recalibrated because there will be fewer premium camps in Austin.
-4. **MBI (Market Balance Index)** — the ratio uses `premiumProviderCount` as the denominator, so it will rise (fewer premium providers).
-5. **Enrichment Diversity** — reads from the premium set too.
-
-Nothing in the client UI code needs to change. All downstream scores read `tier = 'premium'` and will simply recompute.
-
-## Rollout — 3 small phases
-
-**Phase 1 — Ship the classifier fix (1 turn)**
-Change the OR to AND in `mvs-classify-tier/index.ts`. Deploy.
-
-**Phase 2 — Reclassify existing Austin rows (1 turn)**
-Call the classifier with `reclassify=true` for Austin (and any other city with data). No new scraping needed — this only re-reads existing `mvs_providers` rows and rewrites the `tier` column.
-
-**Phase 3 — Verify (no code, just checking)**
-Read Austin's new premium-provider list, confirm the $100-min drop-in rows are now Mid, and check that Pricing Acceptance, Market Depth, MBI, and Enrichment Diversity all move in the expected direction.
+## Fit with existing app
+- No DB migration is needed. `saved_sites.school_type` is a free-text column that stores whatever string we pass. Old rows saved as `"montessori"` will still load, but they will no longer match a known factor. To avoid the "unknown schoolType" throw on old saves, we will map legacy `"montessori"` → `"montessori_elementary"` at read time in `SiteAnalysis.tsx` (one-line compatibility shim). This keeps old saved cards working without a data migration.
+- No change to weights, composite formula, or any other pillar.
+- No change to Market Validation, City Search, Candidate Pipeline, Onboarding, or Teacher Prospects.
 
 ## Risks
+- Anyone with a saved Montessori site will silently be treated as Montessori elementary going forward. That is the safer default; if they meant pre-school they can re-pick and re-score.
+- Sites currently displayed with grade band = Other will drop in composite score. This is intentional.
 
-- **Premium count will drop.** For Austin, likely from ~170 to somewhere in the 30–60 range. That is the whole point of the fix, but it will look like a big change on the dashboard. Nothing is being deleted — the providers just move from Premium to Mid.
-- **Other cities also recompute.** Any city we've already run will get restated the next time it is reclassified. If you want to hold off on non-Austin cities until we validate Austin, we can add a city filter to Phase 2. Recommend running all cities so scores stay consistent, but your call.
-- **No effect on discovery.** This does not remove providers. It only changes the tier label.
+## Phases and turns
+- **Phase 1 (this turn):** all six files above in one shot. Small edits, one file per change. ~1 turn.
+- **Phase 2 (optional, only if you ask):** sweep saved rows to explicitly rewrite `"montessori"` → `"montessori_elementary"` in the DB so the shim can be removed. Not needed for the app to work.
 
-## Not touched
+## What you should test after Phase 1
+1. Open Site Analysis → school type dropdown shows **Montessori pre-school** and **Montessori elementary** (Montessori alone is gone).
+2. Score a site as **Montessori pre-school** with sensible enrollment/grade → School Profile pillar is much lower than the same site scored as **Montessori elementary**.
+3. Pick grade band = **Other** on any site → School Profile drops vs. the previous run.
+4. Open `/sas-methodology` → the factor tables show the new numbers (Montessori elementary 85, Montessori pre-school 30, grade Other 20).
+5. Open any previously saved Montessori card → it still loads (no crash) and shows as Montessori elementary.
 
-- Discovery queries, Apify/Yelp/Sawyer feeds, and the b3 price step — all unchanged.
-- Community/childcare-like rule and the national-premium-brand override — unchanged.
-- Normalization bands in `computeMvs.ts` — unchanged (we're fixing the input data, not the formula).
-
-## Estimated turns
-
-- Phase 1: 1 turn
-- Phase 2: 1 turn
-- Phase 3: 0 turns (just reading numbers together)
-
-Approve and I ship Phase 1.
+Waiting on your approval before I ship Phase 1.

@@ -1396,7 +1396,10 @@ export default function SiteAnalysis() {
   // snapshot instantly (no auto re-run) — user can click "Re-run" to refresh.
   const handleLoadSavedSite = useCallback(
     async (row: SavedSiteRow) => {
-      const inputs = row.inputs_json;
+      const inputs = {
+        ...row.inputs_json,
+        schoolType: normalizeSchoolType(row.inputs_json?.schoolType),
+      };
       const snap = row.snapshot_json ?? {};
       // Build a SiteScoreResult from the saved snapshot so the card renders
       // immediately. The map/isochrones won't be present (they aren't stored

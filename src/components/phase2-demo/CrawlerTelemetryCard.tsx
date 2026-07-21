@@ -131,6 +131,9 @@ export function CrawlerTelemetryCard({
 
       {open && (
         <div className="border-t px-3 py-3" style={{ borderColor: "#eef2f7" }}>
+          <p className="mb-2 text-[11px] leading-relaxed text-[#526078]">
+            B3 runs first in the main pipeline. This card only shows the catch-up rescue pass.
+          </p>
           <table className="w-full text-[12px]">
             <tbody>
               {rows.map((r) => {

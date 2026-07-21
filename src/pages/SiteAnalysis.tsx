@@ -404,6 +404,58 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatc
               >
                 {composite}
               </div>
+              {recomputed && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold underline"
+                      style={{ color: BLUE }}
+                      title="See how the composite is weighted"
+                    >
+                      <Info size={10} /> Show formula
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-72 text-[11px]" style={{ color: NAVY }}>
+                    <div className="mb-2 font-bold uppercase tracking-wide" style={{ fontSize: 10, color: MUTED }}>
+                      Composite formula
+                    </div>
+                    <p className="mb-2" style={{ color: MUTED }}>
+                      Each sub-score (0–100) is multiplied by its weight, then added up.
+                    </p>
+                    <table className="w-full tabular-nums">
+                      <thead>
+                        <tr style={{ color: MUTED }}>
+                          <th className="text-left font-semibold">Pillar</th>
+                          <th className="text-right font-semibold">Weight</th>
+                          <th className="text-right font-semibold">Score</th>
+                          <th className="text-right font-semibold">Points</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { label: "School Profile", w: 0.25, v: recomputed.pillars.schoolProfile },
+                          { label: "Neighborhood Affluence", w: 0.25, v: recomputed.pillars.affluence },
+                          { label: "Family Density", w: 0.20, v: recomputed.pillars.familyDensity },
+                          { label: "School Ecosystem", w: 0.15, v: recomputed.pillars.ecosystem },
+                          { label: "Accessibility", w: 0.15, v: recomputed.pillars.accessibility },
+                        ].map((row) => (
+                          <tr key={row.label}>
+                            <td className="py-0.5">{row.label}</td>
+                            <td className="py-0.5 text-right">{Math.round(row.w * 100)}%</td>
+                            <td className="py-0.5 text-right">{row.v}</td>
+                            <td className="py-0.5 text-right font-semibold">{(row.w * row.v).toFixed(1)}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ borderTop: `1px solid ${BORDER}` }}>
+                          <td className="pt-1 font-bold" colSpan={3}>Composite</td>
+                          <td className="pt-1 text-right font-bold" style={{ color: NAVY }}>{recomputed.composite}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </PopoverContent>
+                </Popover>
+              )}
               {userPill ? (
                 <span
                   className="inline-block max-w-full rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold leading-tight"

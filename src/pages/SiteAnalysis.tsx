@@ -49,6 +49,7 @@ import { SITE_CONFIDENCE_THRESHOLDS } from "@/lib/sas/config";
 import {
   recomputeSiteScores,
   siteComposite,
+  normalizeSchoolType,
   type SchoolType,
   type GradeBand,
 } from "@/lib/sasMath";

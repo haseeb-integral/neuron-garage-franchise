@@ -46,17 +46,18 @@ const SUB_SCORES: SubScore[] = [
 
 school_type_factor:
   Private elementary           = 100
-  Montessori                   = 85
+  Montessori elementary        = 85
   Charter elementary           = 75
   Public elementary            = 70
   Other K-8                    = 50
+  Montessori pre-school        = 30
   Other (incl. daycare)        = 30
 
 grade_alignment_factor:
   K-5 or K-6                   = 100
   Pre-K through 5              = 95
   K-8                          = 80
-  Other                        = 50`,
+  Other                        = 20`,
     detail:
       "Type does the heavy lifting (50% of this sub-score). The daycare row at 30 is the calibration anchor that pulled LeafSpring's School Profile below threshold — the math, not a hand-set tier, produces the negative verdict on the known-bad site.",
     sources: [

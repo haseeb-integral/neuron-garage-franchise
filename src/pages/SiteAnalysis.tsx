@@ -4,10 +4,12 @@ import {
   BookmarkCheck,
   ChevronDown,
   Download,
+  Info,
   Loader2,
   MapPin,
   Plus,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
@@ -546,11 +548,12 @@ function CandidateCard({ slot, onRerun, onRemove, onReplace, bookmark, savedMatc
               {showFormulas ? "Hide formulas" : "Show all formulas"}
             </button>
           </div>
-          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} detail={`f(type=${SCHOOL_TYPE_LABEL[slot.schoolType]}, grade=${GRADE_BAND_LABEL[slot.gradeBand]}, enroll=${slot.enrollment || "—"}) = ${recomputed.pillars.schoolProfile}`} />
-          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} detail={`0.6 × medianHHI_norm(${fmtMoney(slot.result?.signals?.acs10?.medianHhi)}) + 0.4 × pctAbove150k_norm(${fmtPct(slot.result?.signals?.acs10?.pctAbove150k)}) = ${recomputed.pillars.affluence}`} />
-          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} detail={`children5-12 / totalPop × scale → ${fmtCount(slot.result?.signals?.acs15?.children5to12)} / ${fmtCount(slot.result?.signals?.acs15?.totalPop)} = ${recomputed.pillars.familyDensity}`} />
-          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} detail={`elementaryCount(${slot.result?.signals?.ecosystem?.elementaryCount ?? "—"}) + privateCount(${slot.result?.signals?.ecosystem?.privateCount ?? "—"}) weighted by nearbyStudentPop = ${recomputed.pillars.ecosystem}`} />
-          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={`0.3 × roadFactor(${fmtMi(slot.result?.signals?.accessibility?.roadDistanceMi)}) + 0.3 × hwyFactor(${fmtMi(slot.result?.signals?.accessibility?.highwayDistanceMi)}) + 0.4 × popReachable_norm(${fmtCount(slot.result?.signals?.acs15?.totalPop)}) = ${recomputed.pillars.accessibility}`} />
+          <PillarBar label="School Profile" weight={0.25} value={recomputed.pillars.schoolProfile} showFormula={showFormulas} detail={`f(type=${SCHOOL_TYPE_LABEL[slot.schoolType]}, grade=${GRADE_BAND_LABEL[slot.gradeBand]}, enroll=${slot.enrollment || "—"}) = ${recomputed.pillars.schoolProfile}`} tip="How good the host school is for a camp. Looks at school type (public/private/charter), grade band (elementary is best), and how many students go there. Bigger, elementary schools score higher." />
+          <PillarBar label="Neighborhood Affluence" weight={0.25} value={recomputed.pillars.affluence} showFormula={showFormulas} detail={`0.6 × medianHHI_norm(${fmtMoney(slot.result?.signals?.acs10?.medianHhi)}) + 0.4 × pctAbove150k_norm(${fmtPct(slot.result?.signals?.acs10?.pctAbove150k)}) = ${recomputed.pillars.affluence}`} tip="How much money families near the school make. Combines median household income with the share of homes earning over $150k. Wealthier areas can afford premium camp prices." />
+          <PillarBar label="Family Density" weight={0.2} value={recomputed.pillars.familyDensity} showFormula={showFormulas} detail={`children5-12 / totalPop × scale → ${fmtCount(slot.result?.signals?.acs15?.children5to12)} / ${fmtCount(slot.result?.signals?.acs15?.totalPop)} = ${recomputed.pillars.familyDensity}`} tip="How many kids aged 5–12 live near the school, compared to the total population. More kids in the area means more potential campers." />
+          <PillarBar label="School Ecosystem" weight={0.15} value={recomputed.pillars.ecosystem} showFormula={showFormulas} detail={`elementaryCount(${slot.result?.signals?.ecosystem?.elementaryCount ?? "—"}) + privateCount(${slot.result?.signals?.ecosystem?.privateCount ?? "—"}) weighted by nearbyStudentPop = ${recomputed.pillars.ecosystem}`} tip="How many other elementary and private schools sit near this site. More nearby schools mean a bigger pool of families we can reach, not just the host school." />
+          <PillarBar label="Accessibility" weight={0.15} value={recomputed.pillars.accessibility} showFormula={showFormulas} detail={`0.3 × roadFactor(${fmtMi(slot.result?.signals?.accessibility?.roadDistanceMi)}) + 0.3 × hwyFactor(${fmtMi(slot.result?.signals?.accessibility?.highwayDistanceMi)}) + 0.4 × popReachable_norm(${fmtCount(slot.result?.signals?.acs15?.totalPop)}) = ${recomputed.pillars.accessibility}`} tip="How easy it is for parents to reach the site. Looks at distance to major roads, distance to a highway, and how many people live in an easy drive. Closer to roads and more people nearby scores higher." />
+
           {showFormulas && (
             <p className="pt-1 text-[10px]" style={{ color: MUTED }}>
               Composite = sum of weighted contributions = <strong>{recomputed.composite}</strong>
@@ -686,19 +689,39 @@ function PillarBar({
   value,
   showFormula,
   detail,
+  tip,
 }: {
   label: string;
   weight: number;
   value: number;
   showFormula?: boolean;
   detail?: string;
+  tip?: string;
 }) {
   const contribution = +(weight * value).toFixed(1);
   return (
     <div>
       <div className="flex items-baseline justify-between text-[11px]">
-        <span style={{ color: MUTED }}>
+        <span className="inline-flex items-center gap-1" style={{ color: MUTED }}>
           {label} <span className="text-[9px]">({Math.round(weight * 100)}%)</span>
+          {tip && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`What does ${label} measure?`}
+                    className="inline-flex items-center text-[#8a95a8] hover:text-[#07142f] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#07142f] rounded"
+                  >
+                    <Info size={11} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[260px] text-[11px] leading-relaxed">
+                  {tip}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </span>
         <span className="font-bold tabular-nums" style={{ color: NAVY }}>
           {value}

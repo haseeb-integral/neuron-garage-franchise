@@ -1574,20 +1574,8 @@ export default function SiteAnalysis() {
       {/* Formula + thresholds */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div>
-              <button
-                type="button"
-                onClick={handleNormalize}
-                disabled={normalizing || slots.length === 0}
-                title="Re-score all cards with the same inputs (Daycare · Other · enrollment 150) for an apples-to-apples comparison"
-                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
-              >
-                {normalizing ? "Normalizing…" : "⇋ Normalize inputs (Daycare · Other · 150)"}
-              </button>
-            </div>
-          </div>
+          <div className="min-w-0 flex-1" />
+
           <div className="flex flex-col items-end gap-1 ml-auto">
             <div className="flex items-center gap-2">
               <button

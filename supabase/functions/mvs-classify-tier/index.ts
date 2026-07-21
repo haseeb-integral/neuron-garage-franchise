@@ -262,7 +262,11 @@ Deno.serve(async (req) => {
       } else if (isNationalPremium) {
         tier = "premium";
       } else if (hasPrice) {
-        if (pMax >= 400 || pMin >= 400) {
+        // Two-gate premium rule: BOTH min >= 300 AND max >= 400 required.
+        // Fixes the "wide-range trap" where a $100–$500 drop-in listing
+        // was tagged Premium via `pMax >= 400`, then its $100 min dragged
+        // the Pricing Acceptance median down to sub-floor values.
+        if (pMin >= 300 && pMax >= 400) {
           tier = "premium";
         } else if (pMax > 0 && pMax < 200 && (pMin === 0 || pMin < 200)) {
           tier = "budget";

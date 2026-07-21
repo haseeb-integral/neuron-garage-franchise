@@ -420,9 +420,9 @@ Deno.serve(async (req) => {
 
       if (!dryRun) {
         const update: Record<string, unknown> = {
-          price_source: "Google AI Overview",
+          price_source: result.error ? `B3 error: ${result.error.slice(0, 200)}` : "Google AI Overview",
           price_source_url: result.source_url,
-          price_source_quote: result.source_quote,
+          price_source_quote: result.source_quote ?? (result.error ? `ERROR: ${result.error.slice(0, 400)}` : null),
           price_unit_raw: result.unit === "unknown" ? null : result.unit,
           price_confidence: result.confidence,
           price_needs_review: result.needs_review,

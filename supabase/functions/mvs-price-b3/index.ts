@@ -188,9 +188,15 @@ async function fetchAiOverview(
     });
     if (!res.ok) {
       const errTxt = await res.text().catch(() => "");
-      throw new Error(`apify HTTP ${res.status}: ${errTxt.slice(0, 200)}`);
+      const msg = `apify HTTP ${res.status}: ${errTxt.slice(0, 400)}`;
+      console.error(`[mvs-price-b3] APIFY FAIL provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+      throw new Error(msg);
     }
     json = await res.json();
+  } catch (err) {
+    const msg = (err as Error).message || String(err);
+    console.error(`[mvs-price-b3] APIFY EXCEPTION provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+    throw err;
   } finally {
     clearTimeout(to);
   }

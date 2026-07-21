@@ -196,7 +196,7 @@ function WhyDifferentChip({
   const snap = savedMatch.snapshot_json ?? {};
   const savedComposite =
     snap.pillars ? recomputeSiteScores(snap.pillars).composite : snap.composite ?? null;
-  const savedType = (savedMatch.site_type ?? "") as SchoolType;
+  const savedType = normalizeSchoolType(savedMatch.site_type ?? "");
   const savedGrade = (savedMatch.grade_band ?? "") as GradeBand;
   const savedEnroll = savedMatch.enrollment != null ? String(savedMatch.enrollment) : "";
 

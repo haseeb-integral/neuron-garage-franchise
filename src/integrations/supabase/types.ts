@@ -796,11 +796,7 @@ export type Database = {
           brief: Json
           city_id: string
           city_name: string
-          composite_score: number
           metro_area: string | null
-          pillar_demand: number | null
-          pillar_opp: number | null
-          pillar_tam: number | null
           state_abbr: string
           state_name: string
           tier: string
@@ -810,11 +806,7 @@ export type Database = {
           brief?: Json
           city_id: string
           city_name: string
-          composite_score: number
           metro_area?: string | null
-          pillar_demand?: number | null
-          pillar_opp?: number | null
-          pillar_tam?: number | null
           state_abbr: string
           state_name: string
           tier: string
@@ -824,11 +816,7 @@ export type Database = {
           brief?: Json
           city_id?: string
           city_name?: string
-          composite_score?: number
           metro_area?: string | null
-          pillar_demand?: number | null
-          pillar_opp?: number | null
-          pillar_tam?: number | null
           state_abbr?: string
           state_name?: string
           tier?: string

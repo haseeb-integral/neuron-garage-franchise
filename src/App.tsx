@@ -43,6 +43,8 @@ const SiteBrief = lazyWithPreload(() => import("./pages/SiteBrief"));
 
 const SASMethodology = lazyWithPreload(() => import("./pages/SASMethodology"));
 const CandidatePipelineMethodology = lazyWithPreload(() => import("./pages/CandidatePipelineMethodology"));
+const TeacherSearchSpec = lazyWithPreload(() => import("./pages/TeacherSearchSpec"));
+const TeacherSearchMethodology = lazyWithPreload(() => import("./pages/TeacherSearchMethodology"));
 const ScoringMethod = lazyWithPreload(() => import("./pages/ScoringMethod"));
 const DbHealth = lazyWithPreload(() => import("./pages/DbHealth"));
 const Observability = lazyWithPreload(() => import("./pages/Observability"));
@@ -85,6 +87,8 @@ registerRoutePrefetch("/mvs-qa-queue", MVSQAQueue.preload);
 
 registerRoutePrefetch("/sas-methodology", SASMethodology.preload);
 registerRoutePrefetch("/candidate-pipeline-methodology", CandidatePipelineMethodology.preload);
+registerRoutePrefetch("/teacher-search-spec", TeacherSearchSpec.preload);
+registerRoutePrefetch("/teacher-search-methodology", TeacherSearchMethodology.preload);
 registerRoutePrefetch("/scoring-method", ScoringMethod.preload);
 registerRoutePrefetch("/observability", Observability.preload);
 registerRoutePrefetch("/observability-guide", ObservabilityGuide.preload);
@@ -144,6 +148,8 @@ const App = () => (
                 
                 <Route path="/sas-methodology" element={<SASMethodology />} />
                 <Route path="/candidate-pipeline-methodology" element={<CandidatePipelineMethodology />} />
+                <Route path="/teacher-search-spec" element={<TeacherSearchSpec />} />
+                <Route path="/teacher-search-methodology" element={<TeacherSearchMethodology />} />
                 <Route path="/scoring-method" element={<ScoringMethod />} />
                 <Route path="/glossary" element={<Glossary />} />
                 <Route path="/observability" element={<Observability />} />

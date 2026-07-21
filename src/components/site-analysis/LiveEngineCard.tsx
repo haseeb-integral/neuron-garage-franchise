@@ -73,8 +73,10 @@ function getEnrollmentTooltipLine(schoolType: SchoolType): string {
       return "Typical real-world average for private elementary: ~110 students.";
     case "public_elementary":
       return "Typical real-world average for public elementary: ~432 students.";
-    case "montessori":
-      return "Typical real-world average for Montessori: ~40 students.";
+    case "montessori_elementary":
+      return "Typical real-world average for Montessori elementary: ~90 students.";
+    case "montessori_preschool":
+      return "Montessori pre-schools are usually small (20–60). Pre-school = poor K–6 camp fit.";
     case "charter_elementary":
       return "Charter elementary enrollment is not separately published and varies widely by network.";
     case "daycare":

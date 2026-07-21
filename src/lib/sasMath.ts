@@ -6,7 +6,8 @@ export type SchoolType =
   | "private_elementary"
   | "public_elementary"
   | "charter_elementary"
-  | "montessori"
+  | "montessori_elementary"
+  | "montessori_preschool"
   | "daycare"
   | "other_k8"
   | "other";
@@ -17,7 +18,8 @@ const SCHOOL_TYPE_FACTOR: Record<SchoolType, number> = {
   private_elementary: 100,
   public_elementary: 70,
   charter_elementary: 75,
-  montessori: 85,
+  montessori_elementary: 85,
+  montessori_preschool: 30,
   daycare: 30,
   other_k8: 50,
   other: 30,
@@ -27,8 +29,19 @@ const GRADE_ALIGN_FACTOR: Record<GradeBand, number> = {
   k5_k6: 100,
   prek_5: 95,
   k8: 80,
-  other: 50,
+  other: 20,
 };
+
+/**
+ * Map legacy stored school-type strings (before the Montessori split) onto
+ * the current SchoolType union. Old saved rows written as `"montessori"`
+ * get treated as Montessori elementary — the safer default. Unknown strings
+ * pass through as-is so the engine still throws loudly on true garbage.
+ */
+export function normalizeSchoolType(raw: string | null | undefined): SchoolType {
+  if (raw === "montessori") return "montessori_elementary";
+  return (raw ?? "other") as SchoolType;
+}
 
 export function normalize(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return 0;

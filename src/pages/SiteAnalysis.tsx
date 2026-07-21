@@ -1385,82 +1385,8 @@ export default function SiteAnalysis() {
   // Normalize all 4 cards to the same Daycare/Other/150 inputs and recompute,
   // so cross-card SAS comparison is apples-to-apples. Uses cache when an exact
   // ready row already exists for those inputs (avoids the expensive live path).
-  const [normalizing, setNormalizing] = useState(false);
-  const handleNormalize = async () => {
-    if (!slots.length) return;
-    setNormalizing(true);
-    const targets = slots.map((s) => ({
-      id: s.id,
-      schoolName: s.schoolName,
-      address: s.address,
-      schoolType: "daycare" as SchoolType,
-      gradeBand: "other" as GradeBand,
-      enrollment: "150",
-    }));
-    // Patch inputs immediately so UI reflects the comparison set
-    setSlots((prev) =>
-      prev.map((s) => {
-        const t = targets.find((x) => x.id === s.id)!;
-        return { ...s, ...t, status: "loading", error: null };
-      }),
-    );
-    for (const t of targets) {
-      // Cache lookup first
-      const { data: cached } = await supabase
-        .from("site_analyses")
-        .select(
-          "id,school_profile_score,affluence_score,family_density_score,ecosystem_score,accessibility_score,sas_score,signals,latitude,longitude",
-        )
-        .eq("status", "ready")
-        .eq("address", t.address.trim())
-        .eq("school_type", t.schoolType)
-        .eq("grade_band", t.gradeBand)
-        .eq("enrollment", 150)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      let result: SiteScoreResult | null = null;
-      if (cached && cached.school_profile_score != null) {
-        result = {
-          sas: Number(cached.sas_score ?? 0),
-          pillars: {
-            schoolProfile: Number(cached.school_profile_score),
-            affluence: Number(cached.affluence_score),
-            familyDensity: Number(cached.family_density_score),
-            ecosystem: Number(cached.ecosystem_score),
-            accessibility: Number(cached.accessibility_score),
-          },
-          signals: (cached.signals ?? {}) as SiteScoreSignals,
-          geo:
-            cached.latitude != null && cached.longitude != null
-              ? { lat: Number(cached.latitude), lng: Number(cached.longitude) }
-              : undefined,
-        };
-      } else {
-        try {
-          const { data, error } = await supabase.functions.invoke("compute-sas", {
-            body: {
-              address: t.address.trim(),
-              school_name: t.schoolName.trim(),
-              school_type: t.schoolType,
-              enrollment: 150,
-              grade_band: t.gradeBand,
-            },
-          });
-          if (error) throw error;
-          if ((data as { status?: string })?.status === "failed") {
-            throw new Error((data as { error?: string }).error ?? "Engine failed");
-          }
-          result = data as SiteScoreResult;
-        } catch (e) {
-          patchSlot(t.id, { status: "error", error: (e as Error).message });
-          continue;
-        }
-      }
-      patchSlot(t.id, { status: "ready", result, error: null });
-    }
-    setNormalizing(false);
-  };
+
+
 
 
 
@@ -1648,20 +1574,8 @@ export default function SiteAnalysis() {
       {/* Formula + thresholds */}
       <section className="mb-4 rounded-lg border bg-white p-4" style={{ borderColor: BORDER }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div>
-              <button
-                type="button"
-                onClick={handleNormalize}
-                disabled={normalizing || slots.length === 0}
-                title="Re-score all cards with the same inputs (Daycare · Other · enrollment 150) for an apples-to-apples comparison"
-                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderColor: BORDER, color: NAVY, backgroundColor: "#fff" }}
-              >
-                {normalizing ? "Normalizing…" : "⇋ Normalize inputs (Daycare · Other · 150)"}
-              </button>
-            </div>
-          </div>
+          <div className="min-w-0 flex-1" />
+
           <div className="flex flex-col items-end gap-1 ml-auto">
             <div className="flex items-center gap-2">
               <button

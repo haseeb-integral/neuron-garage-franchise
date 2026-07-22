@@ -65,10 +65,12 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
+    // Service-role client: MUST NOT forward the caller's Authorization header,
+    // otherwise PostgREST treats writes as the end user and RLS applies.
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { global: { headers: { Authorization: authHeader } } },
+      { auth: { persistSession: false } },
     );
 
     // Identify the user from the JWT.

@@ -263,6 +263,13 @@ Deno.serve(async (req) => {
 
     // Chain to the next city.
     if (rest.length > 0) {
+      // Heartbeat: bump started_at so the stale-run sweeper doesn't kill a
+      // healthy multi-city run just because the outer wall clock is old.
+      if (runId) {
+        await admin.from("mvs_pipeline_runs").update({
+          started_at: new Date().toISOString(),
+        }).eq("id", runId);
+      }
       const chainP = fetch(`${supabaseUrl}/functions/v1/mvs-b3-shortlist-refresh`, {
         method: "POST",
         headers: {

@@ -39,10 +39,15 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 // of 8; a 200-provider city takes ~6-8 min end-to-end. We poll up to 12 min
 // per city, then move on regardless.
 const POLL_INTERVAL_MS = 15_000;
-const MAX_POLL_MS = 12 * 60_000;
-const STABLE_CHECKS_TO_FINISH = 3; // eligible-count stable for this many polls
+const MAX_POLL_MS = 8 * 60_000;                // per-city poll budget
+const STABLE_CHECKS_TO_FINISH = 3;             // eligible-count stable for this many polls
+// Wall-clock budget for this single invocation. Edge functions are killed
+// around ~15 min; stop polling early and chain when we're close to it so the
+// next city always gets kicked off, even if the current city isn't "done".
+const INVOCATION_BUDGET_MS = 9 * 60_000;
 
 Deno.serve(async (req) => {
+  const invocationStart = Date.now();
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -181,6 +186,14 @@ Deno.serve(async (req) => {
     let doneReason = "timeout";
     const deadline = started + MAX_POLL_MS;
     while (Date.now() < deadline) {
+      // Wall-clock guard: if we're close to the edge-function limit, stop
+      // polling and chain now. B3 keeps writing prices on its own; the next
+      // invocation will pick up the next city and this city's data continues
+      // to land after we've moved on.
+      if (Date.now() - invocationStart > INVOCATION_BUDGET_MS) {
+        doneReason = "invocation_budget";
+        break;
+      }
       await sleep(POLL_INTERVAL_MS);
       const refreshed = await countRefreshed(admin, cityLabel, startedIso);
       if (refreshed >= eligibleCount && eligibleCount > 0) {
@@ -250,6 +263,13 @@ Deno.serve(async (req) => {
 
     // Chain to the next city.
     if (rest.length > 0) {
+      // Heartbeat: bump started_at so the stale-run sweeper doesn't kill a
+      // healthy multi-city run just because the outer wall clock is old.
+      if (runId) {
+        await admin.from("mvs_pipeline_runs").update({
+          started_at: new Date().toISOString(),
+        }).eq("id", runId);
+      }
       const chainP = fetch(`${supabaseUrl}/functions/v1/mvs-b3-shortlist-refresh`, {
         method: "POST",
         headers: {

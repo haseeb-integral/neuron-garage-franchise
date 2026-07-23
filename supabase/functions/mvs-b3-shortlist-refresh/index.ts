@@ -39,8 +39,12 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 // of 8; a 200-provider city takes ~6-8 min end-to-end. We poll up to 12 min
 // per city, then move on regardless.
 const POLL_INTERVAL_MS = 15_000;
-const MAX_POLL_MS = 12 * 60_000;
-const STABLE_CHECKS_TO_FINISH = 3; // eligible-count stable for this many polls
+const MAX_POLL_MS = 8 * 60_000;                // per-city poll budget
+const STABLE_CHECKS_TO_FINISH = 3;             // eligible-count stable for this many polls
+// Wall-clock budget for this single invocation. Edge functions are killed
+// around ~15 min; stop polling early and chain when we're close to it so the
+// next city always gets kicked off, even if the current city isn't "done".
+const INVOCATION_BUDGET_MS = 9 * 60_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

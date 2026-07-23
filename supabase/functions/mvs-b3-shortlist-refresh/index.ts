@@ -47,6 +47,7 @@ const STABLE_CHECKS_TO_FINISH = 3;             // eligible-count stable for this
 const INVOCATION_BUDGET_MS = 9 * 60_000;
 
 Deno.serve(async (req) => {
+  const invocationStart = Date.now();
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {

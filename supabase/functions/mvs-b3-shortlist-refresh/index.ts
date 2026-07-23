@@ -186,6 +186,14 @@ Deno.serve(async (req) => {
     let doneReason = "timeout";
     const deadline = started + MAX_POLL_MS;
     while (Date.now() < deadline) {
+      // Wall-clock guard: if we're close to the edge-function limit, stop
+      // polling and chain now. B3 keeps writing prices on its own; the next
+      // invocation will pick up the next city and this city's data continues
+      // to land after we've moved on.
+      if (Date.now() - invocationStart > INVOCATION_BUDGET_MS) {
+        doneReason = "invocation_budget";
+        break;
+      }
       await sleep(POLL_INTERVAL_MS);
       const refreshed = await countRefreshed(admin, cityLabel, startedIso);
       if (refreshed >= eligibleCount && eligibleCount > 0) {

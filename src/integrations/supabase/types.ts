@@ -1534,6 +1534,7 @@ export type Database = {
           fallback_reason: string | null
           finished_at: string | null
           firecrawl_calls: number
+          heartbeat_at: string | null
           id: string
           source_counts: Json | null
           stage: string | null
@@ -1551,6 +1552,7 @@ export type Database = {
           fallback_reason?: string | null
           finished_at?: string | null
           firecrawl_calls?: number
+          heartbeat_at?: string | null
           id?: string
           source_counts?: Json | null
           stage?: string | null
@@ -1568,6 +1570,7 @@ export type Database = {
           fallback_reason?: string | null
           finished_at?: string | null
           firecrawl_calls?: number
+          heartbeat_at?: string | null
           id?: string
           source_counts?: Json | null
           stage?: string | null

@@ -3509,6 +3509,7 @@ export type Database = {
         Returns: undefined
       }
       mvs_qa_unresolve: { Args: { _queue_id: string }; Returns: undefined }
+      mvs_resume_stuck_b3_runs: { Args: never; Returns: number }
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

@@ -40,20 +40,22 @@ All rows land in `public.teacher_prospects`. Apollo, purchased vendor lists, and
 
 ## 3. Fit Score (0–100)
 
-Computed in `src/utils/fitScore.ts`. Inputs today:
+**Today:** `fit_score` is a numeric column on `teacher_prospects` but is **not automatically calculated**. Both discovery writers (`fetch-teacher-prospects` and `enrich-school-staff`) insert `fit_score: null`. Scores today come from manual entry (Promote flow / New Candidate modal) or legacy imports.
 
-- **Grade match** — K–6 is weighted heavily; middle/high school is down-weighted.
-- **Teacher type** — active / retired / camp_enrichment.
-- **Summer availability heuristic** — signals that a teacher can work summers.
-- **Subject match** — used for Segment 4 (enrichment/STEM adjacency).
-
-The score maps to a **Fit Tag** via `deriveFitTag`:
+`src/utils/fitScore.ts` exports only `deriveFitTag(score)`, which maps a stored score to a **Fit Tag**:
 
 - `>= 80` → **High Potential**
 - `50–79` → **Follow-Up**
 - `< 50` → **Not a Fit**
 
-Fit Score is stored on the row (`fit_score`) and is the default sort. It is also the ranking signal the AI co-pilot uses when asked for "top N".
+The tag is the default sort key in the table and the ranking signal the AI co-pilot uses when asked for "top N".
+
+**Planned inputs (Phase 2 — not yet wired):**
+
+- **Grade match** — K–6 weighted heavily; middle/high school down-weighted.
+- **Teacher type** — active / retired / camp_enrichment.
+- **Summer availability heuristic.**
+- **Subject match** — enrichment / STEM adjacency (Segment 4).
 
 ---
 

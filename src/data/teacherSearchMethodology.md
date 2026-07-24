@@ -1,6 +1,8 @@
 # Teacher Search — Methodology (Plain English)
 
-**Version:** v1.0 · **Date:** 2026-07-21 · **Audience:** Admin users
+**Version:** v1.1 · **Date:** 2026-07-24 · **Audience:** Admin users
+
+*Changed since v1.0: corrected the source filter options, and clarified that the Fit Score is not automatically calculated today — it is entered by hand or left blank until a scoring rule is wired up.*
 
 This doc explains, in plain words, how Teacher Search finds teachers and how it decides who might be a good fit. It is written for admins — not engineers. If you want the full technical spec, open the **Teacher Search Spec** page.
 

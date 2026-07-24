@@ -1,58 +1,112 @@
+## Goal
 
-# Teacher Search Docs — Accuracy Audit
+When you filter Teacher Search by "Houston," we should also pull teachers from Houston's suburbs (like Katy, Sugar Land, The Woodlands, etc.) — not just rows where `city = 'Houston'`. And we want this to be reusable for other metros later (Dallas, Phoenix, etc.).
 
-I checked both docs against the live code:
-- `src/data/teacherSearchSpec.md` (v1.0, dated 2026-07-21)
-- `src/data/teacherSearchMethodology.md` (v1.0, dated 2026-07-21)
+## The Problem Today
 
-Against: `src/pages/TeacherProspects.tsx`, `src/components/teacher-prospects/*`, `src/stores/teacherProspectsStore.ts`, `src/hooks/useTeacherProspectsData.ts`, `src/utils/fitScore.ts`, `src/lib/teacherSourceLabels.ts`, `supabase/functions/{fetch-teacher-prospects,enrich-school-staff,teacher-search-ai}/index.ts`.
+- `teacher_prospects.city` stores the exact city name from the CSV ("Katy," "Sugar Land," "Houston").
+- Filters in `TeacherFilterBar`, `CitySearchRail`, and `teacher_prospects_stats` all do an **exact match** on `city`.
+- So filtering "Houston" misses the 98 Katy rows and any other suburb rows.
 
-## Verdict
-**Not 100% accurate.** Most content is correct, but I found 4 real mismatches. Both docs still say v1.0 · 2026-07-21, so they have not been touched since the pipeline changes we shipped later.
+## The Approach — Metro Aliases Table (Single Source of Truth)
 
-## What's wrong
+Create one small lookup table that maps a **metro name** to its **member cities**. Every place in the app that filters by city checks this table first and expands the filter if the name is a known metro.
 
-### 1. Source filter values (both docs)
-- **Docs say:** filter options are "Apify / CSV / Manual" (spec §6) and describe a "source filter" in methodology §5.
-- **Code actually shows** (`TeacherFilterBar.tsx` + `teacherSourceLabels.ts`):
-  `All Sources` · `SmartLead Enriched` · `LinkedIn Import` · `Needs Email Enrichment`.
-- These are *bucketed* labels defined in `sourceLabelFor()`, not raw ingest sources.
+### New table: `public.city_metro_aliases`
 
-### 2. Fit Score is not actually computed
-- **Spec §3 says:** "Computed in `src/utils/fitScore.ts`" using grade match, teacher type, summer availability, subject match.
-- **Code:** `src/utils/fitScore.ts` only exports `deriveFitTag()` (tag from score). Both writer paths (`fetch-teacher-prospects/index.ts:262`, `enrich-school-staff/index.ts:168`) insert `fit_score: null`. No computation exists anywhere.
-- Methodology §3 makes the same overstated claim.
+| Column         | Type    | Notes                                                 |
+| -------------- | ------- | ----------------------------------------------------- |
+| `metro_name`   | text    | e.g. "Houston"                                        |
+| `metro_state`  | text    | e.g. "TX"                                             |
+| `member_city`  | text    | e.g. "Katy"                                           |
+| `member_state` | text    | e.g. "TX"                                             |
 
-### 3. Master Pool Import Wizard location
-- **Spec §5** lists `MasterPoolImportWizard` as a Teacher Search modal without noting it lives under `src/components/email-outreach/`. Minor, but confusing for engineers.
+Primary key: (`metro_name`, `metro_state`, `member_city`, `member_state`).
+The metro itself is also a member row (Houston → Houston), so one query returns the full list.
 
-### 4. Status list is incomplete / partly aspirational
-- **Docs list:** `new, shortlisted, in_outreach, in_smartlead, suppressed, not_fit`.
-- **Code:** status is a free-form string in the DB and UI; only some transitions are wired. Worth a short "actual UI actions today" note vs. the full status vocabulary.
+RLS: read for `authenticated`, write for `service_role`. No `anon`.
 
-## What is accurate (confirmed)
-- Data-source table (Apify, NCES, CSV single, CSV bulk, manual).
-- UI structure: `CitySearchRail`, `MarketContextBanner`, `NextBestActionStrip`, `FunnelWidget`, `TeacherFilterBar`, `TeacherTable`, `BulkActionBar`, `TeacherDetailPanel`, `TeacherAiPanel` — all present in `src/pages/TeacherProspects.tsx`.
-- Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard`, `AddToCampaignModal` — all imported.
-- Fit Tag thresholds (≥80 / 50–79 / <50) — match `deriveFitTag()`.
-- Edge functions (`fetch-teacher-prospects`, `enrich-school-staff`, `teacher-search-ai`) — all exist.
-- AI co-pilot behavior (Gemini 2.5 Flash, grounded, `[[FOLLOWUPS]]` sentinel, 429/402 handling, voice rules) — matches `teacher-search-ai/index.ts` exactly.
-- `teacher_prospects` schema fields — match `src/integrations/supabase/types.ts`.
+### Houston seed rows (for approval)
 
-## Proposed fix (1 turn, docs-only)
+Houston metro (Harris + surrounding counties) — the suburbs I'd seed:
 
-Update both markdown files in place:
+1. Houston
+2. Katy
+3. Sugar Land
+4. The Woodlands
+5. Pearland
+6. Cypress
+7. Spring
+8. Humble
+9. Kingwood
+10. Missouri City
+11. Friendswood
+12. League City
+13. Pasadena
+14. Baytown
+15. Conroe
+16. Tomball
+17. Richmond
+18. Rosenberg
+19. Stafford
+20. Bellaire
+21. Deer Park
+22. La Porte
+23. Channelview
+24. Atascocita
+25. Fresno
+26. Manvel
+27. Alvin
+28. Webster
+29. Seabrook
+30. Dickinson
 
-1. **Spec §6** and **Methodology §5**: replace the source-filter list with the real 4 options and briefly explain "these are bucketed labels based on `enrichment_source` + verification status".
-2. **Spec §3** and **Methodology §3**: change wording from "computed" to "planned — today `fit_score` is stored on the row but not automatically calculated; `deriveFitTag()` only maps the stored score to a tag." Move the 4-input list into "planned inputs (Phase 2)".
-3. **Spec §5**: note `MasterPoolImportWizard` lives under `components/email-outreach/` and is reused by Email Outreach.
-4. **Spec §4**: add a one-line note that not every status is reachable from the UI today; `new`, `shortlisted`, `in_outreach`, `not_fit` are the actively wired transitions.
-5. Bump both files to **v1.1 · 2026-07-24** with a short "Changed since v1.0" line.
+If any of these shouldn't count as "Houston" for your outreach, just tell me which to drop before I seed.
 
-No code changes. No component changes. Docs only.
+### How the UI uses it
 
-## Risks / not touched
-- No behavior changes; risk = zero.
-- Not touching `specMarkdown.ts` (that is the older long-form spec surface, separate doc).
+A small helper `expandCityFilter(city, state)`:
+- If the city is a metro (row exists in `city_metro_aliases` as a `metro_name`), returns the full list of member cities.
+- Otherwise, returns just `[city]`.
 
-Approve and I'll ship the doc edits in one turn.
+Three call sites get updated:
+
+1. **`teacher_prospects_stats` RPC** — accept an expanded `p_cities[]` (already supported!) so the "1,418 Houston" tile counts suburbs too.
+2. **`useTeacherProspectsData` hook** — when the active city filter is a metro, expand before the `.in('city', [...])` query.
+3. **`CitySearchRail`** — the Houston tile shows the metro total (Houston + all suburbs), with a small subtitle like "+ 29 suburbs."
+
+Exact matching still works for non-metro cities (Denver, Austin, etc.) — nothing changes for them.
+
+## Phases
+
+**Phase 1 — Schema + seed (1 turn)**
+- Migration: create `city_metro_aliases` with RLS + GRANTs.
+- Insert Houston + 29 suburbs (after you approve the list).
+- No UI change yet; existing filters keep working.
+
+**Phase 2 — Wire filters to expand (1–2 turns)**
+- Add `src/lib/metroAliases.ts` helper + a small cached hook.
+- Update `useTeacherProspectsData`, `teacher_prospects_stats` call, and `CitySearchRail` to use expansion.
+- Show "+ N suburbs" subtitle on metro tiles.
+
+**Phase 3 — (Optional, later) Add more metros**
+- Insert Dallas–Fort Worth, Phoenix, Denver metro, NYC, etc. as needed. No code change required — just data.
+
+## What Won't Change
+
+- `teacher_prospects.city` stays as-is (still "Katy" for Katy rows).
+- Non-metro cities behave exactly like today.
+- Exports, MVS scoring, City Search scoring — all untouched. This is a Teacher Search filter-layer change only.
+
+## Risks & Things to Test
+
+- **Risk:** Someone genuinely wants to filter Katy alone. Fix: the filter chip still lets you pick "Katy" directly from the city dropdown; expansion only triggers when the metro name is chosen.
+- **Test:** After Phase 1, "Houston" filter should return 1,418 rows (was 1,320). Katy alone should still return 98.
+- **Test:** Non-metro filter (e.g. "Denver") returns the same count as before.
+
+## Questions Before I Build
+
+1. Approve the 30-city Houston seed list above? Any to drop?
+2. Do you want the Houston tile in `CitySearchRail` to say "Houston + 29 suburbs" or just "Houston (1,418 teachers)"?
+
+Awaiting approval to ship Phase 1.

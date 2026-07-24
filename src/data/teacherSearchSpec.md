@@ -72,7 +72,7 @@ The tag is the default sort key in the table and the ranking signal the AI co-pi
 | `suppressed` | Do-not-contact / unsubscribed. |
 | `not_fit` | Reviewed and rejected as a fit. |
 
-Status changes from the table are optimistic and roll back on error.
+Status changes from the table are optimistic and roll back on error. **Actively wired UI transitions today:** `new`, `shortlisted`, `in_outreach`, `not_fit`. `suppressed` and `in_smartlead` exist in the vocabulary but are set only by system paths (unsubscribe hooks, legacy imports).
 
 ---
 

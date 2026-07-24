@@ -92,7 +92,7 @@ Left → right:
    - `BulkActionBar` — docked bulk-action bar that appears when rows are selected.
 4. **Right column** — `TeacherAiPanel` (grounded AI) and `TeacherDetailPanel` (opens on row click).
 
-Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard`, `AddToCampaignModal`.
+Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard` (lives under `src/components/email-outreach/` and is shared with the Email Outreach page), `AddToCampaignModal`.
 
 ---
 
@@ -102,7 +102,7 @@ The store (`useTeacherProspectsStore`) is the single source of truth for filters
 
 - `cityFilters: string[]` — multi-city. Serialized as `?city=austin,denver`.
 - `search: string` — debounced 350ms across name, school, city, specialization.
-- `sourceFilter` — Apify / CSV / Manual.
+- `sourceFilter` — one of `all` · `smartlead` · `linkedin` · `needs_email`. Shown in the UI as **All Sources**, **SmartLead Enriched**, **LinkedIn Import**, **Needs Email Enrichment**. These are *bucketed* labels derived from `enrichment_source` + `verification_status` + email presence in `src/lib/teacherSourceLabels.ts` — not the raw ingest channel.
 - `hideInOutreach: boolean` — hides rows whose `id` appears in `email_campaign_recipients`.
 - Paging: `page`, `pageSize`.
 

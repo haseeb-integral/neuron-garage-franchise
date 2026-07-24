@@ -80,11 +80,19 @@ Deno.serve(async (req) => {
     }
 
     // Build or receive the queue.
+    // Phase 2: queue is authoritative in the DB (source_counts.queue). If a
+    // chained/resumed call has a run_id, read from DB and ignore the body
+    // queue — this survives dropped chain calls and cron resumes.
     let queue: string[];
     let startedAts: Record<string, string>;
     let runId: string | null = typeof body.run_id === "string" ? body.run_id : null;
 
-    if (isChainedCall) {
+    if (runId) {
+      const sc = await readSourceCounts(admin, runId);
+      queue = Array.isArray(sc.queue) ? (sc.queue as string[]) : [];
+      startedAts = (sc.started_ats ?? body.started_ats ?? {}) as Record<string, string>;
+    } else if (isChainedCall) {
+      // Legacy path: chained call without run_id (shouldn't happen post-Phase-2).
       queue = body.queue as string[];
       startedAts = (body.started_ats ?? {}) as Record<string, string>;
     } else {
@@ -125,6 +133,7 @@ Deno.serve(async (req) => {
             current: null,
             started_at: nowIso,
             mode: "fire_and_chain",
+            resumable: true,
           },
         })
         .select("id")

@@ -50,7 +50,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [qaPhase, setQaPhase] = useState<string>("");
   // Step 4
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ inserted: number; batch_id: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ inserted: number; skipped: number; batch_id: string } | null>(null);
   // Step 5
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [destCampaignId, setDestCampaignId] = useState("");

@@ -224,16 +224,21 @@ Deno.serve(async (req) => {
         EdgeRuntime.waitUntil(chainP);
       }
     } else if (runId) {
-      // Last city kicked off. Mark run as "all kicked off" — the sweeper
-      // will close it out once b3 stops writing heartbeats. Keep status
-      // 'running' so any DB-side progress tracker can observe completion.
+      // Last city kicked off. The outer runner's job is done — B3 continues
+      // self-chaining per city in the background. Mark the run 'completed'
+      // now so the heartbeat sweeper doesn't flip it to 'failed' 3 min later.
+      // Per-city B3 progress is observable via mvs_providers row counts.
+      const nowIso = new Date().toISOString();
       const sc = await readSourceCounts(admin, runId);
       await admin.from("mvs_pipeline_runs").update({
-        heartbeat_at: new Date().toISOString(),
+        status: "completed",
+        finished_at: nowIso,
+        heartbeat_at: nowIso,
         source_counts: {
           ...sc,
-          all_kicked_off_at: new Date().toISOString(),
+          all_kicked_off_at: nowIso,
           started_ats: startedAts,
+          note: "outer dispatch done; b3 continues per-city in background",
         },
       }).eq("id", runId);
     }

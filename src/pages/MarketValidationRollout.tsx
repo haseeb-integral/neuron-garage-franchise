@@ -904,6 +904,7 @@ export default function MarketValidationRollout() {
                 state={c.state}
                 latestRun={latestRuns[c.city] ?? null}
                 flag={flags[c.city] ?? null}
+                pricesRefreshedAt={pricesRefreshedAt[c.city] ?? null}
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
                 skipInfo={skipInfos[c.city] ?? null}

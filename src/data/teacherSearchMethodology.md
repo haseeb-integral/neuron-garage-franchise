@@ -75,7 +75,7 @@ You can change a teacher's status from the table or from the detail panel.
 - **Market Context Banner.** Shows the score and tier of the city you picked. It tells you: "Is this a strong market to be prospecting in?"
 - **Next Best Action.** A single suggestion for what to do next (for example: "Push 12 verified teachers to SmartLead").
 - **Funnel Widget.** Four numbers side by side: **Total → With Email → Verified → In SmartLead**. This tells you how full each stage of the pipeline is.
-- **Filter Bar.** Search, source filter, and a switch to hide teachers who are already in outreach.
+- **Filter Bar.** Search, a **source filter** with four choices — *All Sources*, *SmartLead Enriched*, *LinkedIn Import*, *Needs Email Enrichment* — and a switch to hide teachers who are already in outreach. The source filter groups rows by where the email came from and whether it is verified, not by how the teacher was first discovered.
 - **Teacher Table.** The main list. You can sort, select rows, and act on them.
 - **Bulk Action Bar.** Appears when you select rows. Lets you tag, promote, add to a campaign, or export.
 - **Detail Panel.** Opens when you click a row. Shows the full profile.

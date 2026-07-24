@@ -541,6 +541,7 @@ async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sou
   const token = Deno.env.get("APIFY_API_TOKEN");
   if (!token) return null;
   try {
+    await checkBreaker();
     const url = `https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=45&memory=1024`;
     const body = {
       queries: query,
@@ -556,7 +557,11 @@ async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sou
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }, 45_000);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      await recordApifyFailure(res.status, "apify~google-search-scraper");
+      return null;
+    }
+    await recordApifySuccess();
     const items: unknown[] = await res.json().catch(() => []);
     if (!Array.isArray(items) || items.length === 0) return null;
     const first = items[0] as Record<string, unknown>;
@@ -569,7 +574,12 @@ async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sou
       ? sourcesRaw.map((s) => String(s.url ?? "")).filter(Boolean).slice(0, 3)
       : [];
     return { text, sources };
-  } catch {
+  } catch (e) {
+    if (e instanceof BreakerOpenError) {
+      console.warn("[fetchGoogleAiOverview] breaker open:", e.message);
+    } else {
+      await recordApifyFailure(e as Error, "apify~google-search-scraper");
+    }
     return null;
   }
 }

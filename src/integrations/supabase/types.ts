@@ -141,6 +141,48 @@ export type Database = {
         }
         Relationships: []
       }
+      apify_breaker_state: {
+        Row: {
+          consecutive_failures: number
+          id: boolean
+          last_actor: string | null
+          last_error: string | null
+          next_retry_at: string | null
+          opened_at: string | null
+          paused_at: string | null
+          paused_by: string | null
+          paused_by_user: boolean
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          id?: boolean
+          last_actor?: string | null
+          last_error?: string | null
+          next_retry_at?: string | null
+          opened_at?: string | null
+          paused_at?: string | null
+          paused_by?: string | null
+          paused_by_user?: boolean
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          id?: boolean
+          last_actor?: string | null
+          last_error?: string | null
+          next_retry_at?: string | null
+          opened_at?: string | null
+          paused_at?: string | null
+          paused_by?: string | null
+          paused_by_user?: boolean
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ask_city_conversations: {
         Row: {
           city_id: string
@@ -3428,6 +3470,50 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apify_breaker_force_close: {
+        Args: never
+        Returns: {
+          consecutive_failures: number
+          id: boolean
+          last_actor: string | null
+          last_error: string | null
+          next_retry_at: string | null
+          opened_at: string | null
+          paused_at: string | null
+          paused_by: string | null
+          paused_by_user: boolean
+          state: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "apify_breaker_state"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      apify_breaker_set_paused: {
+        Args: { _paused: boolean }
+        Returns: {
+          consecutive_failures: number
+          id: boolean
+          last_actor: string | null
+          last_error: string | null
+          next_retry_at: string | null
+          opened_at: string | null
+          paused_at: string | null
+          paused_by: string | null
+          paused_by_user: boolean
+          state: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "apify_breaker_state"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       compute_csi_tiers: { Args: never; Returns: undefined }
       db_health_history_for: {
         Args: { _days?: number; _domain: string }

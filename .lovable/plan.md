@@ -1,112 +1,72 @@
-## Goal
+# Phase 3 — Apify Circuit Breaker + Rollout UI Panel
 
-When you filter Teacher Search by "Houston," we should also pull teachers from Houston's suburbs (like Katy, Sugar Land, The Woodlands, etc.) — not just rows where `city = 'Houston'`. And we want this to be reusable for other metros later (Dallas, Phoenix, etc.).
+## Why
+When Apify is degraded (429, 5xx, credit exhausted, timeouts) our pipeline keeps hammering it. That wastes credits, burns edge-function time, and hides the real cause behind vague "failed" statuses. We also have no in-app switch to pause the pipeline when things are on fire. Phase 3 adds a **circuit breaker** in front of every Apify call and a small **control panel** on the Rollout page to see breaker state and pause/resume runs.
 
-## The Problem Today
+## What changes for the user
+- On the Rollout page a new small panel shows: Apify status (green / warning / open), last failure reason, minutes until auto-retry, and a "Pause pipeline" toggle.
+- When the breaker is **open**, new runs are blocked with a clear message ("Apify circuit open — retry in Xm") instead of failing silently mid-run.
+- Nothing else in the UI moves. No route changes, no schema changes to scoring tables.
 
-- `teacher_prospects.city` stores the exact city name from the CSV ("Katy," "Sugar Land," "Houston").
-- Filters in `TeacherFilterBar`, `CitySearchRail`, and `teacher_prospects_stats` all do an **exact match** on `city`.
-- So filtering "Houston" misses the 98 Katy rows and any other suburb rows.
+## What we are building (technical)
+1. **New table `apify_breaker_state`** (single row, `id = true`):
+   - `state` (`closed` | `half_open` | `open`)
+   - `consecutive_failures` int
+   - `opened_at`, `next_retry_at` timestamps
+   - `last_error` text, `last_actor` text
+   - `paused_by_user` bool (manual kill-switch)
+   - `updated_at`
+   - RLS: read for authenticated, write only via SECURITY DEFINER functions.
 
-## The Approach — Metro Aliases Table (Single Source of Truth)
+2. **Shared helper** `supabase/functions/_shared/apifyBreaker.ts`:
+   - `checkBreaker()` → throws `BreakerOpenError` if open or paused.
+   - `recordApifySuccess()` → resets failures, closes breaker.
+   - `recordApifyFailure(err, actor)` → increments; opens breaker after **3 consecutive failures** OR any 402/429; sets `next_retry_at = now + 10 min` (exp back-off up to 60 min).
+   - Wraps only Apify HTTP calls; not Firecrawl, not Gemini.
 
-Create one small lookup table that maps a **metro name** to its **member cities**. Every place in the app that filters by city checks this table first and expands the filter if the name is a known metro.
+3. **Wire the helper** into the two callers:
+   - `mvs-discover-providers/index.ts` (Google Maps runner)
+   - `mvs-price-b3/index.ts` (Apify Website Content Crawler calls)
+   Each call site: `await checkBreaker()` before, `recordApifySuccess/Failure` after.
 
-### New table: `public.city_metro_aliases`
+4. **Rollout panel** (`src/pages/MarketValidationRollout.tsx`):
+   - Small `ApifyBreakerCard` component above the city table.
+   - Reads `apify_breaker_state` (polled every 15s while page open).
+   - Shows dot + label, last error, countdown to auto-retry.
+   - "Pause pipeline" / "Resume" button (manager+admin only) calls a new RPC `apify_breaker_set_paused(bool)`.
+   - "Force close" button (admin only) calls `apify_breaker_force_close()` for manual override.
 
-| Column         | Type    | Notes                                                 |
-| -------------- | ------- | ----------------------------------------------------- |
-| `metro_name`   | text    | e.g. "Houston"                                        |
-| `metro_state`  | text    | e.g. "TX"                                             |
-| `member_city`  | text    | e.g. "Katy"                                           |
-| `member_state` | text    | e.g. "TX"                                             |
+5. **DB functions (SECURITY DEFINER, staff-gated)**:
+   - `apify_breaker_set_paused(_paused bool)`
+   - `apify_breaker_force_close()`
+   Both write to `apify_breaker_state` and log to `notifications`.
 
-Primary key: (`metro_name`, `metro_state`, `member_city`, `member_state`).
-The metro itself is also a member row (Houston → Houston), so one query returns the full list.
+## What we are NOT touching
+- Scoring math, MBI, tiers, providers table — untouched.
+- `mvs-b3-shortlist-refresh` orchestrator — it inherits protection through the shared helper; no logic changes there.
+- Firecrawl, Gemini, Google Maps direct calls — different providers, out of scope.
+- No changes to `us_cities_scored`, `mvs_providers`, `city_briefs`.
 
-RLS: read for `authenticated`, write for `service_role`. No `anon`.
+## Risk / testing
+- Risk: breaker opens too eagerly and blocks a real run. Mitigation: 3-strike rule + only 402/429 opens on first hit.
+- Risk: paused toggle is forgotten and stops overnight runs. Mitigation: `paused_by_user=true` is shown in bright amber; auto-retry ignores manual pause.
+- Smoke test after each phase step:
+  1. Trigger a normal Denver refresh → breaker stays closed, panel green.
+  2. Manually flip `paused_by_user=true` in DB → next Run click blocked with clear toast.
+  3. Force an Apify 429 in one call → breaker opens, panel shows countdown, other cities blocked until timer expires.
 
-### Houston seed rows (for approval)
+## Turn breakdown
+- **Turn 1 (this one after approval)**: migration for `apify_breaker_state` + two RPCs + shared helper file.
+- **Turn 2**: wire helper into `mvs-discover-providers` and `mvs-price-b3`.
+- **Turn 3**: `ApifyBreakerCard` component + hook into `MarketValidationRollout.tsx`.
+- **Turn 4**: smoke test + polish copy.
 
-Houston metro (Harris + surrounding counties) — the suburbs I'd seed:
+Estimated: **~4 Lovable turns** total.
 
-1. Houston
-2. Katy
-3. Sugar Land
-4. The Woodlands
-5. Pearland
-6. Cypress
-7. Spring
-8. Humble
-9. Kingwood
-10. Missouri City
-11. Friendswood
-12. League City
-13. Pasadena
-14. Baytown
-15. Conroe
-16. Tomball
-17. Richmond
-18. Rosenberg
-19. Stafford
-20. Bellaire
-21. Deer Park
-22. La Porte
-23. Channelview
-24. Atascocita
-25. Fresno
-26. Manvel
-27. Alvin
-28. Webster
-29. Seabrook
-30. Dickinson
+## What you should test after each turn
+- Turn 1: migration approved, no red errors in logs.
+- Turn 2: run any city; verify it still completes; check breaker row shows a recent `updated_at`.
+- Turn 3: panel appears on `/market-validation/rollout`, pause toggle works, countdown renders.
+- Turn 4: force a failure, verify blocking + auto-retry.
 
-If any of these shouldn't count as "Houston" for your outreach, just tell me which to drop before I seed.
-
-### How the UI uses it
-
-A small helper `expandCityFilter(city, state)`:
-- If the city is a metro (row exists in `city_metro_aliases` as a `metro_name`), returns the full list of member cities.
-- Otherwise, returns just `[city]`.
-
-Three call sites get updated:
-
-1. **`teacher_prospects_stats` RPC** — accept an expanded `p_cities[]` (already supported!) so the "1,418 Houston" tile counts suburbs too.
-2. **`useTeacherProspectsData` hook** — when the active city filter is a metro, expand before the `.in('city', [...])` query.
-3. **`CitySearchRail`** — the Houston tile shows the metro total (Houston + all suburbs), with a small subtitle like "+ 29 suburbs."
-
-Exact matching still works for non-metro cities (Denver, Austin, etc.) — nothing changes for them.
-
-## Phases
-
-**Phase 1 — Schema + seed (1 turn)**
-- Migration: create `city_metro_aliases` with RLS + GRANTs.
-- Insert Houston + 29 suburbs (after you approve the list).
-- No UI change yet; existing filters keep working.
-
-**Phase 2 — Wire filters to expand (1–2 turns)**
-- Add `src/lib/metroAliases.ts` helper + a small cached hook.
-- Update `useTeacherProspectsData`, `teacher_prospects_stats` call, and `CitySearchRail` to use expansion.
-- Show "+ N suburbs" subtitle on metro tiles.
-
-**Phase 3 — (Optional, later) Add more metros**
-- Insert Dallas–Fort Worth, Phoenix, Denver metro, NYC, etc. as needed. No code change required — just data.
-
-## What Won't Change
-
-- `teacher_prospects.city` stays as-is (still "Katy" for Katy rows).
-- Non-metro cities behave exactly like today.
-- Exports, MVS scoring, City Search scoring — all untouched. This is a Teacher Search filter-layer change only.
-
-## Risks & Things to Test
-
-- **Risk:** Someone genuinely wants to filter Katy alone. Fix: the filter chip still lets you pick "Katy" directly from the city dropdown; expansion only triggers when the metro name is chosen.
-- **Test:** After Phase 1, "Houston" filter should return 1,418 rows (was 1,320). Katy alone should still return 98.
-- **Test:** Non-metro filter (e.g. "Denver") returns the same count as before.
-
-## Questions Before I Build
-
-1. Approve the 30-city Houston seed list above? Any to drop?
-2. Do you want the Houston tile in `CitySearchRail` to say "Houston + 29 suburbs" or just "Houston (1,418 teachers)"?
-
-Awaiting approval to ship Phase 1.
+Waiting for your approval before I touch any code.

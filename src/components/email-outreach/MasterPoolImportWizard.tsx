@@ -471,6 +471,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
                     <CheckCircle2 size={28} className="text-[#16a34a]" />
                     <div className="text-sm font-bold">Inserted {importResult.inserted.toLocaleString()} rows</div>
+                    {importResult.skipped > 0 && (
+                      <div className="text-xs text-[#526078]">Skipped {importResult.skipped.toLocaleString()} duplicate {importResult.skipped === 1 ? "row" : "rows"} (already in Master Pool or repeated in the file).</div>
+                    )}
                     {destination === "master_only" && <div className="text-xs text-[#526078]">Done. Close this window to continue.</div>}
                   </div>
                 )}

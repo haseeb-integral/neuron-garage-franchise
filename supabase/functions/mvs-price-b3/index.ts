@@ -17,6 +17,12 @@
 // Defaults: state = "TX", limit = 25, dryRun = false.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  BreakerOpenError,
+  checkBreaker,
+  recordApifyFailure,
+  recordApifySuccess,
+} from "../_shared/apifyBreaker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -180,6 +186,7 @@ async function fetchAiOverview(
 
   let json: any = null;
   try {
+    await checkBreaker();
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -190,12 +197,18 @@ async function fetchAiOverview(
       const errTxt = await res.text().catch(() => "");
       const msg = `apify HTTP ${res.status}: ${errTxt.slice(0, 400)}`;
       console.error(`[mvs-price-b3] APIFY FAIL provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+      await recordApifyFailure(res.status, actorId);
       throw new Error(msg);
     }
     json = await res.json();
+    await recordApifySuccess();
   } catch (err) {
-    const msg = (err as Error).message || String(err);
-    console.error(`[mvs-price-b3] APIFY EXCEPTION provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+    if (!(err instanceof BreakerOpenError)) {
+      const msg = (err as Error).message || String(err);
+      console.error(`[mvs-price-b3] APIFY EXCEPTION provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+      // AbortError = timeout; treat as failure signal for the breaker too.
+      await recordApifyFailure(err as Error, actorId);
+    }
     throw err;
   } finally {
     clearTimeout(to);
@@ -491,7 +504,13 @@ Deno.serve(async (req) => {
     }
 
     // Fire-and-forget next batch so this HTTP request returns quickly.
-    if (hasMore) {
+    // Skip chaining if the Apify breaker just opened — the resume cron will
+    // pick this up once the back-off elapses.
+    let breakerOpen = false;
+    try { await checkBreaker(); } catch (e) {
+      if (e instanceof BreakerOpenError) breakerOpen = true;
+    }
+    if (hasMore && !breakerOpen) {
       const nextBody = {
         city: cityLabel,
         offset: nextOffset,
@@ -532,6 +551,14 @@ Deno.serve(async (req) => {
       results,
     }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
+    if (e instanceof BreakerOpenError) {
+      return new Response(JSON.stringify({
+        error: e.message,
+        breaker_open: true,
+        paused_by_user: e.paused,
+        retry_at: e.retryAt,
+      }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

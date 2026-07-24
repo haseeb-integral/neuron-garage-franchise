@@ -8,6 +8,12 @@
 // signal.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  BreakerOpenError,
+  checkBreaker,
+  recordApifyFailure,
+  recordApifySuccess,
+} from "../_shared/apifyBreaker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -535,6 +541,7 @@ async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sou
   const token = Deno.env.get("APIFY_API_TOKEN");
   if (!token) return null;
   try {
+    await checkBreaker();
     const url = `https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=45&memory=1024`;
     const body = {
       queries: query,
@@ -550,7 +557,11 @@ async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sou
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }, 45_000);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      await recordApifyFailure(res.status, "apify~google-search-scraper");
+      return null;
+    }
+    await recordApifySuccess();
     const items: unknown[] = await res.json().catch(() => []);
     if (!Array.isArray(items) || items.length === 0) return null;
     const first = items[0] as Record<string, unknown>;
@@ -563,7 +574,12 @@ async function fetchGoogleAiOverview(query: string): Promise<{ text: string; sou
       ? sourcesRaw.map((s) => String(s.url ?? "")).filter(Boolean).slice(0, 3)
       : [];
     return { text, sources };
-  } catch {
+  } catch (e) {
+    if (e instanceof BreakerOpenError) {
+      console.warn("[fetchGoogleAiOverview] breaker open:", e.message);
+    } else {
+      await recordApifyFailure(e as Error, "apify~google-search-scraper");
+    }
     return null;
   }
 }
@@ -596,6 +612,7 @@ async function runGoogleMaps(args: {
   for (const q of queries) {
     const qDebug: Record<string, unknown> = { query: q };
     try {
+      await checkBreaker();
       const body = {
         searchStringsArray: [q],
         locationQuery: `${city}, ${state}`,
@@ -612,9 +629,11 @@ async function runGoogleMaps(args: {
       if (!res.ok) {
         qDebug.error = `apify ${res.status}`;
         qDebug.body = (await res.text()).slice(0, 300);
+        await recordApifyFailure(res.status, actorId);
         perQueryDebug.push(qDebug);
         continue;
       }
+      await recordApifySuccess();
       const items: unknown[] = await res.json().catch(() => []);
       const arr = Array.isArray(items) ? items : [];
       qDebug.items_returned = arr.length;
@@ -640,7 +659,15 @@ async function runGoogleMaps(args: {
       }
       qDebug.providers_added = added;
     } catch (e) {
+      if (e instanceof BreakerOpenError) {
+        qDebug.error = `breaker_open: ${e.message}`;
+        qDebug.breaker_open = true;
+        perQueryDebug.push(qDebug);
+        // Stop trying further queries — the breaker is open for a reason.
+        break;
+      }
       qDebug.error = e instanceof Error ? e.message : String(e);
+      await recordApifyFailure(e as Error, actorId);
     }
     perQueryDebug.push(qDebug);
   }

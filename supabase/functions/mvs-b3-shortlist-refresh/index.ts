@@ -224,8 +224,8 @@ Deno.serve(async (req) => {
           apikey: serviceKey,
         },
         body: JSON.stringify({
-          queue: rest,
-          started_ats: startedAts,
+          // Phase 2: queue lives in DB; only pass run_id. Body queue is a
+          // legacy fallback and intentionally omitted.
           run_id: runId,
           dryRun,
         }),
@@ -234,10 +234,8 @@ Deno.serve(async (req) => {
         EdgeRuntime.waitUntil(chainP);
       }
     } else if (runId) {
-      // Last city kicked off. The outer runner's job is done — B3 continues
-      // self-chaining per city in the background. Mark the run 'completed'
-      // now so the heartbeat sweeper doesn't flip it to 'failed' 3 min later.
-      // Per-city B3 progress is observable via mvs_providers row counts.
+      // Last city kicked off. Clear the queue in DB and mark completed so
+      // the sweeper + resume cron both know there is nothing left to do.
       const nowIso = new Date().toISOString();
       const sc = await readSourceCounts(admin, runId);
       await admin.from("mvs_pipeline_runs").update({
@@ -246,6 +244,7 @@ Deno.serve(async (req) => {
         heartbeat_at: nowIso,
         source_counts: {
           ...sc,
+          queue: [],
           all_kicked_off_at: nowIso,
           started_ats: startedAts,
           note: "outer dispatch done; b3 continues per-city in background",

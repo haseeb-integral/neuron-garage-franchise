@@ -551,6 +551,14 @@ Deno.serve(async (req) => {
       results,
     }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
+    if (e instanceof BreakerOpenError) {
+      return new Response(JSON.stringify({
+        error: e.message,
+        breaker_open: true,
+        paused_by_user: e.paused,
+        retry_at: e.retryAt,
+      }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

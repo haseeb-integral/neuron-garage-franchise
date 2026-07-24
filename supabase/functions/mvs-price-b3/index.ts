@@ -186,6 +186,7 @@ async function fetchAiOverview(
 
   let json: any = null;
   try {
+    await checkBreaker();
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -196,12 +197,18 @@ async function fetchAiOverview(
       const errTxt = await res.text().catch(() => "");
       const msg = `apify HTTP ${res.status}: ${errTxt.slice(0, 400)}`;
       console.error(`[mvs-price-b3] APIFY FAIL provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+      await recordApifyFailure(res.status, actorId);
       throw new Error(msg);
     }
     json = await res.json();
+    await recordApifySuccess();
   } catch (err) {
-    const msg = (err as Error).message || String(err);
-    console.error(`[mvs-price-b3] APIFY EXCEPTION provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+    if (!(err instanceof BreakerOpenError)) {
+      const msg = (err as Error).message || String(err);
+      console.error(`[mvs-price-b3] APIFY EXCEPTION provider="${provider.name}" city="${city}" actor="${actorId}" -> ${msg}`);
+      // AbortError = timeout; treat as failure signal for the breaker too.
+      await recordApifyFailure(err as Error, actorId);
+    }
     throw err;
   } finally {
     clearTimeout(to);

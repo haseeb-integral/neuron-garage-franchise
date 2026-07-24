@@ -50,7 +50,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [qaPhase, setQaPhase] = useState<string>("");
   // Step 4
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ inserted: number; batch_id: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ inserted: number; skipped: number; batch_id: string } | null>(null);
   // Step 5
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [destCampaignId, setDestCampaignId] = useState("");
@@ -212,14 +212,49 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         };
       }).filter(Boolean) as Array<Record<string, unknown>>;
 
-      // Chunked insert with progress
+      // ---- Dedupe: within-batch + against existing Master Pool ----
+      const seenEmails = new Set<string>();
+      const dedupedRows: Array<Record<string, unknown>> = [];
+      let skippedInBatch = 0;
+      for (const r of targetRows) {
+        const em = (r.email as string | null) ?? null;
+        if (em) {
+          if (seenEmails.has(em)) { skippedInBatch++; continue; }
+          seenEmails.add(em);
+        }
+        dedupedRows.push(r);
+      }
+
+      const allEmails = Array.from(seenEmails);
+      const existingSet = new Set<string>();
+      const EMAIL_CHECK_CHUNK = 500;
+      for (let i = 0; i < allEmails.length; i += EMAIL_CHECK_CHUNK) {
+        const slice = allEmails.slice(i, i + EMAIL_CHECK_CHUNK);
+        const { data: existing, error: exErr } = await supabase
+          .from("teacher_prospects")
+          .select("email")
+          .in("email", slice);
+        if (exErr) throw new Error(`Duplicate check failed: ${exErr.message}`);
+        for (const row of existing ?? []) {
+          if (row.email) existingSet.add(String(row.email).toLowerCase());
+        }
+      }
+
+      const rowsToInsert = dedupedRows.filter((r) => {
+        const em = (r.email as string | null) ?? null;
+        return !em || !existingSet.has(em);
+      });
+      const skippedExisting = dedupedRows.length - rowsToInsert.length;
+      const totalSkipped = skippedInBatch + skippedExisting;
+
+      // Chunked insert with progress (per-row safe: pre-filtered duplicates)
       const CHUNK = 500;
-      const totalChunks = Math.max(1, Math.ceil(targetRows.length / CHUNK));
-      const tId = toast.loading(`Importing ${targetRows.length.toLocaleString()} rows… 0/${totalChunks}`);
+      const totalChunks = Math.max(1, Math.ceil(rowsToInsert.length / CHUNK));
+      const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped as duplicates)` : ""}`);
       let inserted = 0;
       try {
-        for (let i = 0; i < targetRows.length; i += CHUNK) {
-          const chunk = targetRows.slice(i, i + CHUNK);
+        for (let i = 0; i < rowsToInsert.length; i += CHUNK) {
+          const chunk = rowsToInsert.slice(i, i + CHUNK);
           const { error } = await supabase.from("teacher_prospects").insert(chunk as never);
           if (error) throw new Error(`chunk starting at row ${i}: ${error.message}`);
           inserted += chunk.length;
@@ -228,18 +263,18 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         }
       } catch (e) {
         await supabase.from("teacher_import_batches")
-          .update({ status: "failed", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted } })
+          .update({ status: "failed", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, skipped_duplicates: totalSkipped } })
           .eq("id", batch.id);
         toast.error(`Import failed after ${inserted.toLocaleString()} rows: ${(e as Error).message}`, { id: tId });
         throw e;
       }
 
       await supabase.from("teacher_import_batches")
-        .update({ status: "complete", approved_count: inserted, record_count: targetRows.length })
+        .update({ status: "complete", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting } })
         .eq("id", batch.id);
 
-      setImportResult({ inserted, batch_id: batch.id });
-      toast.success(`Imported ${inserted.toLocaleString()} teachers into Master Pool`, { id: tId });
+      setImportResult({ inserted, skipped: totalSkipped, batch_id: batch.id });
+      toast.success(`Imported ${inserted.toLocaleString()} teachers${totalSkipped ? ` (skipped ${totalSkipped.toLocaleString()} duplicates)` : ""}`, { id: tId });
 
       if (destination === "master_and_smartlead") {
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");
@@ -436,6 +471,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
                     <CheckCircle2 size={28} className="text-[#16a34a]" />
                     <div className="text-sm font-bold">Inserted {importResult.inserted.toLocaleString()} rows</div>
+                    {importResult.skipped > 0 && (
+                      <div className="text-xs text-[#526078]">Skipped {importResult.skipped.toLocaleString()} duplicate {importResult.skipped === 1 ? "row" : "rows"} (already in Master Pool or repeated in the file).</div>
+                    )}
                     {destination === "master_only" && <div className="text-xs text-[#526078]">Done. Close this window to continue.</div>}
                   </div>
                 )}

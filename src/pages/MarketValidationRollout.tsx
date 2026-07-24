@@ -397,6 +397,7 @@ export default function MarketValidationRollout() {
   const [isManager, setIsManager] = useState<boolean | null>(null);
   const [latestRuns, setLatestRuns] = useState<Record<string, RunRow | null>>({});
   const [flags, setFlags] = useState<Record<string, FlagRow>>({});
+  const [pricesRefreshedAt, setPricesRefreshedAt] = useState<Record<string, string | null>>({});
   const [composites, setComposites] = useState<Record<string, number | null>>({});
 
   const [invokingCity, setInvokingCity] = useState<string | null>(null);

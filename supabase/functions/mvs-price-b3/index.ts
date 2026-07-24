@@ -17,6 +17,12 @@
 // Defaults: state = "TX", limit = 25, dryRun = false.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  BreakerOpenError,
+  checkBreaker,
+  recordApifyFailure,
+  recordApifySuccess,
+} from "../_shared/apifyBreaker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

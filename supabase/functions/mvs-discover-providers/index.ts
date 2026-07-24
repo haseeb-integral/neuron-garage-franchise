@@ -612,6 +612,7 @@ async function runGoogleMaps(args: {
   for (const q of queries) {
     const qDebug: Record<string, unknown> = { query: q };
     try {
+      await checkBreaker();
       const body = {
         searchStringsArray: [q],
         locationQuery: `${city}, ${state}`,
@@ -628,9 +629,11 @@ async function runGoogleMaps(args: {
       if (!res.ok) {
         qDebug.error = `apify ${res.status}`;
         qDebug.body = (await res.text()).slice(0, 300);
+        await recordApifyFailure(res.status, actorId);
         perQueryDebug.push(qDebug);
         continue;
       }
+      await recordApifySuccess();
       const items: unknown[] = await res.json().catch(() => []);
       const arr = Array.isArray(items) ? items : [];
       qDebug.items_returned = arr.length;
@@ -656,7 +659,15 @@ async function runGoogleMaps(args: {
       }
       qDebug.providers_added = added;
     } catch (e) {
+      if (e instanceof BreakerOpenError) {
+        qDebug.error = `breaker_open: ${e.message}`;
+        qDebug.breaker_open = true;
+        perQueryDebug.push(qDebug);
+        // Stop trying further queries — the breaker is open for a reason.
+        break;
+      }
       qDebug.error = e instanceof Error ? e.message : String(e);
+      await recordApifyFailure(e as Error, actorId);
     }
     perQueryDebug.push(qDebug);
   }

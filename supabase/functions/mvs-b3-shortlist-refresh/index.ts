@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
     const startedIso = new Date().toISOString();
     startedAts[cityLabel] = startedIso;
 
-    // Heartbeat + mark current city.
+    // Heartbeat + mark current city + shrink queue in DB (authoritative).
     if (runId) {
       const sc = await readSourceCounts(admin, runId);
       const kickedOff = [...(sc.kicked_off ?? []), cityLabel];
@@ -170,6 +170,7 @@ Deno.serve(async (req) => {
         heartbeat_at: startedIso,
         source_counts: {
           ...sc,
+          queue: rest,
           current: cityLabel,
           current_started_at: startedIso,
           kicked_off: kickedOff,

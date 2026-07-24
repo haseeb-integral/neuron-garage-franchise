@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({} as any));
     const dryRun = Boolean(body.dryRun ?? false);
-    const isChainedCall = Array.isArray(body.queue);
+    const isChainedCall = Array.isArray(body.queue) || typeof body.run_id === "string";
 
     // First call: manager/admin auth check; chained calls use service-role and skip.
     if (!isChainedCall) {

@@ -43,6 +43,7 @@ const docsNavItems = [
   { title: "Candidate Pipeline", url: "/candidate-pipeline-methodology", icon: Kanban },
   { title: "Teacher Search Spec", url: "/teacher-search-spec", icon: Users },
   { title: "Teacher Search Methodology", url: "/teacher-search-methodology", icon: Users },
+  { title: "Expanding Teacher Search", url: "/expanding-teacher-search-methodology", icon: Users },
   { title: "Observability Guide", url: "/observability-guide", icon: Activity },
   { title: "Observability Spec", url: "/observability-spec", icon: FileCode2 },
   { title: "Outreach Guide", url: "/email-outreach-docs", icon: MailOpen },

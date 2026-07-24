@@ -1,7 +1,9 @@
 # Teacher Search — Feature Spec
 
-**Version:** v1.0 · **Date:** 2026-07-21 · **Owner:** Neuron Garage / Lovable
+**Version:** v1.1 · **Date:** 2026-07-24 · **Owner:** Neuron Garage / Lovable
 **Status:** Shipped, evolving. **Source of truth:** this page + the Teacher Search Methodology doc + the current chat.
+
+**Changed since v1.0 (2026-07-24):** corrected source-filter values, clarified that Fit Score is stored but not auto-computed today, noted `MasterPoolImportWizard` is shared with Email Outreach, and flagged which status transitions are actually wired in the UI.
 
 ---
 

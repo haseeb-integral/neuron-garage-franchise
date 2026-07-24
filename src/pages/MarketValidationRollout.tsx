@@ -84,6 +84,7 @@ function CityRow({
   state: _state,
   latestRun,
   flag,
+  pricesRefreshedAt,
   anyRunning,
   invokingCity,
   skipInfo,
@@ -96,6 +97,7 @@ function CityRow({
   state: string;
   latestRun: RunRow | null;
   flag: FlagRow | null;
+  pricesRefreshedAt: string | null;
   anyRunning: boolean;
   invokingCity: string | null;
   skipInfo: SkipInfo | null;
@@ -322,11 +324,27 @@ function CityRow({
       </td>
 
       <td className="px-3 py-2.5 text-[11px] text-[#526078]">
-        {latestRun?.finished_at
-          ? new Date(latestRun.finished_at).toLocaleString()
-          : latestRun?.started_at
-            ? new Date(latestRun.started_at).toLocaleString()
-            : "—"}
+        <div>
+          {latestRun?.finished_at
+            ? new Date(latestRun.finished_at).toLocaleString()
+            : latestRun?.started_at
+              ? new Date(latestRun.started_at).toLocaleString()
+              : "—"}
+        </div>
+        {pricesRefreshedAt && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-0.5 text-[10px] text-[#8a96aa] cursor-help">
+                Prices refreshed: {new Date(pricesRefreshedAt).toLocaleDateString()}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[260px] text-[11px] leading-snug">
+              Latest time any provider price for this city was updated. Shortlist-wide B3
+              refresh runs write a single combined log row, so per-city runs may not appear
+              in the “Last run” column even when prices were refreshed.
+            </TooltipContent>
+          </Tooltip>
+        )}
       </td>
       <td className="px-3 py-2.5">{statusPill}</td>
       <td className="px-3 py-2.5 text-right font-mono text-[13px] text-[#07142f]">
@@ -397,6 +415,7 @@ export default function MarketValidationRollout() {
   const [isManager, setIsManager] = useState<boolean | null>(null);
   const [latestRuns, setLatestRuns] = useState<Record<string, RunRow | null>>({});
   const [flags, setFlags] = useState<Record<string, FlagRow>>({});
+  const [pricesRefreshedAt, setPricesRefreshedAt] = useState<Record<string, string | null>>({});
   const [composites, setComposites] = useState<Record<string, number | null>>({});
 
   const [invokingCity, setInvokingCity] = useState<string | null>(null);
@@ -512,6 +531,25 @@ export default function MarketValidationRollout() {
       };
     }
     setFlags(next);
+
+    // Latest provider write per shortlist city → "Prices refreshed" hint.
+    // The B3 shortlist refresh writes a single run row with a synthetic city name,
+    // so per-city timestamps don't appear in mvs_pipeline_runs. Provider rows do
+    // carry the real city, so we read max(updated_at) from mvs_providers.
+    const refreshedEntries = await Promise.all(
+      cities.map(async (c) => {
+        const { data } = await supabase
+          .from("mvs_providers")
+          .select("updated_at")
+          .eq("city", c)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        return [c, (data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? null] as const;
+      }),
+    );
+    const refreshedMap: Record<string, string | null> = {};
+    for (const [c, ts] of refreshedEntries) refreshedMap[c] = ts;
+    setPricesRefreshedAt(refreshedMap);
   }, [SHORTLISTED_CITIES]);
 
   useEffect(() => {
@@ -884,6 +922,7 @@ export default function MarketValidationRollout() {
                 state={c.state}
                 latestRun={latestRuns[c.city] ?? null}
                 flag={flags[c.city] ?? null}
+                pricesRefreshedAt={pricesRefreshedAt[c.city] ?? null}
                 anyRunning={anyRunning}
                 invokingCity={invokingCity}
                 skipInfo={skipInfos[c.city] ?? null}

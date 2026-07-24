@@ -838,6 +838,8 @@ export default function MarketValidationRollout() {
       </div>
 
 
+      {/* Apify circuit breaker status + manual pause/resume */}
+      <ApifyBreakerCard />
 
       {/* Trust banner: red cities need a re-run */}
       {redCities.length > 0 && (

@@ -324,11 +324,27 @@ function CityRow({
       </td>
 
       <td className="px-3 py-2.5 text-[11px] text-[#526078]">
-        {latestRun?.finished_at
-          ? new Date(latestRun.finished_at).toLocaleString()
-          : latestRun?.started_at
-            ? new Date(latestRun.started_at).toLocaleString()
-            : "—"}
+        <div>
+          {latestRun?.finished_at
+            ? new Date(latestRun.finished_at).toLocaleString()
+            : latestRun?.started_at
+              ? new Date(latestRun.started_at).toLocaleString()
+              : "—"}
+        </div>
+        {pricesRefreshedAt && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-0.5 text-[10px] text-[#8a96aa] cursor-help">
+                Prices refreshed: {new Date(pricesRefreshedAt).toLocaleDateString()}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[260px] text-[11px] leading-snug">
+              Latest time any provider price for this city was updated. Shortlist-wide B3
+              refresh runs write a single combined log row, so per-city runs may not appear
+              in the “Last run” column even when prices were refreshed.
+            </TooltipContent>
+          </Tooltip>
+        )}
       </td>
       <td className="px-3 py-2.5">{statusPill}</td>
       <td className="px-3 py-2.5 text-right font-mono text-[13px] text-[#07142f]">

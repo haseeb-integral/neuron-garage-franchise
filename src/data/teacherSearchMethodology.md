@@ -1,6 +1,8 @@
 # Teacher Search — Methodology (Plain English)
 
-**Version:** v1.0 · **Date:** 2026-07-21 · **Audience:** Admin users
+**Version:** v1.1 · **Date:** 2026-07-24 · **Audience:** Admin users
+
+*Changed since v1.0: corrected the source filter options, and clarified that the Fit Score is not automatically calculated today — it is entered by hand or left blank until a scoring rule is wired up.*
 
 This doc explains, in plain words, how Teacher Search finds teachers and how it decides who might be a good fit. It is written for admins — not engineers. If you want the full technical spec, open the **Teacher Search Spec** page.
 
@@ -36,14 +38,14 @@ Every teacher we add ends up in one table (`teacher_prospects`), so nothing is s
 
 The Fit Score is a number from **0 to 100**. Higher = better fit. It is a rough helper, not a promise.
 
-The score looks at four things:
+**Today the score is not calculated automatically.** New teachers come in with an empty Fit Score. A score only appears when a person types one in (for example, when promoting a teacher to the Candidate Pipeline) or when an older import already had one. We plan to turn on an automatic rule later that looks at:
 
-- **Grade level.** Teachers who teach **Kindergarten to Grade 6** get a big boost. Middle and high school teachers get a smaller boost.
-- **Teacher type.** Are they **active**, **retired**, or already doing **camp / enrichment** work? Camp and enrichment backgrounds score higher.
-- **Summer availability.** If we see signals that the person can work in summer, we boost the score.
-- **Subject match.** Teachers in subjects close to our camps (STEM, art, enrichment) get extra points.
+- **Grade level.** Teachers who teach **Kindergarten to Grade 6** would get a big boost. Middle and high school teachers would get a smaller boost.
+- **Teacher type.** Active, retired, or already doing **camp / enrichment** work. Camp and enrichment backgrounds would score higher.
+- **Summer availability.** Signals that the person can work in summer would boost the score.
+- **Subject match.** Teachers in subjects close to our camps (STEM, art, enrichment) would get extra points.
 
-The score maps to a plain-English tag:
+Whatever the score is, it maps to a plain-English tag:
 
 - **80 and above → "High Potential"**
 - **50 to 79 → "Follow-Up"**
@@ -73,7 +75,7 @@ You can change a teacher's status from the table or from the detail panel.
 - **Market Context Banner.** Shows the score and tier of the city you picked. It tells you: "Is this a strong market to be prospecting in?"
 - **Next Best Action.** A single suggestion for what to do next (for example: "Push 12 verified teachers to SmartLead").
 - **Funnel Widget.** Four numbers side by side: **Total → With Email → Verified → In SmartLead**. This tells you how full each stage of the pipeline is.
-- **Filter Bar.** Search, source filter, and a switch to hide teachers who are already in outreach.
+- **Filter Bar.** Search, a **source filter** with four choices — *All Sources*, *SmartLead Enriched*, *LinkedIn Import*, *Needs Email Enrichment* — and a switch to hide teachers who are already in outreach. The source filter groups rows by where the email came from and whether it is verified, not by how the teacher was first discovered.
 - **Teacher Table.** The main list. You can sort, select rows, and act on them.
 - **Bulk Action Bar.** Appears when you select rows. Lets you tag, promote, add to a campaign, or export.
 - **Detail Panel.** Opens when you click a row. Shows the full profile.

@@ -1,7 +1,9 @@
 # Teacher Search — Feature Spec
 
-**Version:** v1.0 · **Date:** 2026-07-21 · **Owner:** Neuron Garage / Lovable
+**Version:** v1.1 · **Date:** 2026-07-24 · **Owner:** Neuron Garage / Lovable
 **Status:** Shipped, evolving. **Source of truth:** this page + the Teacher Search Methodology doc + the current chat.
+
+**Changed since v1.0 (2026-07-24):** corrected source-filter values, clarified that Fit Score is stored but not auto-computed today, noted `MasterPoolImportWizard` is shared with Email Outreach, and flagged which status transitions are actually wired in the UI.
 
 ---
 
@@ -38,20 +40,22 @@ All rows land in `public.teacher_prospects`. Apollo, purchased vendor lists, and
 
 ## 3. Fit Score (0–100)
 
-Computed in `src/utils/fitScore.ts`. Inputs today:
+**Today:** `fit_score` is a numeric column on `teacher_prospects` but is **not automatically calculated**. Both discovery writers (`fetch-teacher-prospects` and `enrich-school-staff`) insert `fit_score: null`. Scores today come from manual entry (Promote flow / New Candidate modal) or legacy imports.
 
-- **Grade match** — K–6 is weighted heavily; middle/high school is down-weighted.
-- **Teacher type** — active / retired / camp_enrichment.
-- **Summer availability heuristic** — signals that a teacher can work summers.
-- **Subject match** — used for Segment 4 (enrichment/STEM adjacency).
-
-The score maps to a **Fit Tag** via `deriveFitTag`:
+`src/utils/fitScore.ts` exports only `deriveFitTag(score)`, which maps a stored score to a **Fit Tag**:
 
 - `>= 80` → **High Potential**
 - `50–79` → **Follow-Up**
 - `< 50` → **Not a Fit**
 
-Fit Score is stored on the row (`fit_score`) and is the default sort. It is also the ranking signal the AI co-pilot uses when asked for "top N".
+The tag is the default sort key in the table and the ranking signal the AI co-pilot uses when asked for "top N".
+
+**Planned inputs (Phase 2 — not yet wired):**
+
+- **Grade match** — K–6 weighted heavily; middle/high school down-weighted.
+- **Teacher type** — active / retired / camp_enrichment.
+- **Summer availability heuristic.**
+- **Subject match** — enrichment / STEM adjacency (Segment 4).
 
 ---
 
@@ -68,7 +72,7 @@ Fit Score is stored on the row (`fit_score`) and is the default sort. It is also
 | `suppressed` | Do-not-contact / unsubscribed. |
 | `not_fit` | Reviewed and rejected as a fit. |
 
-Status changes from the table are optimistic and roll back on error.
+Status changes from the table are optimistic and roll back on error. **Actively wired UI transitions today:** `new`, `shortlisted`, `in_outreach`, `not_fit`. `suppressed` and `in_smartlead` exist in the vocabulary but are set only by system paths (unsubscribe hooks, legacy imports).
 
 ---
 
@@ -88,7 +92,7 @@ Left → right:
    - `BulkActionBar` — docked bulk-action bar that appears when rows are selected.
 4. **Right column** — `TeacherAiPanel` (grounded AI) and `TeacherDetailPanel` (opens on row click).
 
-Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard`, `AddToCampaignModal`.
+Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard` (lives under `src/components/email-outreach/` and is shared with the Email Outreach page), `AddToCampaignModal`.
 
 ---
 
@@ -98,7 +102,7 @@ The store (`useTeacherProspectsStore`) is the single source of truth for filters
 
 - `cityFilters: string[]` — multi-city. Serialized as `?city=austin,denver`.
 - `search: string` — debounced 350ms across name, school, city, specialization.
-- `sourceFilter` — Apify / CSV / Manual.
+- `sourceFilter` — one of `all` · `smartlead` · `linkedin` · `needs_email`. Shown in the UI as **All Sources**, **SmartLead Enriched**, **LinkedIn Import**, **Needs Email Enrichment**. These are *bucketed* labels derived from `enrichment_source` + `verification_status` + email presence in `src/lib/teacherSourceLabels.ts` — not the raw ingest channel.
 - `hideInOutreach: boolean` — hides rows whose `id` appears in `email_campaign_recipients`.
 - Paging: `page`, `pageSize`.
 

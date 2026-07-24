@@ -848,6 +848,33 @@ export type Database = {
         }
         Relationships: []
       }
+      city_metro_aliases: {
+        Row: {
+          created_at: string
+          id: string
+          member_city: string
+          member_state: string
+          metro_name: string
+          metro_state: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_city: string
+          member_state: string
+          metro_name: string
+          metro_state: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_city?: string
+          member_state?: string
+          metro_name?: string
+          metro_state?: string
+        }
+        Relationships: []
+      }
       city_narratives: {
         Row: {
           city_id: string

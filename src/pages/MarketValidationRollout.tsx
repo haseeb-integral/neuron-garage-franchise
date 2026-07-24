@@ -84,6 +84,7 @@ function CityRow({
   state: _state,
   latestRun,
   flag,
+  pricesRefreshedAt,
   anyRunning,
   invokingCity,
   skipInfo,
@@ -96,6 +97,7 @@ function CityRow({
   state: string;
   latestRun: RunRow | null;
   flag: FlagRow | null;
+  pricesRefreshedAt: string | null;
   anyRunning: boolean;
   invokingCity: string | null;
   skipInfo: SkipInfo | null;

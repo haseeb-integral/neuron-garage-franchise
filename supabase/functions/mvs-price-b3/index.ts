@@ -504,7 +504,13 @@ Deno.serve(async (req) => {
     }
 
     // Fire-and-forget next batch so this HTTP request returns quickly.
-    if (hasMore) {
+    // Skip chaining if the Apify breaker just opened — the resume cron will
+    // pick this up once the back-off elapses.
+    let breakerOpen = false;
+    try { await checkBreaker(); } catch (e) {
+      if (e instanceof BreakerOpenError) breakerOpen = true;
+    }
+    if (hasMore && !breakerOpen) {
       const nextBody = {
         city: cityLabel,
         offset: nextOffset,

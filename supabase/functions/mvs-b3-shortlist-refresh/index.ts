@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({} as any));
     const dryRun = Boolean(body.dryRun ?? false);
-    const isChainedCall = Array.isArray(body.queue);
+    const isChainedCall = Array.isArray(body.queue) || typeof body.run_id === "string";
 
     // First call: manager/admin auth check; chained calls use service-role and skip.
     if (!isChainedCall) {
@@ -80,11 +80,19 @@ Deno.serve(async (req) => {
     }
 
     // Build or receive the queue.
+    // Phase 2: queue is authoritative in the DB (source_counts.queue). If a
+    // chained/resumed call has a run_id, read from DB and ignore the body
+    // queue — this survives dropped chain calls and cron resumes.
     let queue: string[];
     let startedAts: Record<string, string>;
     let runId: string | null = typeof body.run_id === "string" ? body.run_id : null;
 
-    if (isChainedCall) {
+    if (runId) {
+      const sc = await readSourceCounts(admin, runId);
+      queue = Array.isArray(sc.queue) ? (sc.queue as string[]) : [];
+      startedAts = (sc.started_ats ?? body.started_ats ?? {}) as Record<string, string>;
+    } else if (isChainedCall) {
+      // Legacy path: chained call without run_id (shouldn't happen post-Phase-2).
       queue = body.queue as string[];
       startedAts = (body.started_ats ?? {}) as Record<string, string>;
     } else {
@@ -125,6 +133,7 @@ Deno.serve(async (req) => {
             current: null,
             started_at: nowIso,
             mode: "fire_and_chain",
+            resumable: true,
           },
         })
         .select("id")
@@ -153,7 +162,7 @@ Deno.serve(async (req) => {
     const startedIso = new Date().toISOString();
     startedAts[cityLabel] = startedIso;
 
-    // Heartbeat + mark current city.
+    // Heartbeat + mark current city + shrink queue in DB (authoritative).
     if (runId) {
       const sc = await readSourceCounts(admin, runId);
       const kickedOff = [...(sc.kicked_off ?? []), cityLabel];
@@ -161,6 +170,7 @@ Deno.serve(async (req) => {
         heartbeat_at: startedIso,
         source_counts: {
           ...sc,
+          queue: rest,
           current: cityLabel,
           current_started_at: startedIso,
           kicked_off: kickedOff,
@@ -214,8 +224,8 @@ Deno.serve(async (req) => {
           apikey: serviceKey,
         },
         body: JSON.stringify({
-          queue: rest,
-          started_ats: startedAts,
+          // Phase 2: queue lives in DB; only pass run_id. Body queue is a
+          // legacy fallback and intentionally omitted.
           run_id: runId,
           dryRun,
         }),
@@ -224,10 +234,8 @@ Deno.serve(async (req) => {
         EdgeRuntime.waitUntil(chainP);
       }
     } else if (runId) {
-      // Last city kicked off. The outer runner's job is done — B3 continues
-      // self-chaining per city in the background. Mark the run 'completed'
-      // now so the heartbeat sweeper doesn't flip it to 'failed' 3 min later.
-      // Per-city B3 progress is observable via mvs_providers row counts.
+      // Last city kicked off. Clear the queue in DB and mark completed so
+      // the sweeper + resume cron both know there is nothing left to do.
       const nowIso = new Date().toISOString();
       const sc = await readSourceCounts(admin, runId);
       await admin.from("mvs_pipeline_runs").update({
@@ -236,6 +244,7 @@ Deno.serve(async (req) => {
         heartbeat_at: nowIso,
         source_counts: {
           ...sc,
+          queue: [],
           all_kicked_off_at: nowIso,
           started_ats: startedAts,
           note: "outer dispatch done; b3 continues per-city in background",

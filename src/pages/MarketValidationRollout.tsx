@@ -513,6 +513,25 @@ export default function MarketValidationRollout() {
       };
     }
     setFlags(next);
+
+    // Latest provider write per shortlist city → "Prices refreshed" hint.
+    // The B3 shortlist refresh writes a single run row with a synthetic city name,
+    // so per-city timestamps don't appear in mvs_pipeline_runs. Provider rows do
+    // carry the real city, so we read max(updated_at) from mvs_providers.
+    const refreshedEntries = await Promise.all(
+      cities.map(async (c) => {
+        const { data } = await supabase
+          .from("mvs_providers")
+          .select("updated_at")
+          .eq("city", c)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        return [c, (data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? null] as const;
+      }),
+    );
+    const refreshedMap: Record<string, string | null> = {};
+    for (const [c, ts] of refreshedEntries) refreshedMap[c] = ts;
+    setPricesRefreshedAt(refreshedMap);
   }, [SHORTLISTED_CITIES]);
 
   useEffect(() => {

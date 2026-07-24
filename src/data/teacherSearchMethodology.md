@@ -38,14 +38,14 @@ Every teacher we add ends up in one table (`teacher_prospects`), so nothing is s
 
 The Fit Score is a number from **0 to 100**. Higher = better fit. It is a rough helper, not a promise.
 
-The score looks at four things:
+**Today the score is not calculated automatically.** New teachers come in with an empty Fit Score. A score only appears when a person types one in (for example, when promoting a teacher to the Candidate Pipeline) or when an older import already had one. We plan to turn on an automatic rule later that looks at:
 
-- **Grade level.** Teachers who teach **Kindergarten to Grade 6** get a big boost. Middle and high school teachers get a smaller boost.
-- **Teacher type.** Are they **active**, **retired**, or already doing **camp / enrichment** work? Camp and enrichment backgrounds score higher.
-- **Summer availability.** If we see signals that the person can work in summer, we boost the score.
-- **Subject match.** Teachers in subjects close to our camps (STEM, art, enrichment) get extra points.
+- **Grade level.** Teachers who teach **Kindergarten to Grade 6** would get a big boost. Middle and high school teachers would get a smaller boost.
+- **Teacher type.** Active, retired, or already doing **camp / enrichment** work. Camp and enrichment backgrounds would score higher.
+- **Summer availability.** Signals that the person can work in summer would boost the score.
+- **Subject match.** Teachers in subjects close to our camps (STEM, art, enrichment) would get extra points.
 
-The score maps to a plain-English tag:
+Whatever the score is, it maps to a plain-English tag:
 
 - **80 and above → "High Potential"**
 - **50 to 79 → "Follow-Up"**

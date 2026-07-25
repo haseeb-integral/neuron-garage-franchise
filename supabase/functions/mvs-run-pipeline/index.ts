@@ -67,7 +67,7 @@ function nextStage(s: Stage): Stage {
 }
 
 const STEP_TIMEOUT_MS = 4 * 60 * 1000;
-const STALE_MS = 3 * 60 * 1000;
+const STALE_MS = 15 * 60 * 1000;
 
 // EdgeRuntime is provided by Supabase's edge runtime.
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };

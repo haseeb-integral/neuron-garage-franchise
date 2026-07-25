@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
     .from("mvs_pipeline_runs")
     .update({
       status: "failed",
-      error: "auto-cleared stale in-flight run (>3 min old, no stage progress)",
+      error: "auto-cleared stale in-flight run (>15 min old, no stage progress)",
       finished_at: new Date().toISOString(),
     })
     .eq("city", city)

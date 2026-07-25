@@ -55,18 +55,10 @@ When Apify is degraded (429, 5xx, credit exhausted, timeouts) our pipeline keeps
   2. Manually flip `paused_by_user=true` in DB → next Run click blocked with clear toast.
   3. Force an Apify 429 in one call → breaker opens, panel shows countdown, other cities blocked until timer expires.
 
-## Turn breakdown
-- **Turn 1 (this one after approval)**: migration for `apify_breaker_state` + two RPCs + shared helper file.
-- **Turn 2**: wire helper into `mvs-discover-providers` and `mvs-price-b3`.
-- **Turn 3**: `ApifyBreakerCard` component + hook into `MarketValidationRollout.tsx`.
-- **Turn 4**: smoke test + polish copy.
+## Turn breakdown — all shipped ✅
+- **Turn 1** ✅: migration for `apify_breaker_state` + two RPCs + shared helper file.
+- **Turn 2** ✅: wired helper into `mvs-discover-providers` and `mvs-price-b3`.
+- **Turn 3** ✅: `ApifyBreakerCard` component on `/market-validation/rollout`.
+- **Turn 4** ✅ (2026-07-25): forced breaker open via SQL, confirmed red banner + "Circuit open — auto-retry in ~10 min" + countdown + last error render correctly. Called `mvs-price-b3` while open → `apify_calls: 0` (blocked). Reset breaker to closed. Copy already clear; no polish needed.
 
-Estimated: **~4 Lovable turns** total.
-
-## What you should test after each turn
-- Turn 1: migration approved, no red errors in logs.
-- Turn 2: run any city; verify it still completes; check breaker row shows a recent `updated_at`.
-- Turn 3: panel appears on `/market-validation/rollout`, pause toggle works, countdown renders.
-- Turn 4: force a failure, verify blocking + auto-retry.
-
-Waiting for your approval before I touch any code.
+Phase 3 complete.

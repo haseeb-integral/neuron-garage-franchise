@@ -261,6 +261,7 @@ Deno.serve(async (req) => {
       stage: "discover",
       stage_started_at: nowIso,
       started_at: nowIso,
+      heartbeat_at: nowIso,
       firecrawl_calls: 0,
       triggering_user_id: triggeringUserId,
     })

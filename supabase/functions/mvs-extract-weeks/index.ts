@@ -566,7 +566,7 @@ Deno.serve(async (req) => {
   } else {
     const { data: run, error: runErr } = await admin
       .from("mvs_pipeline_runs")
-      .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString() })
+      .insert({ city, status: "running", firecrawl_calls: 0, started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
       .select()
       .single();
     if (runErr || !run) {

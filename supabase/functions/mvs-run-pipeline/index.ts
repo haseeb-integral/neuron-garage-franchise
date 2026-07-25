@@ -480,6 +480,7 @@ async function advanceRun(
           .update({
             stage: upcoming,
             stage_started_at: new Date().toISOString(),
+            heartbeat_at: new Date().toISOString(),
             firecrawl_calls: firecrawlCalls,
             source_counts: sourceCounts,
           })

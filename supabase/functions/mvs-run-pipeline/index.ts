@@ -328,7 +328,7 @@ async function advanceRun(
   // Mark this stage as started (for stale detection).
   await admin
     .from("mvs_pipeline_runs")
-    .update({ stage_started_at: new Date().toISOString() })
+    .update({ stage_started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
     .eq("id", runId);
 
   const doWork = (async () => {

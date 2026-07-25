@@ -67,7 +67,7 @@ function nextStage(s: Stage): Stage {
 }
 
 const STEP_TIMEOUT_MS = 4 * 60 * 1000;
-const STALE_MS = 3 * 60 * 1000;
+const STALE_MS = 15 * 60 * 1000;
 
 // EdgeRuntime is provided by Supabase's edge runtime.
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
     .from("mvs_pipeline_runs")
     .update({
       status: "failed",
-      error: "auto-cleared stale in-flight run (>3 min old, no stage progress)",
+      error: "auto-cleared stale in-flight run (>15 min old, no stage progress)",
       finished_at: new Date().toISOString(),
     })
     .eq("city", city)
@@ -261,6 +261,7 @@ Deno.serve(async (req) => {
       stage: "discover",
       stage_started_at: nowIso,
       started_at: nowIso,
+      heartbeat_at: nowIso,
       firecrawl_calls: 0,
       triggering_user_id: triggeringUserId,
     })
@@ -327,7 +328,7 @@ async function advanceRun(
   // Mark this stage as started (for stale detection).
   await admin
     .from("mvs_pipeline_runs")
-    .update({ stage_started_at: new Date().toISOString() })
+    .update({ stage_started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() })
     .eq("id", runId);
 
   const doWork = (async () => {
@@ -479,6 +480,7 @@ async function advanceRun(
           .update({
             stage: upcoming,
             stage_started_at: new Date().toISOString(),
+            heartbeat_at: new Date().toISOString(),
             firecrawl_calls: firecrawlCalls,
             source_counts: sourceCounts,
           })

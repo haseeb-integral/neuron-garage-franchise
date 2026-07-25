@@ -40,7 +40,7 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 // Small delay between city kickoffs so we don't slam Apify with 13 parallel
 // b3 chains at once. B3 itself self-chains per city; this just staggers the
 // starts.
-const STAGGER_MS = 45_000;
+const STAGGER_MS = 120_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         city: cityLabel,
         offset: 0,
-        batchSize: 8,
+        batchSize: 4,
         totalLimit: 500,
         dryRun,
       }),

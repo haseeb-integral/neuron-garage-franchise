@@ -231,14 +231,19 @@ function cleanCategory(raw: string | null | undefined): string | null {
 function score1PricingAcceptance(
   providers: MvsProviderInput[],
 ): { score: number | null; inputs: MvsScoreInputs["pricingAcceptance"] } {
-  const premium = providers.filter((p) => p.tier === "premium");
+  // Pricing Acceptance asks "are families in this city paying premium prices?"
+  // The honest denominator is the whole priced market, not just providers
+  // already tagged Premium — a premium-only pool self-selects for high prices
+  // and inflates the "% ≥ $500/wk" number (e.g. Indy showed 50% with only 6
+  // premium rows, vs ~4% across all 190 priced providers).
+  //
   // Use price_min as the per-week proxy. Sawyer/Google list price_max as the
   // top of the provider's price range — that's almost always a multi-week or
   // full-season bundle (e.g. $13,595 for a country day camp full summer),
   // which would blow past the $300–$700 weekly normalization band and
   // produce a meaningless median. price_min reliably tracks single-week /
   // single-session pricing; we fall back to price_max only when min is null.
-  const prices = premium
+  const prices = providers
     .map((p) => (p.price_min != null ? p.price_min : p.price_max))
     .filter((v): v is number => v != null && Number.isFinite(v));
 

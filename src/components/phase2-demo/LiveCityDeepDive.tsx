@@ -294,7 +294,7 @@ function resultSentenceFor(
 const INPUT_LABELS: Record<string, string> = {
   medianPrice: "Median weekly price (est.)",
   p75Price: "75th-pct weekly price (est.)",
-  pctAtLeast500: "% of providers ≥ $500/wk",
+  pctAtLeast500: "% of priced providers ≥ $500/wk",
   selloutRate: "Sellout rate",
   premiumProviderCount: "Premium providers",
   categoryCount: "Categories represented",

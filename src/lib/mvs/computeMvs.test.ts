@@ -50,9 +50,9 @@ const defaultWatchlist: MvsOperatorWatchlistEntry[] = [
 // ---------------------------------------------------------------------------
 
 describe("Score 1: Pricing Acceptance", () => {
-  it("scores null when no premium providers", () => {
+  it("scores null when no priced providers", () => {
     const r = computeMvs(
-      [makeProvider({ tier: "mid" })],
+      [makeProvider({ tier: "mid", price_min: null, price_max: null })],
       [],
       defaultAcs,
     );

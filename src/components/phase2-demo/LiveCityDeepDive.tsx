@@ -294,7 +294,7 @@ function resultSentenceFor(
 const INPUT_LABELS: Record<string, string> = {
   medianPrice: "Median weekly price (est.)",
   p75Price: "75th-pct weekly price (est.)",
-  pctAtLeast500: "% of providers ≥ $500/wk",
+  pctAtLeast500: "% of priced providers ≥ $500/wk",
   selloutRate: "Sellout rate",
   premiumProviderCount: "Premium providers",
   categoryCount: "Categories represented",
@@ -676,6 +676,14 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => premiumProviders.filter((p) => (p.price_min ?? null) != null).length,
     [premiumProviders],
   );
+  // Pricing Acceptance now uses ALL priced providers, not just premium ones.
+  // Track the whole-market counts for the pricing trust line so the "X of Y
+  // had readable prices" sentence matches the denominator the score uses.
+  const nAllProviders = providers.length;
+  const nAllPriced = useMemo(
+    () => providers.filter((p) => (p.price_min ?? null) != null || (p.price_max ?? null) != null).length,
+    [providers],
+  );
   const nWithCategory = useMemo(
     () => premiumProviders.filter((p) => !!(p as any).category_classified).length,
     [premiumProviders],
@@ -716,10 +724,10 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     }
 
     if (key === "pricingAcceptance") {
-      if (nWithPrice === 0) return { level: "low", detail: `0 of ${nTotal} premium providers had a readable price.` };
-      if (nWithPrice < 5) return { level: "low", detail: `${nWithPrice} of ${nTotal} providers had readable prices — too few for a stable median.` };
-      const level = nWithPrice < 10 ? "medium" : "high";
-      return { level, detail: `${nWithPrice} of ${nTotal} providers had readable prices.` };
+      if (nAllPriced === 0) return { level: "low", detail: `0 of ${nAllProviders} providers had a readable price.` };
+      if (nAllPriced < 5) return { level: "low", detail: `${nAllPriced} of ${nAllProviders} providers had readable prices — too few for a stable median.` };
+      const level = nAllPriced < 10 ? "medium" : "high";
+      return { level, detail: `${nAllPriced} of ${nAllProviders} providers had readable prices (all tiers).` };
     }
 
     if (key === "enrichmentDiversity") {

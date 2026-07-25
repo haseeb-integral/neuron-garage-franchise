@@ -676,6 +676,14 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
     () => premiumProviders.filter((p) => (p.price_min ?? null) != null).length,
     [premiumProviders],
   );
+  // Pricing Acceptance now uses ALL priced providers, not just premium ones.
+  // Track the whole-market counts for the pricing trust line so the "X of Y
+  // had readable prices" sentence matches the denominator the score uses.
+  const nAllProviders = providers.length;
+  const nAllPriced = useMemo(
+    () => providers.filter((p) => (p.price_min ?? null) != null || (p.price_max ?? null) != null).length,
+    [providers],
+  );
   const nWithCategory = useMemo(
     () => premiumProviders.filter((p) => !!(p as any).category_classified).length,
     [premiumProviders],

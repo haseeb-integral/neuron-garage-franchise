@@ -222,7 +222,7 @@ function bandWhyFor(
     const med = fmt(input?.medianPrice, 0);
     const pct = fmt(input?.pctAtLeast500, 0);
     if (med == null || pct == null) return null;
-    return `Why: median weekly price $${med} and ${pct}% of providers at $500+/wk give a ${word} score of ${s} (${thr}).`;
+    return `Why: median weekly price $${med} and ${pct}% of priced providers at $500+/wk give a ${word} score of ${s} (${thr}).`;
   }
   if (key === "scaledOperator") {
     const op = input?.operatorValidation;

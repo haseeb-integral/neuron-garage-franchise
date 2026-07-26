@@ -72,22 +72,6 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | QA queue | **Retired.** Per-pillar confidence chips + Provider Evidence Verify/Reject/Edit replace it. | — |
 | Firecrawl cost cap | **50 calls per run total**, sub-caps: discover ≤25, classify ≤15, extract ≤15 | — |
 | National brand identity | **`mvs_operator_watchlist` DB table** with `aliases text[]` and `is_premium_brand boolean` is the single source of truth. No hard-coded brand arrays anywhere. | — |
-| Discovery sources | **Sawyer (single URL) + ActivityHero + Google Maps (Apify) + Yelp (category-scoped) + Google Search** (5 sources) | More platforms case-by-case |
-| Scheduling | **Manual trigger** ("Run Pipeline" button per city) | Inngest/Trigger.dev post-client-meeting |
-| Cities in scope | **Any city** can be added; freshness rules apply uniformly | — |
-| Scrape cadence | **1 run per click**, gated by freshness rules below | Multi-scrape history once cadence is automated |
-| Freshness rules | **0–90 days: auto-skip. 91–120: prompt user. >120: fresh crawl. Force-fresh always overrides.** Backend hard-guard enforces even if UI bypassed. | — |
-| Soft-fail fallback | Fresh crawl fails but saved data ≤120 days exists → status `done_stale`, score stays visible, amber banner shown | — |
-| Pipeline runner | **Self-chaining stage machine** (one stage per edge invocation). 4-min sub-timeouts + 20-min overall watchdog + DB sweeper. | — |
-| Premium tier rule | **Two-gate: `price_min ≥ 300` AND `price_max ≥ 400`.** Unpriced → Mid (or Premium only for unpriced national brand). | Tighten brand override for below-gate priced brand-name camps (in flight) |
-| Primary pricing source | **B3 Google AI Overview via Gemini** (`MVS_B3_PRIMARY_ENABLED=true`), unit-aware, self-chaining batches. | — |
-| Market Absorption | **Removed from composite (weight 0)** | Not planned |
-| Market Balance Index | **Review flag only (weight 0).** Emits saturated/healthy/unproven. | — |
-| Registration-page scraping | **Retired.** `mvs-extract-weeks` is a no-op shell. | Not planned |
-| Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
-| QA queue | **Retired.** Per-pillar confidence chips + Provider Evidence Verify/Reject/Edit replace it. | — |
-| Firecrawl cost cap | **50 calls per run total**, sub-caps: discover ≤25, classify ≤15, extract ≤15 | — |
-| National brand identity | **`mvs_operator_watchlist` DB table (with `aliases` array)** is the single source of truth. No hard-coded brand arrays. | — |
 
 ---
 

@@ -1147,7 +1147,7 @@ export function LiveCityDeepDive({ cityKey, cityDisplay, stateDisplay }: Props) 
                             ? v
                             : v.toFixed(2)
                           : String(v);
-                      const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay, activeCamps);
+                      const proof = proofForInput(k, premiumProviders, categoryCounts, watchlist, overrides, acs, cityDisplay, providers);
                       return (
                         <li key={k} className="flex items-center justify-between gap-2 text-[11px]">
                           <span style={{ color: MUTED }}>{INPUT_LABELS[k] ?? k}</span>

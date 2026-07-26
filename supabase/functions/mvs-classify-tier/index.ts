@@ -287,20 +287,20 @@ Deno.serve(async (req) => {
         /\b(daycare|preschool|childcare|after.?school\s+care|learning\s+center|montessori\s+school)\b/.test(
           nameLc,
         );
-      const isNationalPremium =
-        /\b(galileo|id\s*tech|steve\s*&?\s*kate|snapology|lavner|mad\s+science|code\s+ninjas|british\s+soccer|challenger\s+sports|school\s+of\s+rock)\b/.test(
-          nameLc,
-        );
+      // Single source of truth: Premium brand list comes from
+      // mvs_operator_watchlist (is_premium_brand=true) + aliases, loaded above.
+      const isNationalPremium = matchesPremiumBrand(nameLc);
 
+      // Precedence (Phase 2 rule): community > price-gate override > brand > AI.
+      // The two-gate price rule is a HARD OVERRIDE — if a provider has a real
+      // listed price and it fails the gate, it cannot be Premium even if the
+      // AI tagged it Premium or the brand is on the premium watchlist.
+      // Exception: known Premium brands with NO listed price keep Premium
+      // (the "no price + known brand" fallback).
       if (isCommunityBrand || isChildcareLike) {
         tier = "community";
-      } else if (isNationalPremium) {
-        tier = "premium";
       } else if (hasPrice) {
         // Two-gate premium rule: BOTH min >= 300 AND max >= 400 required.
-        // Fixes the "wide-range trap" where a $100–$500 drop-in listing
-        // was tagged Premium via `pMax >= 400`, then its $100 min dragged
-        // the Pricing Acceptance median down to sub-floor values.
         if (pMin >= 300 && pMax >= 400) {
           tier = "premium";
         } else if (pMax > 0 && pMax < 200 && (pMin === 0 || pMin < 200)) {
@@ -308,11 +308,11 @@ Deno.serve(async (req) => {
         } else {
           tier = "mid";
         }
+      } else if (isNationalPremium) {
+        // No price + known premium brand → keep Premium (brand fallback).
+        tier = "premium";
       } else {
-        // Option A: no price + not a known national premium brand => never Premium.
-        // Source count alone is a findability signal, not a pricing signal, so
-        // we default unpriced rows to Mid and let QA/scraping upgrade them
-        // later once a real price is captured.
+        // No price + not a known premium brand → never Premium.
         tier = tier === "premium" ? "mid" : tier;
       }
 

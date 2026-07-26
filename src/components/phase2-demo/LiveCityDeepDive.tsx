@@ -366,23 +366,33 @@ function proofForInput(
   overrides: any[],
   acs: { affluent_dual_income_family_count: number; children_5_12_count: number } | null,
   cityDisplay: string,
+  allProviders: any[],
 ): { title: string; subtitle: string; rows: ProofRow[] } | null {
   if (
     key === "medianPrice" ||
     key === "p75Price" ||
     key === "pctAtLeast500"
   ) {
-    const withPrice = premiumProviders
-      .filter((p) => (p.price_min ?? null) != null)
-      .map((p) => ({
-        label: p.name,
-        value: `$${p.price_min}${p.price_max && p.price_max !== p.price_min ? `–$${p.price_max}` : ""}/wk`,
-        providerId: p.id ?? null,
-      }))
+    // Mirror computeMvs.score1PricingAcceptance: any priced provider (any tier)
+    // with a readable weekly price counts. Filtering to premium-only here made
+    // the drill-down disagree with the score denominator.
+    const withPrice = allProviders
+      .filter((p) => (p.price_min ?? null) != null || (p.price_max ?? null) != null)
+      .map((p) => {
+        const lo = p.price_min ?? p.price_max;
+        const hi = p.price_max ?? p.price_min;
+        const priceLabel =
+          lo != null && hi != null && hi !== lo ? `$${lo}–$${hi}/wk` : `$${lo}/wk`;
+        return {
+          label: p.name,
+          value: `${priceLabel}${p.tier ? ` · ${p.tier}` : ""}`,
+          providerId: p.id ?? null,
+        };
+      })
       .sort((a, b) => a.label.localeCompare(b.label));
     return {
       title: `Providers behind this number (${withPrice.length})`,
-      subtitle: "Premium providers with a readable weekly price",
+      subtitle: "All priced providers (any tier) with a readable weekly price",
       rows: withPrice,
     };
   }

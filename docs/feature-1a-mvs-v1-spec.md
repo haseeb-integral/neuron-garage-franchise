@@ -75,7 +75,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **3. MVS composite — v1.8**
+## **3. MVS composite — v1.9**
 
 ```
 MVS = 0.2667 × Pricing Acceptance
@@ -121,8 +121,9 @@ Non-camp exclusions (daycare, park, retail workshop, drop-in club, etc.) applied
 
 * Input: every non-excluded row from Discovery.
 * Tag each provider: **Premium / Mid / Budget / Community**.
-* **Two-gate rule:** Premium requires `price_min ≥ 300 AND price_max ≥ 400` for any priced row. This is enforced post-Gemini in code, not left to the LLM.
-* Unpriced rows → **Mid** by default. Unpriced rows matching a `mvs_operator_watchlist` national premium brand → **Premium**.
+* **Two-gate rule (hard override):** Premium requires `price_min ≥ 300 AND price_max ≥ 400` for any priced row. Enforced post-Gemini in code. Beats brand identity — a brand-name provider priced below the gate goes to Mid.
+* **Precedence:** `community/childcare > price-gate > brand > AI`.
+* Unpriced rows → **Mid** by default. Unpriced rows matching an `is_premium_brand = true` row in `mvs_operator_watchlist` → **Premium**.
 * Community brands (YMCA, JCC, parks & rec, churches, scouts, etc.) → **Community** regardless of price.
 * Childcare-like unpriced rows → **Community** with `category_classified='childcare-excluded'`.
 * Runs in **parallel waves of 5** with a 60s per-call timeout and 130s soft deadline.
@@ -319,7 +320,7 @@ Client never holds Firecrawl, Apify, or Lovable AI Gateway keys. Every function 
 4. **PDF Market Brief** generates in <30s; every numeric claim links to a source URL or screenshot where available.
 5. **Slider change** updates the composite on all surfaces (row, panel, compare modal, PDF) using the same helper.
 6. **Freshness rules** behave end-to-end: 0–90 skip toast + badge, 91–120 prompt, >120 fresh, force-fresh override — verified in both UI and backend hard-guard.
-7. **Two-gate rule** holds: no Premium row has `price_min < 300` or `price_max < 400` (except unpriced national-brand entries after §11 fix).
+7. **Two-gate rule** holds as a hard override: no priced Premium row has `price_min < 300` or `price_max < 400`. Only unpriced `is_premium_brand = true` rows are exempt.
 
 ---
 
@@ -340,13 +341,12 @@ Captured here per project preference rather than left as one-off tweaks.
 
 ## **11. Planned next (approved / in flight)**
 
-* **Fix: reclassify must observe B3 writes.** Orchestrator currently advances past `b3` while pricing is still running in the background, so `reclassify` can decide tiers on empty prices. Fix in flight: either poll `source_counts.b3_price_pass.in_progress` until false (with 8-min cap) or add a completion-signal row before `reclassify`. This is the root cause of Washington, DC showing 4 Premium / 55 total with Pricing Acceptance = 0 (2026-07-21).
-* **Fix: national-brand override respects the two-gate.** A brand-name match with a real price below `min ≥ 300 AND max ≥ 400` should go to Mid, not Premium. Steve & Kate's at $114–134 should not have carried Premium.
-* **Backfill:** one-time reclassify for every city already run (Austin, Nashville, Phoenix, Washington DC, etc.).
+* **B3 unit-normalization pass.** Session-bundled prices (Mad Science, Code Ninjas, etc. often quoted per-session or per-day) need to be normalized to weekly before the two-gate is applied, so genuine premium brands aren't demoted to Mid by a low `price_max`. Do NOT weaken the gate to fix this.
+* **Reclassify observability.** Keep tracking whether any orchestrator run advances past `b3` before pricing is fully written; add a completion-signal row if it recurs.
 
 ---
 
-## **12. Out of scope for v1.8 (do not drift)**
+## **12. Out of scope for v1.9 (do not drift)**
 
 * Apify Google Maps as a **separate** discovery source (it already runs — do not double-count).
 * Inngest / Trigger.dev scheduling.

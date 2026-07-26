@@ -166,6 +166,41 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Load the single source of truth for Premium brand recognition from the
+  // watchlist. Any row flagged is_premium_brand=true (plus its aliases) is
+  // treated as a nationally recognized premium operator. This replaces the
+  // previous hard-coded regex so adding a new premium brand is a one-row DB
+  // insert, not a code change.
+  const { data: brandRows, error: brandErr } = await admin
+    .from("mvs_operator_watchlist")
+    .select("name, aliases")
+    .eq("is_premium_brand", true);
+  if (brandErr) {
+    return new Response(
+      JSON.stringify({ error: `load premium brands: ${brandErr.message}` }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  const premiumBrandTerms: string[] = [];
+  for (const b of brandRows ?? []) {
+    const name = (b as { name?: string }).name;
+    if (name) premiumBrandTerms.push(name.toLowerCase());
+    const aliases = (b as { aliases?: string[] | null }).aliases;
+    if (Array.isArray(aliases)) {
+      for (const a of aliases) if (a) premiumBrandTerms.push(String(a).toLowerCase());
+    }
+  }
+  // Dedupe and drop empties.
+  const brandMatchTerms = Array.from(
+    new Set(premiumBrandTerms.map((t) => t.trim()).filter(Boolean)),
+  );
+  function matchesPremiumBrand(nameLc: string): boolean {
+    for (const term of brandMatchTerms) {
+      if (nameLc.includes(term)) return true;
+    }
+    return false;
+  }
+
   let classifiedCount = 0;
   const errors: string[] = [];
   const sample: Array<{ name: string; tier: Tier; category_classified: string }> = [];

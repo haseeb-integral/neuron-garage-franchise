@@ -1569,6 +1569,7 @@ export type Database = {
           aliases: string[]
           created_at: string
           id: string
+          is_premium_brand: boolean
           name: string
           notes: string | null
           overlap: Database["public"]["Enums"]["mvs_overlap"]
@@ -1578,6 +1579,7 @@ export type Database = {
           aliases?: string[]
           created_at?: string
           id?: string
+          is_premium_brand?: boolean
           name: string
           notes?: string | null
           overlap?: Database["public"]["Enums"]["mvs_overlap"]
@@ -1587,6 +1589,7 @@ export type Database = {
           aliases?: string[]
           created_at?: string
           id?: string
+          is_premium_brand?: boolean
           name?: string
           notes?: string | null
           overlap?: Database["public"]["Enums"]["mvs_overlap"]

@@ -507,7 +507,8 @@ const Dashboard = () => {
         {/* Top scored cities */}
         <WidgetCard
           title="Top scored cities"
-          subtitle="Composite Score / 100"
+          subtitle="MVS-refreshed markets · Composite / 100"
+
           icon={Trophy}
           iconBg="#fff8d6"
           iconColor="#b88a00"

@@ -75,16 +75,27 @@ function useTopCities() {
         .select("city")
         .not("city", "is", null)
         .limit(5000);
-      const mvsCities = Array.from(new Set((prov ?? []).map((r) => (r as { city: string }).city)));
-      if (mvsCities.length === 0) return [];
+      // mvs_providers.city is stored as "Austin, TX" but us_cities_scored.city_name
+      // is just "Austin" — split the pair so the .in() filter actually matches.
+      const pairs = Array.from(new Set((prov ?? []).map((r) => (r as { city: string }).city)))
+        .map((s) => {
+          const [c, st] = s.split(",").map((x) => x.trim());
+          return c && st ? { city: c, state: st } : null;
+        })
+        .filter((x): x is { city: string; state: string } => !!x);
+      if (pairs.length === 0) return [];
+      const cityNames = Array.from(new Set(pairs.map((p) => p.city)));
       const { data } = await supabase
         .from("us_cities_scored")
         .select("id, city_name, state_abbr, composite_score_default, is_registration_state")
-        .in("city_name", mvsCities)
+        .in("city_name", cityNames)
         .not("composite_score_default", "is", null)
         .order("composite_score_default", { ascending: false })
-        .limit(5);
-      return data ?? [];
+        .limit(50);
+      const allowed = new Set(pairs.map((p) => `${p.city}|${p.state}`));
+      return (data ?? [])
+        .filter((r) => allowed.has(`${r.city_name}|${r.state_abbr}`))
+        .slice(0, 5);
     },
   });
 }

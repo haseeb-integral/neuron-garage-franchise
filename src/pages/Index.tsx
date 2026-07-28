@@ -64,12 +64,23 @@ function useCitySearchSummary() {
 
 function useTopCities() {
   return useQuery({
-    queryKey: ["dashboard", "top-cities"],
+    queryKey: ["dashboard", "top-cities-mvs"],
     staleTime: 60_000,
     queryFn: async () => {
+      // Only rank cities that actually have live MVS provider data.
+      // composite_score_default is stale bulk-seeded data for most cities;
+      // restricting to MVS-refreshed markets keeps this tile honest.
+      const { data: prov } = await supabase
+        .from("mvs_providers")
+        .select("city")
+        .not("city", "is", null)
+        .limit(5000);
+      const mvsCities = Array.from(new Set((prov ?? []).map((r) => (r as { city: string }).city)));
+      if (mvsCities.length === 0) return [];
       const { data } = await supabase
         .from("us_cities_scored")
         .select("id, city_name, state_abbr, composite_score_default, is_registration_state")
+        .in("city_name", mvsCities)
         .not("composite_score_default", "is", null)
         .order("composite_score_default", { ascending: false })
         .limit(5);
@@ -109,25 +120,19 @@ function useTopTeacherCities() {
     queryKey: ["dashboard", "top-teacher-cities"],
     staleTime: 60_000,
     queryFn: async () => {
-      // Pull a sample and aggregate client-side (cap 1000 default is fine for top-N display).
-      const { data } = await supabase
-        .from("teacher_prospects")
-        .select("city, state")
-        .not("city", "is", null)
-        .limit(1000);
-      const counts = new Map<string, { city: string; state: string; n: number }>();
-      (data ?? []).forEach((r) => {
-        const key = `${r.city}|${r.state}`;
-        const prev = counts.get(key);
-        if (prev) prev.n += 1;
-        else counts.set(key, { city: r.city, state: r.state, n: 1 });
-      });
-      return Array.from(counts.values())
-        .sort((a, b) => b.n - a.n)
-        .slice(0, 6);
+      // Server-side aggregation — old client-side approach only saw the first
+      // 1000 rows and undercounted large cities like Houston.
+      const { data, error } = await supabase.rpc("get_top_teacher_cities", { _limit: 6 });
+      if (error || !data) return [] as Array<{ city: string; state: string; n: number }>;
+      return (data as Array<{ city: string; state: string; n: number | string }>).map((r) => ({
+        city: r.city,
+        state: r.state,
+        n: Number(r.n),
+      }));
     },
   });
 }
+
 
 function useEmailOutreachSummary() {
   return useQuery({
@@ -502,7 +507,8 @@ const Dashboard = () => {
         {/* Top scored cities */}
         <WidgetCard
           title="Top scored cities"
-          subtitle="Composite Score / 100"
+          subtitle="MVS-refreshed markets · Composite / 100"
+
           icon={Trophy}
           iconBg="#fff8d6"
           iconColor="#b88a00"

@@ -284,12 +284,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         throw e;
       }
 
+      const finalSkipped = totalSkipped + skippedConflict;
       await supabase.from("teacher_import_batches")
-        .update({ status: "complete", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting } })
+        .update({ status: "complete", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict } })
         .eq("id", batch.id);
 
-      setImportResult({ inserted, skipped: totalSkipped, batch_id: batch.id });
-      toast.success(`Imported ${inserted.toLocaleString()} teachers${totalSkipped ? ` (skipped ${totalSkipped.toLocaleString()} duplicates)` : ""}`, { id: tId });
+      setImportResult({ inserted, skipped: finalSkipped, batch_id: batch.id });
+      toast.success(`Imported ${inserted.toLocaleString()} teachers${finalSkipped ? ` (skipped ${finalSkipped.toLocaleString()} duplicates)` : ""}`, { id: tId });
 
       if (destination === "master_and_smartlead") {
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");

@@ -252,12 +252,27 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       const totalChunks = Math.max(1, Math.ceil(rowsToInsert.length / CHUNK));
       const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped as duplicates)` : ""}`);
       let inserted = 0;
+      let skippedConflict = 0;
       try {
         for (let i = 0; i < rowsToInsert.length; i += CHUNK) {
           const chunk = rowsToInsert.slice(i, i + CHUNK);
           const { error } = await supabase.from("teacher_prospects").insert(chunk as never);
-          if (error) throw new Error(`chunk starting at row ${i}: ${error.message}`);
-          inserted += chunk.length;
+          if (error) {
+            // A single duplicate email (e.g. stored with different casing in the
+            // DB) rejects the whole chunk. Fall back to row-by-row so one bad
+            // row can't kill the import.
+            if (!/duplicate key|unique constraint/i.test(error.message)) {
+              throw new Error(`chunk starting at row ${i}: ${error.message}`);
+            }
+            for (const row of chunk) {
+              const { error: rowErr } = await supabase.from("teacher_prospects").insert(row as never);
+              if (!rowErr) inserted++;
+              else if (/duplicate key|unique constraint/i.test(rowErr.message)) skippedConflict++;
+              else throw new Error(`row ${i}: ${rowErr.message}`);
+            }
+          } else {
+            inserted += chunk.length;
+          }
           const done = Math.floor(i / CHUNK) + 1;
           toast.loading(`Importing… ${done}/${totalChunks} (${inserted.toLocaleString()} rows)`, { id: tId });
         }

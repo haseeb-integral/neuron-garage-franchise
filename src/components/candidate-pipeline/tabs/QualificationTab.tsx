@@ -24,12 +24,13 @@ interface Props {
 }
 
 const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }[] = [
-  { key: "teaching", label: "Teaching Experience" },
-  { key: "leadership", label: "Leadership" },
-  { key: "financial", label: "Ability to Invest in Neuron Garage", hint: "Confirm $1K initial + $15K working capital minimum" },
-  { key: "marketFit", label: "Market Fit" },
-  { key: "cultureFit", label: "Culture Fit" },
+  { key: "teaching", label: "Responsiveness" },
+  { key: "leadership", label: "Experience with Elementary Age Children" },
+  { key: "financial", label: "Ability & Willingness to Follow Our Process" },
+  { key: "marketFit", label: "Philosophical Alignment" },
+  { key: "cultureFit", label: "Market Fit" },
 ];
+
 
 export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;

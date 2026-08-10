@@ -1,8 +1,6 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Candidate } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   ArrowRight,
@@ -12,8 +10,9 @@ import {
   FileEdit,
 } from "lucide-react";
 
-import { logActivity, ActivityType } from "@/lib/candidateActivity";
-import { toast } from "sonner";
+import { ActivityType } from "@/lib/candidateActivity";
+import { StageHistoryTab } from "./StageHistoryTab";
+
 
 interface Props {
   candidate: Candidate;

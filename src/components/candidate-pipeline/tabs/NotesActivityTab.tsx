@@ -166,7 +166,7 @@ export function NotesActivityTab({ candidate }: Props) {
           <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
         ) : notes.length === 0 ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>
-            No notes yet. Use the box above to add the first one.
+            No notes recorded for this candidate.
           </p>
         ) : (
           <>

@@ -75,10 +75,6 @@ export function ContactIntakeSection({
     setEmail(candidate.email ?? "");
     setOtherEmail(candidate.otherEmail ?? "");
     setPhone(candidate.phone ?? "");
-    setMStreet(candidate.mailingStreet ?? "");
-    setMCity(candidate.mailingCity ?? "");
-    setMState(candidate.mailingState ?? "");
-    setMZip(candidate.mailingZip ?? "");
     setAssignedTo(candidate.assignedTo ?? "");
   }, [candidate.id]);
 

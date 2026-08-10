@@ -206,7 +206,18 @@ function ComplianceSectionInner({ candidateDbId }: Props) {
       <div className="flex items-center gap-2">
         <ShieldCheck size={16} style={{ color: "#003c7e" }} />
         <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>FDD &amp; Agreement Compliance</h4>
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto h-7 text-xs"
+          onClick={handleExportPacket}
+          disabled={exporting}
+        >
+          <Download size={12} className="mr-1" />
+          {exporting ? "Building…" : "Compliance Packet"}
+        </Button>
       </div>
+
 
       {loading ? (
         <p className="text-xs text-muted-foreground">Loading…</p>

@@ -3,7 +3,7 @@ import { Candidate } from "@/data/pipelineData";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Camera, Home, Users, User, Tag } from "lucide-react";
+import { Camera, Users, User, Tag } from "lucide-react";
 import { useCandidateSourceOptions } from "@/hooks/useCandidateSourceOptions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -62,8 +62,10 @@ export function ContactIntakeSection({
   const [email, setEmail] = useState(candidate.email ?? "");
   const [otherEmail, setOtherEmail] = useState(candidate.otherEmail ?? "");
   const [phone, setPhone] = useState(candidate.phone ?? "");
-  const [city, setCity] = useState(candidate.city ?? "");
-  const [state, setState] = useState(candidate.state ?? "");
+  const [mStreet, setMStreet] = useState(candidate.mailingStreet ?? "");
+  const [mCity, setMCity] = useState(candidate.mailingCity ?? "");
+  const [mState, setMState] = useState(candidate.mailingState ?? "");
+  const [mZip, setMZip] = useState(candidate.mailingZip ?? "");
   const [assignedTo, setAssignedTo] = useState(candidate.assignedTo ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -74,8 +76,10 @@ export function ContactIntakeSection({
     setEmail(candidate.email ?? "");
     setOtherEmail(candidate.otherEmail ?? "");
     setPhone(candidate.phone ?? "");
-    setCity(candidate.city ?? "");
-    setState(candidate.state ?? "");
+    setMStreet(candidate.mailingStreet ?? "");
+    setMCity(candidate.mailingCity ?? "");
+    setMState(candidate.mailingState ?? "");
+    setMZip(candidate.mailingZip ?? "");
     setAssignedTo(candidate.assignedTo ?? "");
   }, [candidate.id]);
 
@@ -87,16 +91,20 @@ export function ContactIntakeSection({
     (!emailLocked && email !== (candidate.email ?? "")) ||
     otherEmail !== (candidate.otherEmail ?? "") ||
     phone !== (candidate.phone ?? "") ||
-    city !== (candidate.city ?? "") ||
-    state !== (candidate.state ?? "") ||
+    mStreet !== (candidate.mailingStreet ?? "") ||
+    mCity !== (candidate.mailingCity ?? "") ||
+    mState !== (candidate.mailingState ?? "") ||
+    mZip !== (candidate.mailingZip ?? "") ||
     assignedTo !== (candidate.assignedTo ?? "");
 
   const reset = () => {
     const n = splitName(candidate.name);
     setFirstName(n.first); setLastName(n.last);
     setEmail(candidate.email ?? ""); setOtherEmail(candidate.otherEmail ?? "");
-    setPhone(candidate.phone ?? ""); setCity(candidate.city ?? "");
-    setState(candidate.state ?? ""); setAssignedTo(candidate.assignedTo ?? "");
+    setPhone(candidate.phone ?? "");
+    setMStreet(candidate.mailingStreet ?? ""); setMCity(candidate.mailingCity ?? "");
+    setMState(candidate.mailingState ?? ""); setMZip(candidate.mailingZip ?? "");
+    setAssignedTo(candidate.assignedTo ?? "");
   };
 
   const handleSave = async (opts?: { silent?: boolean }) => {
@@ -114,16 +122,20 @@ export function ContactIntakeSection({
       last_name: lastName.trim(),
       other_email: otherEmail.trim() || null,
       phone: phone.trim() || null,
-      city: city.trim() || null,
-      state: state.trim().toUpperCase() || null,
+      mailing_street: mStreet.trim() || null,
+      mailing_city: mCity.trim() || null,
+      mailing_state: mState.trim().toUpperCase() || null,
+      mailing_zip: mZip.trim() || null,
       assigned_to: assignedTo.trim() || null,
     };
     const localPatch: Partial<Candidate> = {
       name: fullName,
       otherEmail: otherEmail.trim(),
       phone: phone.trim(),
-      city: city.trim(),
-      state: state.trim().toUpperCase(),
+      mailingStreet: mStreet.trim(),
+      mailingCity: mCity.trim(),
+      mailingState: mState.trim().toUpperCase(),
+      mailingZip: mZip.trim(),
       assignedTo: assignedTo.trim(),
     };
     if (!emailLocked) {
@@ -223,13 +235,23 @@ export function ContactIntakeSection({
             <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
               value={phone} onChange={(e) => setPhone(e.target.value)} />
           </Field>
-          <Field label="Location">
-            <div className="flex gap-2">
+          <div className="sm:col-span-2">
+            <Field label="Mailing Address">
               <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-                placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+                placeholder="Street address" value={mStreet} onChange={(e) => setMStreet(e.target.value)} />
+            </Field>
+          </div>
+          <Field label="City">
+            <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+              placeholder="City" value={mCity} onChange={(e) => setMCity(e.target.value)} />
+          </Field>
+          <Field label="State / ZIP">
+            <div className="flex gap-2">
               <input className={cn(inputCls, "w-16")} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-                placeholder="ST" maxLength={2} value={state}
-                onChange={(e) => setState(e.target.value.toUpperCase())} />
+                placeholder="ST" maxLength={2} value={mState}
+                onChange={(e) => setMState(e.target.value.toUpperCase())} />
+              <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+                placeholder="ZIP" value={mZip} onChange={(e) => setMZip(e.target.value)} />
             </div>
           </Field>
           <Field label="Assigned To">
@@ -260,81 +282,8 @@ export function ContactIntakeSection({
       </CardShell>
 
       <SourceCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
-      <MailingAddressCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
       <PartnerCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
     </div>
-  );
-}
-
-function MailingAddressCard({
-  candidate, readOnly, onSave,
-}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
-  const [street, setStreet] = useState(candidate.mailingStreet ?? "");
-  const [city, setCity] = useState(candidate.mailingCity ?? "");
-  const [state, setState] = useState(candidate.mailingState ?? "");
-  const [zip, setZip] = useState(candidate.mailingZip ?? "");
-
-  useEffect(() => {
-    setStreet(candidate.mailingStreet ?? "");
-    setCity(candidate.mailingCity ?? "");
-    setState(candidate.mailingState ?? "");
-    setZip(candidate.mailingZip ?? "");
-  }, [candidate.id]);
-
-  const dirty =
-    (candidate.mailingStreet ?? "") !== street ||
-    (candidate.mailingCity ?? "") !== city ||
-    (candidate.mailingState ?? "") !== state ||
-    (candidate.mailingZip ?? "") !== zip;
-
-  const persist = () =>
-    onSave(
-      {
-        mailing_street: street.trim() || null,
-        mailing_city: city.trim() || null,
-        mailing_state: state.trim() || null,
-        mailing_zip: zip.trim() || null,
-      },
-      {
-        mailingStreet: street.trim(),
-        mailingCity: city.trim(),
-        mailingState: state.trim(),
-        mailingZip: zip.trim(),
-      },
-    );
-
-  // Auto-save when the user leaves a field with unsaved changes.
-  const handleAutoSave = () => {
-    if (readOnly || !dirty) return;
-    void persist();
-  };
-
-  return (
-    <CardShell icon={Home} title="Mailing Address">
-      <div className="grid grid-cols-1 sm:grid-cols-6 gap-2" onBlur={handleAutoSave}>
-        <input className={cn(inputCls, "sm:col-span-6")} placeholder="Street address" disabled={readOnly}
-          value={street} onChange={(e) => setStreet(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
-        <input className={cn(inputCls, "sm:col-span-3")} placeholder="City" disabled={readOnly}
-          value={city} onChange={(e) => setCity(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
-        <input className={cn(inputCls, "sm:col-span-1")} placeholder="ST" maxLength={2} disabled={readOnly}
-          value={state} onChange={(e) => setState(e.target.value.toUpperCase())} style={{ borderColor: "#e3e8ef" }} />
-        <input className={cn(inputCls, "sm:col-span-2")} placeholder="ZIP" disabled={readOnly}
-          value={zip} onChange={(e) => setZip(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
-      </div>
-      {!readOnly && dirty && (
-        <div className="mt-2 flex justify-end gap-2">
-          <Button size="sm" variant="outline" onClick={() => {
-            setStreet(candidate.mailingStreet ?? "");
-            setCity(candidate.mailingCity ?? "");
-            setState(candidate.mailingState ?? "");
-            setZip(candidate.mailingZip ?? "");
-          }}>Cancel</Button>
-          <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
-            onClick={() => persist()}
-          >Save</Button>
-        </div>
-      )}
-    </CardShell>
   );
 }
 

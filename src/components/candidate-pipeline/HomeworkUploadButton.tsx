@@ -80,7 +80,7 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
         file_name: `${itemLabel} — ${file.name}`,
         mime_type: file.type || null,
         size_bytes: file.size,
-        category: "homework",
+        category,
         uploaded_by: userData.user?.id ?? null,
         uploaded_by_email: userData.user?.email ?? null,
       });

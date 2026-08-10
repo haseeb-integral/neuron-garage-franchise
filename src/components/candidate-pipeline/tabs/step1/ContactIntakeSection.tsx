@@ -101,8 +101,6 @@ export function ContactIntakeSection({
     setFirstName(n.first); setLastName(n.last);
     setEmail(candidate.email ?? ""); setOtherEmail(candidate.otherEmail ?? "");
     setPhone(candidate.phone ?? "");
-    setMStreet(candidate.mailingStreet ?? ""); setMCity(candidate.mailingCity ?? "");
-    setMState(candidate.mailingState ?? ""); setMZip(candidate.mailingZip ?? "");
     setAssignedTo(candidate.assignedTo ?? "");
   };
 

@@ -299,9 +299,31 @@ function MailingAddressCard({
     (candidate.mailingState ?? "") !== state ||
     (candidate.mailingZip ?? "") !== zip;
 
+  const persist = () =>
+    onSave(
+      {
+        mailing_street: street.trim() || null,
+        mailing_city: city.trim() || null,
+        mailing_state: state.trim() || null,
+        mailing_zip: zip.trim() || null,
+      },
+      {
+        mailingStreet: street.trim(),
+        mailingCity: city.trim(),
+        mailingState: state.trim(),
+        mailingZip: zip.trim(),
+      },
+    );
+
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || !dirty) return;
+    void persist();
+  };
+
   return (
     <CardShell icon={Home} title="Mailing Address">
-      <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-6 gap-2" onBlur={handleAutoSave}>
         <input className={cn(inputCls, "sm:col-span-6")} placeholder="Street address" disabled={readOnly}
           value={street} onChange={(e) => setStreet(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
         <input className={cn(inputCls, "sm:col-span-3")} placeholder="City" disabled={readOnly}
@@ -320,21 +342,11 @@ function MailingAddressCard({
             setZip(candidate.mailingZip ?? "");
           }}>Cancel</Button>
           <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
-            onClick={() => onSave(
-              {
-                mailing_street: street.trim() || null,
-                mailing_city: city.trim() || null,
-                mailing_state: state.trim() || null,
-                mailing_zip: zip.trim() || null,
-              },
-              {
-                mailingStreet: street.trim(),
-                mailingCity: city.trim(),
-                mailingState: state.trim(),
-                mailingZip: zip.trim(),
-              },
-            )}
+            onClick={() => persist()}
           >Save</Button>
+        </div>
+      )}
+
         </div>
       )}
     </CardShell>

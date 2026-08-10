@@ -18,12 +18,13 @@ const fmtDate = (d?: string | null) => {
 };
 
 const PILLAR_LABELS: Record<string, string> = {
-  teaching: "Teaching Experience",
-  leadership: "Leadership",
-  financial: "Financial Readiness",
-  marketFit: "Market Fit",
-  cultureFit: "Culture Fit",
+  teaching: "Responsiveness",
+  leadership: "Experience with Elementary Age Children",
+  financial: "Ability & Willingness to Follow Our Process",
+  marketFit: "Philosophical Alignment",
+  cultureFit: "Market Fit",
 };
+
 
 export async function exportResearchPacket(candidate: Candidate): Promise<void> {
   const dbId = (candidate as any).dbId as string | undefined;

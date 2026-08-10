@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { QualificationSection } from "../QualificationSection";
+import { RedFlagsSummary } from "../RedFlagsSummary";
 import { QualificationScores } from "@/data/pipelineData";
 
 interface TeamMember { email: string; firstName: string; }

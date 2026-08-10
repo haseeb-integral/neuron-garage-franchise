@@ -192,6 +192,50 @@ function ComplianceSectionInner({ candidateDbId }: Props) {
     void load();
   };
 
+  const [exporting, setExporting] = useState(false);
+  const handleExportPacket = async () => {
+    setExporting(true);
+    try {
+      const [{ data: cand }, { data: files }, { data: sess }] = await Promise.all([
+        supabase
+          .from("candidates")
+          .select("first_name, last_name, email")
+          .eq("id", candidateDbId)
+          .maybeSingle(),
+        supabase
+          .from("candidate_files")
+          .select("file_name, category, uploaded_by_email, created_at")
+          .eq("candidate_id", candidateDbId)
+          .in("category", ["fdd_proof", "fa_proof"])
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false }),
+        supabase.auth.getUser(),
+      ]);
+      const name = [cand?.first_name, cand?.last_name].filter(Boolean).join(" ") || "Unknown candidate";
+      const pdf = buildCompliancePacketPdf({
+        candidateName: name,
+        candidateEmail: cand?.email ?? null,
+        compliance: row,
+        audit: audit.map((a) => ({
+          field: a.field,
+          old_value: a.old_value,
+          new_value: a.new_value,
+          changed_by: a.changed_by,
+          changed_at: a.changed_at,
+        })),
+        proofFiles: (files ?? []) as any[],
+        generatedBy: sess?.user?.email ?? null,
+      });
+      pdf.save(`compliance-packet-${name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
+    } catch (e: any) {
+      toast.error("Couldn't build the packet", { description: e?.message });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+
+
   const fmtVal = (v: any) => {
     if (v === null || v === undefined) return "—";
     if (typeof v === "boolean") return v ? "on" : "off";

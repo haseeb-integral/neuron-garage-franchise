@@ -51,7 +51,6 @@ const schema = z.object({
   state: z.string().trim().length(2, "2 letters").regex(/^[A-Za-z]{2}$/, "2 letters"),
   assigned_to: z.string().min(1, "Required"),
   initial_stage: z.string().min(1, "Required"),
-  fit_score: z.number().int().min(0).max(100),
 });
 
 type FormState = {
@@ -63,7 +62,6 @@ type FormState = {
   state: string;
   assigned_to: string;
   initial_stage: StageId;
-  fit_score: number;
   fit_tag: FitTag;
 };
 
@@ -76,7 +74,6 @@ const blank = (defaultOwner: string): FormState => ({
   state: "",
   assigned_to: defaultOwner,
   initial_stage: "new_lead",
-  fit_score: 50,
   fit_tag: DEFAULT_FIT_TAG,
 });
 
@@ -128,7 +125,6 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
         city: form.city.trim(),
         state: form.state.trim().toUpperCase(),
         current_stage: dbStage as any,
-        fit_score: form.fit_score,
         fit_tag: form.fit_tag,
         status: "active",
         assigned_to: form.assigned_to,
@@ -278,19 +274,6 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
               </SelectContent>
             </Select>
             {fieldErr("initial_stage")}
-          </div>
-
-          <div>
-            <Label htmlFor="fit_score">Fit Score (0–100)</Label>
-            <Input
-              id="fit_score"
-              type="number"
-              min={0}
-              max={100}
-              value={form.fit_score}
-              onChange={(e) => set("fit_score", Number(e.target.value))}
-            />
-            {fieldErr("fit_score")}
           </div>
 
           <div>

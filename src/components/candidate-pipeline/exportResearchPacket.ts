@@ -169,7 +169,6 @@ export async function exportResearchPacket(candidate: Candidate): Promise<void> 
 
   <div class="summary">
     <div class="card"><div class="label">Stage</div><div class="value">${esc(stageLabel(candidate.stage))}</div></div>
-    <div class="card"><div class="label">Fit Score</div><div class="value">${esc(candidate.fitScore)}</div></div>
     <div class="card"><div class="label">Qualification Composite</div><div class="value">${esc(composite)}</div></div>
   </div>
 

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Candidate, QualificationScores } from "@/data/pipelineData";
 import { StarRating } from "../StarRating";
-import { Sparkles, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { Sparkles, SlidersHorizontal, RotateCcw, Pencil } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,12 +25,13 @@ interface Props {
 }
 
 const CRITERIA: { key: keyof QualificationScores; label: string; hint?: string }[] = [
-  { key: "teaching", label: "Teaching Experience" },
-  { key: "leadership", label: "Leadership" },
-  { key: "financial", label: "Ability to Invest in Neuron Garage", hint: "Confirm $1K initial + $15K working capital minimum" },
-  { key: "marketFit", label: "Market Fit" },
-  { key: "cultureFit", label: "Culture Fit" },
+  { key: "teaching", label: "Responsiveness" },
+  { key: "leadership", label: "Experience with Elementary Age Children" },
+  { key: "financial", label: "Ability & Willingness to Follow Our Process" },
+  { key: "marketFit", label: "Philosophical Alignment" },
+  { key: "cultureFit", label: "Market Fit" },
 ];
+
 
 export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
@@ -42,6 +44,31 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const saveTimer = useRef<number | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+
+  const saveNotes = async (next: Record<string, string>) => {
+    setNotes(next);
+    if (!dbId) return;
+    const { error } = await supabase
+      .from("candidate_qualification")
+      .upsert(
+        {
+          candidate_id: dbId,
+          pillar_notes: next,
+          teaching_experience: scores.teaching,
+          leadership: scores.leadership,
+          financial_readiness: scores.financial,
+          market_fit: scores.marketFit,
+          culture_fit: scores.cultureFit,
+        } as any,
+        { onConflict: "candidate_id" },
+      );
+    if (error) {
+      console.error("Failed to save note", error);
+      toast.error("Couldn't save note", { description: error.message });
+    }
+  };
 
   const isAdjusted = Object.keys(overrides).length > 0;
   const adjustedKeys = new Set(
@@ -81,6 +108,7 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
         }
         setOverrides(ovs);
         setComposite(eff.composite);
+        setNotes(((data as any).pillar_notes ?? {}) as Record<string, string>);
         // Sync effective scores into in-memory candidate so other tabs/badge see them — batched in one update
         const needsSync = (Object.keys(eff.effective) as (keyof QualificationScores)[])
           .some((k) => candidate.qualificationScores[k] !== eff.effective[k]);
@@ -93,8 +121,10 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
       } else {
         setScores(candidate.qualificationScores);
         setOverrides({});
+        setNotes({});
         setComposite(computeComposite(candidate.qualificationScores));
       }
+
       setLoaded(true);
     })();
     return () => {
@@ -246,27 +276,72 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
       </div>
 
       <div className="bg-white rounded-lg p-3 space-y-4" style={{ border: "1px solid #e3e8ef" }}>
-        {CRITERIA.map((c) => (
-          <div key={c.key} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div>
-                <div className="text-sm font-medium">{c.label}</div>
-                {c.hint && <div className="text-xs" style={{ color: "#6c757d" }}>{c.hint}</div>}
+        {CRITERIA.map((c) => {
+          const noteVal = notes[c.key] ?? "";
+          const open = openNotes.has(c.key as string);
+          return (
+            <div key={c.key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div>
+                    <div className="text-sm font-medium">{c.label}</div>
+                    {c.hint && <div className="text-xs" style={{ color: "#6c757d" }}>{c.hint}</div>}
+                  </div>
+                  {adjustedKeys.has(c.key as PillarKey) && (
+                    <Badge variant="secondary" className="text-[10px]">Adjusted</Badge>
+                  )}
+                </div>
+                <StarRating
+                  value={displayValue(c.key)}
+                  onChange={(v) => handleChange(c.key, v)}
+                />
               </div>
-              {adjustedKeys.has(c.key as PillarKey) && (
-                <Badge variant="secondary" className="text-[10px]">Adjusted</Badge>
+
+              {open ? (
+                <Textarea
+                  autoFocus
+                  rows={2}
+                  placeholder="Why this rating?"
+                  className="text-sm"
+                  value={noteVal}
+                  onChange={(e) => setNotes((n) => ({ ...n, [c.key]: e.target.value }))}
+                  onBlur={() => {
+                    saveNotes({ ...notes, [c.key]: noteVal });
+                    setOpenNotes((s) => {
+                      const next = new Set(s);
+                      next.delete(c.key as string);
+                      return next;
+                    });
+                  }}
+                />
+              ) : noteVal.trim() ? (
+                <button
+                  type="button"
+                  className="flex items-start gap-1.5 text-left text-xs hover:underline"
+                  style={{ color: "#6c757d" }}
+                  onClick={() => setOpenNotes((s) => new Set(s).add(c.key as string))}
+                >
+                  <Pencil size={12} className="mt-0.5 shrink-0" />
+                  <span>{noteVal}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs hover:underline"
+                  style={{ color: "#003c7e" }}
+                  onClick={() => setOpenNotes((s) => new Set(s).add(c.key as string))}
+                >
+                  + Add note
+                </button>
               )}
             </div>
-            <StarRating
-              value={displayValue(c.key)}
-              onChange={(v) => handleChange(c.key, v)}
-            />
-          </div>
-        ))}
+          );
+        })}
         {!loaded && (
           <div className="text-xs" style={{ color: "#6c757d" }}>Loading saved scores…</div>
         )}
       </div>
+
 
       <div className="rounded-lg p-3" style={{ backgroundColor: "#e7f1ff", border: "1px solid #b6d4fe" }}>
         <div className="flex items-start gap-2">

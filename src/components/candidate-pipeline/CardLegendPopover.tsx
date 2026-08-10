@@ -61,7 +61,7 @@ export function CardLegendPopover() {
               </span>
             }
             title='"Qual" pill — Qualification composite'
-            body="Calculated from the 5 star-pillar ratings in the detail panel (Teaching, Leadership, Financial, Market Fit, Culture Fit). Hidden when 0."
+            body="Calculated from the 5 star-pillar ratings in the detail panel (Responsiveness, Experience with Elementary Age Children, Process Fit, Philosophical Alignment, Market Fit). Hidden when 0."
           />
           <LegendRow
             swatch={

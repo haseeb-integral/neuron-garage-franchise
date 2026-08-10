@@ -569,6 +569,7 @@ export type Database = {
           override_at: string | null
           override_by: string | null
           override_reason: string | null
+          pillar_notes: Json
           teaching_experience: number
           teaching_experience_override: number | null
           updated_at: string
@@ -587,6 +588,7 @@ export type Database = {
           override_at?: string | null
           override_by?: string | null
           override_reason?: string | null
+          pillar_notes?: Json
           teaching_experience?: number
           teaching_experience_override?: number | null
           updated_at?: string
@@ -605,6 +607,7 @@ export type Database = {
           override_at?: string | null
           override_by?: string | null
           override_reason?: string | null
+          pillar_notes?: Json
           teaching_experience?: number
           teaching_experience_override?: number | null
           updated_at?: string

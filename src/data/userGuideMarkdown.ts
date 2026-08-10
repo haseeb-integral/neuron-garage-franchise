@@ -246,7 +246,7 @@ A Kanban board with **7 stages**: New Lead → Engaged → Qualified → Immersi
 |---|---|
 | **Left stripe** | Days in stage. Green ≤3, amber 4–7, red 8+. |
 | **Initials circle** | Candidate avatar (no score, no signal). |
-| **"Qual" pill** | Composite of the 5 star-pillar ratings — Teaching, Leadership, Financial, Market Fit, Culture Fit. Hidden until at least one pillar is rated. |
+| **"Qual" pill** | Composite of the 5 star-pillar ratings — Responsiveness, Experience with Elementary Age Children, Process Fit, Philosophical Alignment, Market Fit. Hidden until at least one pillar is rated. |
 | **Blue tag** | Short qualitative status ("Interested", "High Potential", "Follow-Up"). |
 | **"Day N"** | Days in the current stage; resets on move. |
 | **Small letter circle** | Owner — first initial of the assigned teammate. Hover for full name. |

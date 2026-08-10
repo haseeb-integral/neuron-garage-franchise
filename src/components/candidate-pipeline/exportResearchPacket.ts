@@ -18,30 +18,33 @@ const fmtDate = (d?: string | null) => {
 };
 
 const PILLAR_LABELS: Record<string, string> = {
-  teaching: "Teaching Experience",
-  leadership: "Leadership",
-  financial: "Financial Readiness",
-  marketFit: "Market Fit",
-  cultureFit: "Culture Fit",
+  teaching: "Responsiveness",
+  leadership: "Experience with Elementary Age Children",
+  financial: "Ability & Willingness to Follow Our Process",
+  marketFit: "Philosophical Alignment",
+  cultureFit: "Market Fit",
 };
+
 
 export async function exportResearchPacket(candidate: Candidate): Promise<void> {
   const dbId = (candidate as any).dbId as string | undefined;
 
   // Fetch supplemental DB data in parallel (best-effort).
-  const [votesRes, stageRes, profileRes, checklistRes] = dbId
+  const [votesRes, stageRes, profileRes, checklistRes, qualRes] = dbId
     ? await Promise.all([
         supabase.from("candidate_votes").select("*").eq("candidate_id", dbId).order("updated_at", { ascending: false }),
         supabase.from("candidate_stage_history").select("*").eq("candidate_id", dbId).order("changed_at", { ascending: true }),
         supabase.from("candidate_profiles").select("*").eq("candidate_id", dbId).maybeSingle(),
         supabase.from("candidate_checklist_items").select("*").eq("candidate_id", dbId).order("created_at", { ascending: true }),
+        supabase.from("candidate_qualification").select("pillar_notes").eq("candidate_id", dbId).maybeSingle(),
       ])
-    : [{ data: [] as any[] }, { data: [] as any[] }, { data: null as any }, { data: [] as any[] }];
+    : [{ data: [] as any[] }, { data: [] as any[] }, { data: null as any }, { data: [] as any[] }, { data: null as any }];
 
   const votes = (votesRes.data ?? []) as any[];
   const stageHistory = (stageRes.data ?? []) as any[];
   const profile = (profileRes.data ?? null) as any;
   const checklist = (checklistRes.data ?? []) as any[];
+  const pillarNotes = (((qualRes as any)?.data?.pillar_notes) ?? {}) as Record<string, string>;
 
   const scores = candidate.qualificationScores;
   const composite = scores
@@ -51,8 +54,13 @@ export async function exportResearchPacket(candidate: Candidate): Promise<void> 
     : 0;
 
   const pillarRows = Object.entries(scores ?? {})
-    .map(([k, v]) => `<tr><td>${esc(PILLAR_LABELS[k] ?? k)}</td><td class="num">${esc(v)} / 5</td></tr>`)
+    .map(([k, v]) => {
+      const note = (pillarNotes[k] ?? "").trim();
+      const noteHtml = note ? `<div style="color:#6c757d;font-size:11px">${esc(note)}</div>` : "";
+      return `<tr><td>${esc(PILLAR_LABELS[k] ?? k)}${noteHtml}</td><td class="num">${esc(v)} / 5</td></tr>`;
+    })
     .join("");
+
 
   const voteRows = votes.length
     ? votes

@@ -465,7 +465,7 @@ const UserGuide = () => {
                   </span>
                 ),
                 title: '"Qual" pill — Qualification composite',
-                body: "Composite of the 5 star-pillar ratings you set in the detail panel: Teaching, Leadership, Financial, Market Fit, Culture Fit. Hidden until at least one pillar is rated.",
+                body: "Composite of the 5 star-pillar ratings you set in the detail panel: Responsiveness, Experience with Elementary Age Children, Process Fit, Philosophical Alignment, Market Fit. Hidden until at least one pillar is rated.",
               },
               {
                 swatch: (

@@ -120,9 +120,7 @@ const STEPS: StepDef[] = [
       { key: "signed_item23", label: "Sign and return Item 23 of the FDD" },
       { key: "personality_profile", label: "Complete personality profile assessment" },
     ],
-    fields: [
-      { key: "fdd_sent_date", label: "FDD sent date", type: "date", hint: "Signing call cannot be scheduled until 16 days after this date" },
-    ],
+    fields: [],
   },
   {
     num: 5,
@@ -461,12 +459,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
-                {step.num === 4 && earliestSignDate && (
-                  <div className="rounded-md p-2 mb-3 text-xs" style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
-                    Earliest signing date: <strong>{earliestSignDate.toLocaleDateString()}</strong> (FDD sent + 16 days)
-                  </div>
-                )}
-
                 {step.num === 2 && (
                   <MailingAddressCard candidate={candidate} onSave={onSaveProfile} />
                 )}
@@ -488,8 +480,42 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     items={step.postCall}
                     state={row.post_call_actions}
                     onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
+                    renderAction={
+                      step.num === 4
+                        ? (item) =>
+                            item.key === "sent_fdd" ? (
+                              <HomeworkUploadButton
+                                candidateDbId={dbId}
+                                itemKey="sent_fdd"
+                                itemLabel="FDD sent — proof of date sent"
+                                category="fdd_proof"
+                              />
+                            ) : null
+                        : undefined
+                    }
                   />
                 )}
+
+                {step.num === 4 && (
+                  <div className="mt-3 rounded-md p-3" style={{ backgroundColor: "#f7faff", border: "1px solid #dee2e6" }}>
+                    <Label className="text-xs" style={{ color: "#07142f" }}>FDD sent date</Label>
+                    <Input
+                      type="date"
+                      value={(row.data?.fdd_sent_date as string) ?? ""}
+                      onChange={(e) => updateField(4, "fdd_sent_date", e.target.value)}
+                      className="mt-1 text-sm max-w-[220px]"
+                    />
+                    <div className="text-[11px] mt-1" style={{ color: "#8893a7" }}>
+                      Upload the proof of sending above, then enter the date here. Signing call cannot be scheduled until 16 days after this date.
+                    </div>
+                    {earliestSignDate && (
+                      <div className="rounded-md p-2 mt-2 text-xs" style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
+                        Earliest signing date: <strong>{earliestSignDate.toLocaleDateString()}</strong> (FDD sent + 16 days)
+                      </div>
+                    )}
+                  </div>
+                )}
+
 
                 {step.num === 5 && (
                   <ReferencesBlock

@@ -17,6 +17,8 @@ interface Props {
   itemKey: string;
   /** Human label, stored so the Documents tab shows what the file is for. */
   itemLabel: string;
+  /** Document category the file is filed under. Defaults to "homework". */
+  category?: string;
 }
 
 interface FileRow {
@@ -26,11 +28,11 @@ interface FileRow {
 }
 
 /**
- * Small "Upload" button rendered next to a homework item. Files land in the
- * shared candidate_documents bucket under the "homework" category, so they
+ * Small "Upload" button rendered next to a checklist item. Files land in the
+ * shared candidate_documents bucket under the given category, so they
  * appear in the Documents tab alongside everything else.
  */
-export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel }: Props) {
+export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, category = "homework" }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<FileRow[]>([]);
@@ -40,12 +42,13 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel }: Prop
       .from("candidate_files")
       .select("id, file_name, bucket_path")
       .eq("candidate_id", candidateDbId)
-      .eq("category", "homework")
+      .eq("category", category)
       .is("deleted_at", null)
-      .like("bucket_path", `%/homework/${itemKey}/%`)
+      .like("bucket_path", `%/${category}/${itemKey}/%`)
       .order("created_at", { ascending: false });
     setFiles((data ?? []) as FileRow[]);
-  }, [candidateDbId, itemKey]);
+  }, [candidateDbId, itemKey, category]);
+
 
   useEffect(() => {
     void load();
@@ -63,7 +66,7 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel }: Prop
     const { data: userData } = await supabase.auth.getUser();
     let ok = 0;
     for (const file of arr) {
-      const path = `candidates/${candidateDbId}/homework/${itemKey}/${crypto.randomUUID()}-${safeName(file.name)}`;
+      const path = `candidates/${candidateDbId}/${category}/${itemKey}/${crypto.randomUUID()}-${safeName(file.name)}`;
       const up = await supabase.storage
         .from(BUCKET)
         .upload(path, file, { contentType: file.type || undefined, upsert: false });
@@ -77,7 +80,7 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel }: Prop
         file_name: `${itemLabel} — ${file.name}`,
         mime_type: file.type || null,
         size_bytes: file.size,
-        category: "homework",
+        category,
         uploaded_by: userData.user?.id ?? null,
         uploaded_by_email: userData.user?.email ?? null,
       });

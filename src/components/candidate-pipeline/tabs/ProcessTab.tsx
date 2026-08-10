@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
-import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
+import { ContactIntakeSection, LeadSourceCard, MailingAddressCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
@@ -43,6 +43,9 @@ const TRIAL_CLOSE_ITEMS: { key: string; label: string }[] = [
   { key: "scheduled_next_call", label: "Scheduled next call with clear agenda" },
   { key: "assigned_homework", label: "Assigned homework" },
 ];
+
+/** Homework items that do not require the candidate to send a document back. */
+const NO_UPLOAD_HOMEWORK = new Set(["mvs_site_share", "read_mindset"]);
 
 const TIMEZONES = [
   "ET (Eastern)",
@@ -165,9 +168,15 @@ const STEPS: StepDef[] = [
   },
 ];
 
+/** Steps with no homework should not show the "Assigned homework" trial-close item. */
+const trialCloseItemsFor = (s: StepDef) =>
+  s.homework.length > 0
+    ? TRIAL_CLOSE_ITEMS
+    : TRIAL_CLOSE_ITEMS.filter((i) => i.key !== "assigned_homework");
+
 const stepProgress = (s: StepDef, row: StepRow): { done: number; total: number } => {
   const checklists: [boolean, { key: string }[], ChecklistMap][] = [
-    [s.trialClose, TRIAL_CLOSE_ITEMS, row.trial_close],
+    [s.trialClose, trialCloseItemsFor(s), row.trial_close],
     [true, s.postCall, row.post_call_actions],
     [true, s.homework, row.homework],
   ];
@@ -465,9 +474,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
+                {step.num === 2 && (
+                  <MailingAddressCard candidate={candidate} onSave={onSaveProfile} />
+                )}
+
                 {step.trialClose && (
                   <TrialCloseBlock
                     nameKey={`step-${step.num}`}
+                    items={trialCloseItemsFor(step)}
                     state={row.trial_close}
                     data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
@@ -486,19 +500,22 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
                 {step.homework.length > 0 && (
                   <ChecklistBlock
-                    title="Assign & Track Homework"
+                    title="Track Homework"
                     items={step.homework}
                     state={row.homework}
                     onToggle={(k, v) => toggleChecklist(step.num, "homework", k, v)}
-                    renderAction={(item) => (
-                      <HomeworkUploadButton
-                        candidateDbId={dbId}
-                        itemKey={item.key}
-                        itemLabel={item.label}
-                      />
-                    )}
+                    renderAction={(item) =>
+                      NO_UPLOAD_HOMEWORK.has(item.key) ? null : (
+                        <HomeworkUploadButton
+                          candidateDbId={dbId}
+                          itemKey={item.key}
+                          itemLabel={item.label}
+                        />
+                      )
+                    }
                   />
                 )}
+
 
                 {step.num === 7 && (
                   <div className="rounded-md p-2 mt-3 text-xs" style={{ backgroundColor: "#fff4e5", border: "1px solid #ffd591", color: "#7a4a00" }}>
@@ -596,12 +613,14 @@ function ChecklistBlock({
 
 function TrialCloseBlock({
   nameKey,
+  items,
   state,
   data,
   onToggle,
   onField,
 }: {
   nameKey: string;
+  items: { key: string; label: string }[];
   state: ChecklistMap;
   data: Record<string, any>;
   onToggle: (key: string, value: boolean) => void;
@@ -610,9 +629,9 @@ function TrialCloseBlock({
   const sub = "ml-6 mt-1.5 space-y-1.5";
   return (
     <div className="mt-3">
-      <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>Trial Close (5 components)</div>
+      <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>Trial Close ({items.length} components)</div>
       <div className="space-y-2.5">
-        {TRIAL_CLOSE_ITEMS.map((i) => (
+        {items.map((i) => (
           <div key={i.key} className="text-sm" style={{ color: "#07142f" }}>
             <label className="flex items-start gap-2 cursor-pointer">
               <Checkbox

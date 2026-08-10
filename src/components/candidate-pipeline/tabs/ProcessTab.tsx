@@ -481,6 +481,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
+                {step.num === 5 && (
+                  <ReferencesBlock
+                    data={row.data ?? {}}
+                    onField={(k, v) => updateField(step.num, k, v)}
+                  />
+                )}
+
                 {step.postCall.length > 0 && (
                   <ChecklistBlock
                     title="Post-Call Actions"
@@ -515,29 +522,34 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
-                <SignalsBlock
-                  nameKey={`step-${step.num}`}
-                  data={row.data ?? {}}
-                  onField={(k, v) => updateField(step.num, k, v)}
-                />
-
-                <div className="mt-4">
-                  <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
-                  <Textarea
-                    value={row.notes ?? ""}
-                    onChange={(e) => updateStep(
-                      step.num,
-                      { notes: e.target.value },
-                      {
-                        description: `Step ${step.num} (${step.title}) — recruiter notes edited`,
-                        metadata: { field: "notes", length: e.target.value.length },
-                      },
-                    )}
-                    className="mt-1 text-sm"
-                    rows={2}
-                    placeholder="Add any context, objections uncovered, follow-ups…"
+                {step.num !== 3 && step.num !== 7 && (
+                  <SignalsBlock
+                    nameKey={`step-${step.num}`}
+                    data={row.data ?? {}}
+                    onField={(k, v) => updateField(step.num, k, v)}
                   />
-                </div>
+                )}
+
+                {step.num !== 3 && (
+                  <div className="mt-4">
+                    <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
+                    <Textarea
+                      value={row.notes ?? ""}
+                      onChange={(e) => updateStep(
+                        step.num,
+                        { notes: e.target.value },
+                        {
+                          description: `Step ${step.num} (${step.title}) — recruiter notes edited`,
+                          metadata: { field: "notes", length: e.target.value.length },
+                        },
+                      )}
+                      className="mt-1 text-sm"
+                      rows={2}
+                      placeholder="Add any context, objections uncovered, follow-ups…"
+                    />
+                  </div>
+                )}
+
 
                 <div className="mt-3 flex items-center gap-2">
                   <Checkbox

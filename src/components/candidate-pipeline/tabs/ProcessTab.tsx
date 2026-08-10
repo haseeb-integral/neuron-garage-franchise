@@ -136,11 +136,6 @@ const STEPS: StepDef[] = [
       { key: "facility_form", label: "Facility prospect form — primary + backup locations (attach to contact card)" },
       { key: "marketing_plan", label: "Local marketing plan summary (attach to contact card)" },
     ],
-    fields: [
-      { key: "reference_1", label: "Reference Check #1 (~20 min)", type: "textarea" },
-      { key: "reference_2", label: "Reference Check #2 (~20 min)", type: "textarea" },
-      { key: "reference_3", label: "Reference Check #3 (~20 min)", type: "textarea" },
-    ],
   },
   {
     num: 6,
@@ -486,6 +481,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
+                {step.num === 5 && (
+                  <ReferencesBlock
+                    data={row.data ?? {}}
+                    onField={(k, v) => updateField(step.num, k, v)}
+                  />
+                )}
+
                 {step.postCall.length > 0 && (
                   <ChecklistBlock
                     title="Post-Call Actions"
@@ -520,29 +522,34 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
-                <SignalsBlock
-                  nameKey={`step-${step.num}`}
-                  data={row.data ?? {}}
-                  onField={(k, v) => updateField(step.num, k, v)}
-                />
-
-                <div className="mt-4">
-                  <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
-                  <Textarea
-                    value={row.notes ?? ""}
-                    onChange={(e) => updateStep(
-                      step.num,
-                      { notes: e.target.value },
-                      {
-                        description: `Step ${step.num} (${step.title}) — recruiter notes edited`,
-                        metadata: { field: "notes", length: e.target.value.length },
-                      },
-                    )}
-                    className="mt-1 text-sm"
-                    rows={2}
-                    placeholder="Add any context, objections uncovered, follow-ups…"
+                {step.num !== 3 && step.num !== 7 && (
+                  <SignalsBlock
+                    nameKey={`step-${step.num}`}
+                    data={row.data ?? {}}
+                    onField={(k, v) => updateField(step.num, k, v)}
                   />
-                </div>
+                )}
+
+                {step.num !== 3 && (
+                  <div className="mt-4">
+                    <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
+                    <Textarea
+                      value={row.notes ?? ""}
+                      onChange={(e) => updateStep(
+                        step.num,
+                        { notes: e.target.value },
+                        {
+                          description: `Step ${step.num} (${step.title}) — recruiter notes edited`,
+                          metadata: { field: "notes", length: e.target.value.length },
+                        },
+                      )}
+                      className="mt-1 text-sm"
+                      rows={2}
+                      placeholder="Add any context, objections uncovered, follow-ups…"
+                    />
+                  </div>
+                )}
+
 
                 <div className="mt-3 flex items-center gap-2">
                   <Checkbox
@@ -731,6 +738,61 @@ function TrialCloseBlock({
     </div>
   );
 }
+
+const REFERENCE_FIELDS: { key: string; label: string; type: "text" | "email" | "tel" | "textarea" }[] = [
+  { key: "first_name", label: "First name", type: "text" },
+  { key: "last_name", label: "Last name", type: "text" },
+  { key: "email", label: "Email address", type: "email" },
+  { key: "phone", label: "Phone number", type: "tel" },
+  { key: "relationship", label: "Relationship", type: "text" },
+  { key: "notes", label: "Call notes", type: "textarea" },
+];
+
+function ReferencesBlock({
+  data,
+  onField,
+}: {
+  data: Record<string, any>;
+  onField: (key: string, value: any) => void;
+}) {
+  return (
+    <div className="mt-4 rounded-md p-3" style={{ backgroundColor: "#fafbfd", border: "1px solid #e3e8ef" }}>
+      <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>References</div>
+      <div className="space-y-4">
+        {[1, 2, 3].map((n) => (
+          <div key={n}>
+            <div className="text-xs font-medium mb-1.5" style={{ color: "#07142f" }}>
+              Reference Check #{n} (~20 min)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {REFERENCE_FIELDS.filter((f) => f.type !== "textarea").map((f) => (
+                <div key={f.key}>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>{f.label}</Label>
+                  <Input
+                    type={f.type}
+                    value={(data[`reference_${n}_${f.key}`] as string) ?? ""}
+                    onChange={(e) => onField(`reference_${n}_${f.key}`, e.target.value)}
+                    className="mt-1 text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-2">
+              <Label className="text-[11px]" style={{ color: "#526078" }}>Call notes</Label>
+              <Textarea
+                value={(data[`reference_${n}_notes`] as string) ?? (n === 1 ? ((data.reference_1 as string) ?? "") : (data[`reference_${n}`] as string) ?? "")}
+                onChange={(e) => onField(`reference_${n}_notes`, e.target.value)}
+                rows={3}
+                className="mt-1 text-sm"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 function SignalsBlock({
   nameKey,

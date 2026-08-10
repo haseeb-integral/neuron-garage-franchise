@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Candidate, stateRequiresRegistration } from "@/data/pipelineData";
+import { CandidateScheduleSection } from "@/components/candidate-pipeline/CandidateScheduleSection";
 import { supabase } from "@/integrations/supabase/client";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -384,7 +385,10 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
         </div>
       )}
 
+      <CandidateScheduleSection candidate={candidate} />
+
       <LeadSourceCard candidate={candidate} onSave={onSaveProfile} />
+
 
       <Accordion type="multiple" defaultValue={STEPS.map((s) => `step-${s.num}`)} className="space-y-2">
         {STEPS.map((step) => {

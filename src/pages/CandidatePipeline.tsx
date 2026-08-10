@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus } from "lucide-react";
+import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays } from "lucide-react";
+import { CandidateCalendar } from "@/components/candidate-pipeline/CandidateCalendar";
 import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateModal";
 import { toast } from "sonner";
 import { Candidate, StageId, STAGES, STAGE_HOMEWORK } from "@/data/pipelineData";
@@ -54,6 +55,7 @@ const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Candidate | null>(null);
+  const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
   const compact = useCandidatePipelineStore((s) => s.compact);
   const setCompact = useCandidatePipelineStore((s) => s.setCompact);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
@@ -844,7 +846,36 @@ const CandidatePipeline = () => {
         newThisWeek={metrics.newThisWeek}
       />
 
+      {/* Board / Calendar switch */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #cfe0ff" }}>
+          <button
+            onClick={() => setViewMode("board")}
+            className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
+            style={{
+              backgroundColor: viewMode === "board" ? "#174be8" : "#ffffff",
+              color: viewMode === "board" ? "#ffffff" : "#495057",
+            }}
+          >
+            <LayoutGrid size={13} /> Board
+          </button>
+          <button
+            onClick={() => setViewMode("calendar")}
+            className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
+            style={{
+              backgroundColor: viewMode === "calendar" ? "#174be8" : "#ffffff",
+              color: viewMode === "calendar" ? "#ffffff" : "#495057",
+            }}
+          >
+            <CalendarDays size={13} /> Calendar
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "board" && (
+      <>
       {/* Filter strip */}
+
       <div className="bg-white rounded-xl px-3 py-2.5 mb-3 shadow-sm flex flex-wrap items-center gap-x-3 gap-y-2" style={{ border: "1px solid #cfe0ff" }}>
         <div className="flex items-center gap-1.5" style={{ color: "#526078" }}>
           <Filter size={13} />
@@ -1015,6 +1046,13 @@ const CandidatePipeline = () => {
         onToggleCollapse={toggleCollapse}
         compact={compact}
       />
+      </>
+      )}
+
+      {viewMode === "calendar" && (
+        <CandidateCalendar candidates={candidates} onOpenCandidate={setActive} />
+      )}
+
 
       <CandidateDetailPanel
         candidate={active}

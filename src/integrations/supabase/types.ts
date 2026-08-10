@@ -406,6 +406,62 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_events: {
+        Row: {
+          all_day: boolean
+          candidate_id: string
+          created_at: string
+          created_by: string | null
+          duration_minutes: number
+          event_type: string
+          id: string
+          notes: string | null
+          owner_email: string | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          candidate_id: string
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number
+          event_type?: string
+          id?: string
+          notes?: string | null
+          owner_email?: string | null
+          starts_at: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          candidate_id?: string
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number
+          event_type?: string
+          id?: string
+          notes?: string | null
+          owner_email?: string | null
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_events_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_files: {
         Row: {
           bucket_path: string

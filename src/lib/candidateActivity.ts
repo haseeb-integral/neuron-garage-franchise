@@ -5,7 +5,10 @@ export type ActivityType =
   | "lead_sheet_saved"
   | "process_step_updated"
   | "stage_changed"
-  | "vote_cast";
+  | "vote_cast"
+  | "event_scheduled"
+  | "event_updated";
+
 
 /**
  * Append a row to candidate_activities. Never throws — failures are

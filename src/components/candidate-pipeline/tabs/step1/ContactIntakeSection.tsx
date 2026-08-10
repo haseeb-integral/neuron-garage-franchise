@@ -225,25 +225,6 @@ export function ContactIntakeSection({
             <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
               value={phone} onChange={(e) => setPhone(e.target.value)} />
           </Field>
-          <div className="sm:col-span-2">
-            <Field label="Mailing Address">
-              <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-                placeholder="Street address" value={mStreet} onChange={(e) => setMStreet(e.target.value)} />
-            </Field>
-          </div>
-          <Field label="City">
-            <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-              placeholder="City" value={mCity} onChange={(e) => setMCity(e.target.value)} />
-          </Field>
-          <Field label="State / ZIP">
-            <div className="flex gap-2">
-              <input className={cn(inputCls, "w-16")} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-                placeholder="ST" maxLength={2} value={mState}
-                onChange={(e) => setMState(e.target.value.toUpperCase())} />
-              <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-                placeholder="ZIP" value={mZip} onChange={(e) => setMZip(e.target.value)} />
-            </div>
-          </Field>
           <Field label="Assigned To">
             {teamMembers.length > 0 ? (
               <select className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}

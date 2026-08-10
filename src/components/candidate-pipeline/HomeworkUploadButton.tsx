@@ -66,7 +66,7 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
     const { data: userData } = await supabase.auth.getUser();
     let ok = 0;
     for (const file of arr) {
-      const path = `candidates/${candidateDbId}/homework/${itemKey}/${crypto.randomUUID()}-${safeName(file.name)}`;
+      const path = `candidates/${candidateDbId}/${category}/${itemKey}/${crypto.randomUUID()}-${safeName(file.name)}`;
       const up = await supabase.storage
         .from(BUCKET)
         .upload(path, file, { contentType: file.type || undefined, upsert: false });

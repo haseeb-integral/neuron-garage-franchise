@@ -343,7 +343,7 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* City */}
       <div className="space-y-2">
-        <Label htmlFor="ls-city">City you're located in</Label>
+        <Label htmlFor="ls-city">What city are you located in?</Label>
         <Input
           id="ls-city"
           value={form.city}
@@ -361,7 +361,7 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* Desired market */}
       <div className="space-y-2">
-        <Label htmlFor="ls-location">Desired market</Label>
+        <Label htmlFor="ls-location">Desired Market</Label>
         <Textarea
           id="ls-location"
           rows={2}
@@ -370,6 +370,17 @@ export function LeadSheetSection({ candidate }: Props) {
           placeholder="Where would they want to open?"
         />
       </div>
+
+      {regState && (
+        <div
+          className="flex items-start gap-2 rounded-md p-2 text-xs font-medium"
+          style={{ backgroundColor: "#fff1f0", border: "1px solid #ffa39e", color: "#c0261c" }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>{REGISTRATION_NOTE} (Detected: {regState})</span>
+        </div>
+      )}
+
 
       {/* Timeline */}
       <div className="space-y-2">

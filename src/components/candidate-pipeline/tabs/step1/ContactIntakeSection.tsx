@@ -103,7 +103,7 @@ export function ContactIntakeSection({
     setSource(candidate.source ?? "");
   };
 
-  const handleSave = async () => {
+  const handleSave = async (opts?: { silent?: boolean }) => {
     if (!onSave) return;
     if (!firstName.trim()) { toast.error("First name cannot be empty"); return; }
     if (!emailLocked && email.trim() && !EMAIL_RE.test(email.trim())) {
@@ -139,13 +139,20 @@ export function ContactIntakeSection({
     setSaving(true);
     try {
       await onSave(dbPatch, localPatch);
-      toast.success("Contact details saved");
+      if (!opts?.silent) toast.success("Contact details saved");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save");
     } finally {
       setSaving(false);
     }
   };
+
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || saving || !dirty) return;
+    void handleSave({ silent: true });
+  };
+
 
   const savePatch = async (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => {
     if (!onSave) return;

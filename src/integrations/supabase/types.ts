@@ -488,6 +488,8 @@ export type Database = {
           candidate_id: string
           city: string | null
           created_at: string
+          desired_market_city: string | null
+          desired_market_state: string | null
           discovery_source: string | null
           liquid_capital: number | null
           location_preferences: string | null
@@ -510,6 +512,8 @@ export type Database = {
           candidate_id: string
           city?: string | null
           created_at?: string
+          desired_market_city?: string | null
+          desired_market_state?: string | null
           discovery_source?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
@@ -532,6 +536,8 @@ export type Database = {
           candidate_id?: string
           city?: string | null
           created_at?: string
+          desired_market_city?: string | null
+          desired_market_state?: string | null
           discovery_source?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null

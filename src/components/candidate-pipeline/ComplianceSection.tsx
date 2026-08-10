@@ -19,6 +19,8 @@ import {
   formatDay,
   signingTooEarly,
 } from "@/lib/fddCompliance";
+import { buildCompliancePacketPdf } from "./compliancePacketPdf";
+
 
 interface ComplianceRow {
   candidate_id: string;

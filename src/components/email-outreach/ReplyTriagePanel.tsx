@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { smartleadSourceForProspect } from "@/lib/candidateSourceAutofill";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, Pause, UserX, UserPlus, CalendarClock, Send, ChevronDown, Inbox, FlaskConical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -170,7 +171,9 @@ export function ReplyTriagePanel() {
     try {
       const [first, ...rest] = (c.name ?? "").split(/\s+/);
       const last = rest.join(" ") || first || "—";
+      const autoSource = await smartleadSourceForProspect(c.prospectId);
       const { data: inserted, error: insErr } = await supabase.from("candidates").insert({
+        ...(autoSource ?? {}),
         first_name: first || c.name || "—",
         last_name: last,
         email: c.email,

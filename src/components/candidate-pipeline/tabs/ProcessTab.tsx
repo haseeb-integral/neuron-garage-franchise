@@ -36,11 +36,20 @@ interface StepRow {
 }
 
 const TRIAL_CLOSE_ITEMS: { key: string; label: string }[] = [
-  { key: "answered_questions", label: "Answered all relevant questions" },
-  { key: "prospect_summarized", label: "Prospect summarized key takeaways" },
-  { key: "asked_move_forward", label: "Asked if they want to move forward" },
+  { key: "answered_questions", label: "Are there any other questions I can answer for you?" },
+  { key: "prospect_summarized", label: "Will you please summarize your key takeaways from today's call?" },
+  { key: "asked_move_forward", label: "Would you like to move forward with our process?" },
   { key: "scheduled_next_call", label: "Scheduled next call with clear agenda" },
   { key: "assigned_homework", label: "Assigned homework" },
+];
+
+const TIMEZONES = [
+  "ET (Eastern)",
+  "CT (Central)",
+  "MT (Mountain)",
+  "PT (Pacific)",
+  "AKT (Alaska)",
+  "HT (Hawaii)",
 ];
 
 interface StepDef {

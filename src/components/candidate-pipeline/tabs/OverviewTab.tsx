@@ -340,8 +340,6 @@ export function OverviewTab({ candidate, teamMembers = [], onSave, onScoresRepla
         </div>
       </div>
 
-      <QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} />
-
       {/* === Tier 2 cards === */}
 
       <MailingAddressCard
@@ -355,6 +353,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave, onScoresRepla
         readOnly={readOnly}
         onSave={savePatch}
       />
+
+      <QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} />
+
 
       <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>
         <h4 className="font-semibold mb-3 text-sm" style={{ color: "#07142f" }}>Pipeline Status</h4>

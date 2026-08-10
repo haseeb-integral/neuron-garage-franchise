@@ -314,32 +314,47 @@ export function LeadSheetSection({ candidate }: Props) {
       </div>
 
       {/* Partner */}
-      <div className="flex items-center justify-between rounded-md border p-3">
-        <div>
+      <div className="rounded-md border p-3 space-y-3">
+        <div className="flex items-center justify-between">
           <Label htmlFor="ls-partner" className="cursor-pointer">Will you have a partner in the business?</Label>
-          <p className="text-xs text-muted-foreground">Spouse or business partner participating</p>
+          <Switch
+            id="ls-partner"
+            checked={form.partner_involved}
+            onCheckedChange={async (v) => {
+              if (!dbId) {
+                toast.error("Cannot save: candidate not linked to database.");
+                return;
+              }
+              const prev = form.partner_involved;
+              update("partner_involved", v);
+              const patch: Record<string, any> = v
+                ? { partner_involved: true }
+                : { partner_involved: false, partner_name: null, partner_email: null };
+              if (!v) { setPartnerFirst(""); setPartnerLast(""); setPartnerEmail(""); }
+              const { error } = await supabase
+                .from("candidates")
+                .update(patch)
+                .eq("id", dbId);
+              if (error) {
+                update("partner_involved", prev);
+                toast.error("Failed to save: " + error.message);
+              }
+            }}
+          />
         </div>
-        <Switch
-          id="ls-partner"
-          checked={form.partner_involved}
-          onCheckedChange={async (v) => {
-            if (!dbId) {
-              toast.error("Cannot save: candidate not linked to database.");
-              return;
-            }
-            const prev = form.partner_involved;
-            update("partner_involved", v);
-            const { error } = await supabase
-              .from("candidates")
-              .update({ partner_involved: v })
-              .eq("id", dbId);
-            if (error) {
-              update("partner_involved", prev);
-              toast.error("Failed to save: " + error.message);
-            }
-          }}
-        />
+
+        {form.partner_involved && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" onBlur={savePartner}>
+            <Input placeholder="Partner first name" value={partnerFirst}
+              onChange={(e) => setPartnerFirst(e.target.value)} />
+            <Input placeholder="Partner last name" value={partnerLast}
+              onChange={(e) => setPartnerLast(e.target.value)} />
+            <Input type="email" placeholder="Partner email" value={partnerEmail}
+              onChange={(e) => setPartnerEmail(e.target.value)} />
+          </div>
+        )}
       </div>
+
 
       {/* City */}
       <div className="space-y-2">

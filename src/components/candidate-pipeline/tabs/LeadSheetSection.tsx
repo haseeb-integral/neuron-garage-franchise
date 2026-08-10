@@ -104,7 +104,7 @@ const diffForm = (a: ProfileForm, b: ProfileForm) => {
   return changes;
 };
 
-export function LeadSheetTab({ candidate }: Props) {
+export function LeadSheetSection({ candidate }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const [form, setForm] = useState<ProfileForm>(empty);
   const [snapshot, setSnapshot] = useState<ProfileForm>(empty);

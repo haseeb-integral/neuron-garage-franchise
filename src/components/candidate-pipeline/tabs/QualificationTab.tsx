@@ -44,6 +44,31 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const saveTimer = useRef<number | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+
+  const saveNotes = async (next: Record<string, string>) => {
+    setNotes(next);
+    if (!dbId) return;
+    const { error } = await supabase
+      .from("candidate_qualification")
+      .upsert(
+        {
+          candidate_id: dbId,
+          pillar_notes: next,
+          teaching_experience: scores.teaching,
+          leadership: scores.leadership,
+          financial_readiness: scores.financial,
+          market_fit: scores.marketFit,
+          culture_fit: scores.cultureFit,
+        } as any,
+        { onConflict: "candidate_id" },
+      );
+    if (error) {
+      console.error("Failed to save note", error);
+      toast.error("Couldn't save note", { description: error.message });
+    }
+  };
 
   const isAdjusted = Object.keys(overrides).length > 0;
   const adjustedKeys = new Set(

@@ -568,11 +568,6 @@ export function LeadSheetSection({ candidate }: Props) {
         />
       </div>
 
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} disabled={saving || !dbId}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
     </div>
   );
 }

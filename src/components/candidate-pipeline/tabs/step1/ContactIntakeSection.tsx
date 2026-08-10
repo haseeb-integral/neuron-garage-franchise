@@ -206,7 +206,7 @@ export function ContactIntakeSection({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" onBlur={handleAutoSave}>
           <Field label="First Name">
             <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
               value={firstName} onChange={(e) => setFirstName(e.target.value)} />

@@ -9,9 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
+import { ContactIntakeSection } from "./step1/ContactIntakeSection";
+import { LeadSheetSection } from "./LeadSheetSection";
+
+interface TeamMember { email: string; firstName: string; }
 
 interface Props {
   candidate: Candidate;
+  teamMembers?: TeamMember[];
+  onSaveProfile?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
 type ChecklistMap = Record<string, boolean>;
@@ -177,7 +183,7 @@ const emptyRow = (candidateId: string, step: number): StepRow => ({
   completed: false,
 });
 
-export function ProcessTab({ candidate }: Props) {
+export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const [rows, setRows] = useState<Record<number, StepRow>>({});
   const [loading, setLoading] = useState(true);
@@ -351,7 +357,7 @@ export function ProcessTab({ candidate }: Props) {
         <div className="flex items-start gap-2">
           <Info size={14} className="mt-0.5 shrink-0" />
           <div>
-            <strong>Franchisee Qualification Process.</strong> Fill these in during/after each call. Steps are freely navigable — nothing is locked. Step 1 lead details live in the <em>Lead Sheet</em> tab; checkbox progress here drives the <em>Homework</em> tab.
+            <strong>Franchisee Qualification Process.</strong> Fill these in during/after each call. Steps are freely navigable — nothing is locked. All candidate details are entered in Step 1 below; checkbox progress here drives the <em>Homework</em> tab.
           </div>
         </div>
       </div>
@@ -398,9 +404,15 @@ export function ProcessTab({ candidate }: Props) {
                 <p className="text-xs mb-3" style={{ color: "#526078" }}>{step.goal}</p>
 
                 {step.num === 1 && (
-                  <div className="rounded-md p-2 mb-3 text-xs" style={{ backgroundColor: "#f6f9ff", border: "1px solid #dbe6ff", color: "#003c7e" }}>
-                    Lead details (name, contact, role, location, desired market, timeline, source, investment capacity, motivation) live in the <strong>Lead Sheet</strong> tab — edits there are the source of truth.
-                  </div>
+                  <>
+                    <div className="rounded-md p-2 mb-3 text-xs" style={{ backgroundColor: "#f6f9ff", border: "1px solid #dbe6ff", color: "#003c7e" }}>
+                      Everything you type here is the source of truth. The Overview tab shows a read-only summary of these answers.
+                    </div>
+                    <ContactIntakeSection candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
+                    <div className="mb-4">
+                      <LeadSheetSection candidate={candidate} />
+                    </div>
+                  </>
                 )}
 
                 {step.fields && step.fields.length > 0 && (

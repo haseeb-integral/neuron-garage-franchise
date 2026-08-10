@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import { LeadSheetTab } from "../LeadSheetTab";
+import { LeadSheetSection } from "../LeadSheetSection";
 
 // In-memory store the mock pretends to read/write
 const profileStore: Record<string, any> = {};
@@ -41,14 +41,14 @@ const candidate: any = {
   qualificationScores: { teaching: 0, leadership: 0, financial: 0, marketFit: 0, cultureFit: 0 },
 };
 
-describe("LeadSheetTab — Google Form Step 1 fields", () => {
+describe("LeadSheetSection — Google Form Step 1 fields", () => {
   beforeEach(() => {
     for (const k of Object.keys(profileStore)) delete profileStore[k];
     lastUpsertPayload = null;
   });
 
   it("renders all 6 new Step-1 fields from the Google Form", async () => {
-    render(<LeadSheetTab candidate={candidate} />);
+    render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
 
     expect(screen.getByText(/Role in Neuron Garage/i)).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe("LeadSheetTab — Google Form Step 1 fields", () => {
   });
 
   it("shows the registration-state warning under the City field", async () => {
-    render(<LeadSheetTab candidate={candidate} />);
+    render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
     expect(screen.getByText(/Registration states/i)).toBeInTheDocument();
     // spot-check a few of the 14 abbreviations
@@ -72,7 +72,7 @@ describe("LeadSheetTab — Google Form Step 1 fields", () => {
   });
 
   it("persists the new fields with correct types (text, boolean, nulls) on Save", async () => {
-    render(<LeadSheetTab candidate={candidate} />);
+    render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText(/City you're located in/i), {
@@ -113,7 +113,7 @@ describe("LeadSheetTab — Google Form Step 1 fields", () => {
       role: "operator",
     };
 
-    render(<LeadSheetTab candidate={candidate} />);
+    render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
 
     expect((screen.getByLabelText(/City you're located in/i) as HTMLInputElement).value).toBe("Austin");

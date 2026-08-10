@@ -87,12 +87,9 @@ const matchesFilter = (row: ActivityRow, f: FilterKey) => {
 };
 
 export function NotesActivityTab({ candidate }: Props) {
-  const [text, setText] = useState("");
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [posting, setPosting] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
-  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const dbId = (candidate as any).dbId as string | undefined;
 
   const load = useCallback(async () => {
@@ -119,16 +116,6 @@ export function NotesActivityTab({ candidate }: Props) {
     load();
   }, [load]);
 
-  const submit = async () => {
-    const content = text.trim();
-    if (!content || !dbId) return;
-    setPosting(true);
-    await logActivity(dbId, "note", content);
-    setPosting(false);
-    setText("");
-    toast.success("Note added");
-    load();
-  };
 
   const notes = useMemo(() => rows.filter((r) => r.type === "note"), [rows]);
   const events = useMemo(() => rows.filter((r) => r.type !== "note"), [rows]);

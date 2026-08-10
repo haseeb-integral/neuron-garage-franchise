@@ -101,10 +101,7 @@ const STEPS: StepDef[] = [
     title: "Internal: Background & Credit Check",
     goal: "Background = recency, decency, frequency (did they learn their lesson). Credit = ability to run a personal business. National avg 683; target 720+. Exceptions: divorce, catastrophic health events.",
     trialClose: false,
-    postCall: [
-      { key: "perform_bg_credit", label: "Performed background + credit check after submission" },
-      { key: "uploaded_results", label: "Uploaded results to Franchise contact card (Documents tab)" },
-    ],
+    postCall: [],
     homework: [],
     fields: [
       { key: "credit_score", label: "Credit score", type: "number", hint: "Target 720+ (national avg 683)" },

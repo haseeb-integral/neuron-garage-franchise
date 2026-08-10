@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus } from "lucide-react";
+import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays } from "lucide-react";
+import { CandidateCalendar } from "@/components/candidate-pipeline/CandidateCalendar";
 import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateModal";
 import { toast } from "sonner";
 import { Candidate, StageId, STAGES, STAGE_HOMEWORK } from "@/data/pipelineData";
@@ -54,6 +55,7 @@ const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Candidate | null>(null);
+  const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
   const compact = useCandidatePipelineStore((s) => s.compact);
   const setCompact = useCandidatePipelineStore((s) => s.setCompact);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());

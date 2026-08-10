@@ -373,6 +373,8 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
         </div>
       )}
 
+      <LeadSourceCard candidate={candidate} onSave={onSaveProfile} />
+
       <Accordion type="multiple" defaultValue={STEPS.map((s) => `step-${s.num}`)} className="space-y-2">
         {STEPS.map((step) => {
           const row = rows[step.num] ?? emptyRow(dbId, step.num);

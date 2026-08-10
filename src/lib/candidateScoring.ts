@@ -31,11 +31,11 @@ export const PILLAR_OVERRIDE_COL: Record<PillarKey, string> = {
 };
 
 export const PILLAR_LABEL: Record<PillarKey, string> = {
-  teaching: "Teaching Experience",
-  leadership: "Leadership",
-  financial: "Ability to Invest",
-  marketFit: "Market Fit",
-  cultureFit: "Culture Fit",
+  teaching: "Responsiveness",
+  leadership: "Experience with Elementary Age Children",
+  financial: "Ability & Willingness to Follow Our Process",
+  marketFit: "Philosophical Alignment",
+  cultureFit: "Market Fit",
 };
 
 export function computeComposite(scores: QualificationScores): number {

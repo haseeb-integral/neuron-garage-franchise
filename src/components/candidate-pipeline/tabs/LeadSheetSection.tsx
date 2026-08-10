@@ -138,7 +138,19 @@ export function LeadSheetSection({ candidate }: Props) {
   const [snapshot, setSnapshot] = useState<ProfileForm>(empty);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [partnerFirst, setPartnerFirst] = useState("");
+  const [partnerLast, setPartnerLast] = useState("");
+  const [partnerEmail, setPartnerEmail] = useState("");
 
+  const savePartner = async () => {
+    if (!dbId) return;
+    const full = [partnerFirst.trim(), partnerLast.trim()].filter(Boolean).join(" ");
+    const { error } = await supabase
+      .from("candidates")
+      .update({ partner_name: full || null, partner_email: partnerEmail.trim() || null })
+      .eq("id", dbId);
+    if (error) toast.error("Failed to save partner: " + error.message);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -150,9 +162,14 @@ export function LeadSheetSection({ candidate }: Props) {
       setLoading(true);
       const [{ data: profileData }, { data: candidateData }] = await Promise.all([
         supabase.from("candidate_profiles").select("*").eq("candidate_id", dbId).maybeSingle(),
-        supabase.from("candidates").select("partner_involved").eq("id", dbId).maybeSingle(),
+        supabase.from("candidates").select("partner_involved, partner_name, partner_email").eq("id", dbId).maybeSingle(),
       ]);
       if (cancelled) return;
+      const pname = (candidateData as any)?.partner_name ?? "";
+      const parts = String(pname).trim().split(/\s+/).filter(Boolean);
+      setPartnerFirst(parts.shift() ?? "");
+      setPartnerLast(parts.join(" "));
+      setPartnerEmail((candidateData as any)?.partner_email ?? "");
       if (profileData) {
         const p = profileData as any;
         const loaded: ProfileForm = {

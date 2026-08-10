@@ -21,7 +21,7 @@ export async function smartleadSourceForProspects(
 
   const { data: queueRows } = await supabase
     .from("outreach_queue")
-    .select("teacher_prospect_id, campaign_id, pushed_at, created_at")
+    .select("teacher_prospect_id, campaign_id, pushed_at, added_at")
     .in("teacher_prospect_id", ids);
   if (!queueRows?.length) return out;
 
@@ -30,7 +30,7 @@ export async function smartleadSourceForProspects(
   for (const r of queueRows) {
     const pid = r.teacher_prospect_id as string | null;
     if (!pid) continue;
-    const ts = (r.pushed_at ?? r.created_at ?? "") as string;
+    const ts = (r.pushed_at ?? r.added_at ?? "") as string;
     const prev = latest.get(pid);
     if (!prev || ts > prev.ts) latest.set(pid, { campaign_id: r.campaign_id ?? null, ts });
   }

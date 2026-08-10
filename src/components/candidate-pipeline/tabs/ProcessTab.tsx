@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
+import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -407,6 +408,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     <span className="text-sm font-semibold truncate" style={{ color: "#07142f" }}>{step.title}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {countRedFlags(row.data) > 0 && (
+                      <span
+                        className="text-[10px] font-semibold rounded px-1.5 py-0.5"
+                        style={{ backgroundColor: "#fdeaea", color: "#c0392b" }}
+                      >
+                        {countRedFlags(row.data)} flag{countRedFlags(row.data) === 1 ? "" : "s"}
+                      </span>
+                    )}
                     {row.completed && <CheckCircle2 size={14} style={{ color: "#20c997" }} />}
                     <span className="text-[11px]" style={{ color: "#526078" }}>{done}/{total} · {pct}%</span>
                   </div>
@@ -496,6 +505,12 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     <strong>Note for recruiter:</strong> When signing is complete, manually move this candidate from the Pipeline into Onboarding. No auto-advance happens here.
                   </div>
                 )}
+
+                <SignalsBlock
+                  nameKey={`step-${step.num}`}
+                  data={row.data ?? {}}
+                  onField={(k, v) => updateField(step.num, k, v)}
+                />
 
                 <div className="mt-4">
                   <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
@@ -696,6 +711,80 @@ function TrialCloseBlock({
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function SignalsBlock({
+  nameKey,
+  data,
+  onField,
+}: {
+  nameKey: string;
+  data: Record<string, any>;
+  onField: (key: string, value: any) => void;
+}) {
+  const flags = countRedFlags(data);
+  return (
+    <div className="mt-4 rounded-md p-3" style={{ backgroundColor: "#fafbfd", border: "1px solid #e3e8ef" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-semibold" style={{ color: "#003c7e" }}>Signals & Red Flags</div>
+        {flags > 0 && (
+          <span className="text-[10px] font-semibold rounded px-1.5 py-0.5" style={{ backgroundColor: "#fdeaea", color: "#c0392b" }}>
+            {flags} red flag{flags === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-2.5">
+        {SIGNAL_QUESTIONS.map((q) => (
+          <div key={q.key}>
+            <div className="text-xs mb-1" style={{ color: "#07142f" }}>{q.label}</div>
+            <div className="flex flex-wrap items-center gap-3">
+              {q.options.map((o) => {
+                const selected = data[q.key] === o.value;
+                const red = selected && o.red;
+                return (
+                  <label
+                    key={o.value}
+                    className="flex items-center gap-1.5 text-xs cursor-pointer"
+                    style={{ color: red ? "#c0392b" : "#526078", fontWeight: red ? 600 : 400 }}
+                  >
+                    <input
+                      type="radio"
+                      name={`${q.key}_${nameKey}`}
+                      checked={selected}
+                      onChange={() => onField(q.key, o.value)}
+                    />
+                    {o.label}
+                  </label>
+                );
+              })}
+              {data[q.key] != null && data[q.key] !== "" && (
+                <button
+                  type="button"
+                  className="text-[11px] underline"
+                  style={{ color: "#8893a7" }}
+                  onClick={() => onField(q.key, "")}
+                >
+                  clear
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        <div>
+          <Label className="text-xs" style={{ color: "#07142f" }}>Other red flag / notes</Label>
+          <Textarea
+            value={(data[SIGNAL_NOTES_KEY] as string) ?? ""}
+            onChange={(e) => onField(SIGNAL_NOTES_KEY, e.target.value)}
+            rows={2}
+            className="mt-1 text-sm"
+            placeholder="Anything else worth flagging from this call…"
+          />
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { QualificationSection } from "../QualificationSection";
+import { RedFlagsSummary } from "../RedFlagsSummary";
 import { QualificationScores } from "@/data/pipelineData";
 
 interface TeamMember { email: string; firstName: string; }
@@ -121,6 +122,8 @@ export function OverviewTab({ candidate, onScoresReplace }: Props) {
           <div className="text-sm" style={{ color: "#8893a7" }}>No partner involved</div>
         )}
       </CardShell>
+
+      <RedFlagsSummary candidateDbId={(candidate as any).dbId} />
 
       <QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} />
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
-import { ContactIntakeSection } from "./step1/ContactIntakeSection";
+import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
 
 interface TeamMember { email: string; firstName: string; }
@@ -56,7 +56,7 @@ const STEPS: StepDef[] = [
   {
     num: 1,
     title: "Initial Qualification",
-    goal: "20–30 min phone call. Quickly determine if the prospect is a viable fit. Assert process leadership.",
+    goal: "20–30 min phone call. Quickly determine if the prospect is a viable fit. This is more of a disqualification call. Assert process leadership -- our process has been designed very deliberately to maximize exposure to our business model so you and we can make an informed decision.",
     trialClose: true,
     postCall: [
       { key: "asked_move_forward", label: "Asked if they want to move forward with our process" },
@@ -373,6 +373,8 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
         </div>
       )}
 
+      <LeadSourceCard candidate={candidate} onSave={onSaveProfile} />
+
       <Accordion type="multiple" defaultValue={STEPS.map((s) => `step-${s.num}`)} className="space-y-2">
         {STEPS.map((step) => {
           const row = rows[step.num] ?? emptyRow(dbId, step.num);
@@ -405,9 +407,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
                 {step.num === 1 && (
                   <>
-                    <div className="rounded-md p-2 mb-3 text-xs" style={{ backgroundColor: "#f6f9ff", border: "1px solid #dbe6ff", color: "#003c7e" }}>
-                      Everything you type here is the source of truth. The Overview tab shows a read-only summary of these answers.
-                    </div>
                     <ContactIntakeSection candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
                     <div className="mb-4">
                       <LeadSheetSection candidate={candidate} />

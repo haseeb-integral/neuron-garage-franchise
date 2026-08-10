@@ -57,6 +57,34 @@ const empty: ProfileForm = {
   other_opportunities: "",
 };
 
+const REGISTRATION_STATE_ABBRS = [
+  "CA", "HI", "IL", "IN", "MD", "MI", "MN", "ND", "NY", "RI", "SD", "VA", "WA", "WI",
+];
+
+const REGISTRATION_STATE_NAMES: Record<string, string> = {
+  california: "CA", hawaii: "HI", illinois: "IL", indiana: "IN", maryland: "MD",
+  michigan: "MI", minnesota: "MN", "north dakota": "ND", "new york": "NY",
+  "rhode island": "RI", "south dakota": "SD", virginia: "VA", washington: "WA",
+  wisconsin: "WI",
+};
+
+// Look for a registration state inside free text like "Nashville, TN" or "Chicago, Illinois".
+function findRegistrationState(text: string): string | null {
+  const t = (text ?? "").toLowerCase();
+  if (!t.trim()) return null;
+  for (const [name, abbr] of Object.entries(REGISTRATION_STATE_NAMES)) {
+    if (new RegExp(`\\b${name}\\b`).test(t)) return abbr;
+  }
+  const upper = (text ?? "").toUpperCase();
+  for (const abbr of REGISTRATION_STATE_ABBRS) {
+    if (new RegExp(`\\b${abbr}\\b`).test(upper)) return abbr;
+  }
+  return null;
+}
+
+const REGISTRATION_NOTE =
+  "NOTE: If the prospect is located in a registration state, we need to politely end the call and let them know that we will reach out to them once we are properly registered to do franchise recruitment in their state.";
+
 const REGISTRATION_STATES_LABEL =
   "Registration states (pause call if prospect is in one): CA, HI, IL, IN, MD, MI, MN, ND, NY, RI, SD, VA, WA, WI";
 
@@ -110,7 +138,19 @@ export function LeadSheetSection({ candidate }: Props) {
   const [snapshot, setSnapshot] = useState<ProfileForm>(empty);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [partnerFirst, setPartnerFirst] = useState("");
+  const [partnerLast, setPartnerLast] = useState("");
+  const [partnerEmail, setPartnerEmail] = useState("");
 
+  const savePartner = async () => {
+    if (!dbId) return;
+    const full = [partnerFirst.trim(), partnerLast.trim()].filter(Boolean).join(" ");
+    const { error } = await supabase
+      .from("candidates")
+      .update({ partner_name: full || null, partner_email: partnerEmail.trim() || null })
+      .eq("id", dbId);
+    if (error) toast.error("Failed to save partner: " + error.message);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -122,9 +162,14 @@ export function LeadSheetSection({ candidate }: Props) {
       setLoading(true);
       const [{ data: profileData }, { data: candidateData }] = await Promise.all([
         supabase.from("candidate_profiles").select("*").eq("candidate_id", dbId).maybeSingle(),
-        supabase.from("candidates").select("partner_involved").eq("id", dbId).maybeSingle(),
+        supabase.from("candidates").select("partner_involved, partner_name, partner_email").eq("id", dbId).maybeSingle(),
       ]);
       if (cancelled) return;
+      const pname = (candidateData as any)?.partner_name ?? "";
+      const parts = String(pname).trim().split(/\s+/).filter(Boolean);
+      setPartnerFirst(parts.shift() ?? "");
+      setPartnerLast(parts.join(" "));
+      setPartnerEmail((candidateData as any)?.partner_email ?? "");
       if (profileData) {
         const p = profileData as any;
         const loaded: ProfileForm = {
@@ -228,7 +273,8 @@ export function LeadSheetSection({ candidate }: Props) {
     void saveForm(form, true);
   };
 
-
+  const regState =
+    findRegistrationState(form.city) ?? findRegistrationState(form.location_preferences);
 
   if (loading) {
     return <div className="py-6 text-sm text-muted-foreground">Loading…</div>;
@@ -238,7 +284,7 @@ export function LeadSheetSection({ candidate }: Props) {
     <div className="space-y-4 py-4" onBlur={handleAutoSave}>
       {/* Role */}
       <div className="space-y-2">
-        <Label>Role in Neuron Garage</Label>
+        <Label>What would be your role in Neuron Garage?</Label>
         <RadioGroup
           value={form.role}
           onValueChange={(v) => updateAndSave("role", v as Role)}
@@ -286,36 +332,51 @@ export function LeadSheetSection({ candidate }: Props) {
       </div>
 
       {/* Partner */}
-      <div className="flex items-center justify-between rounded-md border p-3">
-        <div>
+      <div className="rounded-md border p-3 space-y-3">
+        <div className="flex items-center justify-between">
           <Label htmlFor="ls-partner" className="cursor-pointer">Will you have a partner in the business?</Label>
-          <p className="text-xs text-muted-foreground">Spouse or business partner participating</p>
+          <Switch
+            id="ls-partner"
+            checked={form.partner_involved}
+            onCheckedChange={async (v) => {
+              if (!dbId) {
+                toast.error("Cannot save: candidate not linked to database.");
+                return;
+              }
+              const prev = form.partner_involved;
+              update("partner_involved", v);
+              const patch = v
+                ? { partner_involved: true }
+                : { partner_involved: false, partner_name: null, partner_email: null };
+              if (!v) { setPartnerFirst(""); setPartnerLast(""); setPartnerEmail(""); }
+              const { error } = await supabase
+                .from("candidates")
+                .update(patch)
+                .eq("id", dbId);
+              if (error) {
+                update("partner_involved", prev);
+                toast.error("Failed to save: " + error.message);
+              }
+            }}
+          />
         </div>
-        <Switch
-          id="ls-partner"
-          checked={form.partner_involved}
-          onCheckedChange={async (v) => {
-            if (!dbId) {
-              toast.error("Cannot save: candidate not linked to database.");
-              return;
-            }
-            const prev = form.partner_involved;
-            update("partner_involved", v);
-            const { error } = await supabase
-              .from("candidates")
-              .update({ partner_involved: v })
-              .eq("id", dbId);
-            if (error) {
-              update("partner_involved", prev);
-              toast.error("Failed to save: " + error.message);
-            }
-          }}
-        />
+
+        {form.partner_involved && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" onBlur={savePartner}>
+            <Input placeholder="Partner first name" value={partnerFirst}
+              onChange={(e) => setPartnerFirst(e.target.value)} />
+            <Input placeholder="Partner last name" value={partnerLast}
+              onChange={(e) => setPartnerLast(e.target.value)} />
+            <Input type="email" placeholder="Partner email" value={partnerEmail}
+              onChange={(e) => setPartnerEmail(e.target.value)} />
+          </div>
+        )}
       </div>
+
 
       {/* City */}
       <div className="space-y-2">
-        <Label htmlFor="ls-city">City you're located in</Label>
+        <Label htmlFor="ls-city">What city are you located in?</Label>
         <Input
           id="ls-city"
           value={form.city}
@@ -333,7 +394,7 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* Desired market */}
       <div className="space-y-2">
-        <Label htmlFor="ls-location">Desired market</Label>
+        <Label htmlFor="ls-location">Desired Market</Label>
         <Textarea
           id="ls-location"
           rows={2}
@@ -342,6 +403,17 @@ export function LeadSheetSection({ candidate }: Props) {
           placeholder="Where would they want to open?"
         />
       </div>
+
+      {regState && (
+        <div
+          className="flex items-start gap-2 rounded-md p-2 text-xs font-medium"
+          style={{ backgroundColor: "#fff1f0", border: "1px solid #ffa39e", color: "#c0261c" }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>{REGISTRATION_NOTE} (Detected: {regState})</span>
+        </div>
+      )}
+
 
       {/* Timeline */}
       <div className="space-y-2">

@@ -5,6 +5,7 @@ import { Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { TeacherProspect } from "@/data/teacherData";
 import { supabase } from "@/integrations/supabase/client";
+import { smartleadSourceForProspects } from "@/lib/candidateSourceAutofill";
 import { FindProspectsModal } from "@/components/teacher-prospects/FindProspectsModal";
 import { TeacherImportWizard } from "@/components/teacher-prospects/TeacherImportWizard";
 import { MasterPoolImportWizard } from "@/components/email-outreach/MasterPoolImportWizard";
@@ -233,6 +234,8 @@ const TeacherProspects = () => {
 
   const handlePromoteToCandidate = async () => {
     if (selectedProspects.length === 0) return;
+    // Phase 3: auto-fill source from SmartLead where we know the campaign.
+    const sourceMap = await smartleadSourceForProspects(selectedProspects.map((p) => p.uuid));
     const rows = selectedProspects.map((p) => {
       const [first, ...rest] = (p.name || "").split(" ");
       return {
@@ -244,6 +247,7 @@ const TeacherProspects = () => {
         state: p.state,
         fit_score: p.fitScore ?? 0,
         current_stage: "new_lead" as const,
+        ...(sourceMap.get(p.uuid) ?? {}),
       };
     });
     const { error } = await supabase.from("candidates").insert(rows);

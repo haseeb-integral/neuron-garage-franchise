@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { smartleadSourceForProspect } from "@/lib/candidateSourceAutofill";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -224,7 +225,9 @@ export function OutreachQueuePanel() {
       const [firstName, ...rest] = (tp?.name ?? "").split(/\s+/);
       const lastName = rest.join(" ") || firstName || "—";
       const tagNote = opts?.needsMeeting ? "needs_meeting" : opts?.manual ? "manual_promote" : "auto_promote";
+      const autoSource = await smartleadSourceForProspect(r.teacher_prospect_id);
       const { error } = await supabase.from("candidates").insert({
+        ...(autoSource ?? {}),
         first_name: firstName || tp?.name || "—",
         last_name: lastName,
         email,

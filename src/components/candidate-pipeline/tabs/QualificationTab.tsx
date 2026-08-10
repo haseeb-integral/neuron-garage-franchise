@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Candidate, QualificationScores } from "@/data/pipelineData";
 import { StarRating } from "../StarRating";
-import { Sparkles, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { Sparkles, SlidersHorizontal, RotateCcw, Pencil } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

@@ -164,51 +164,7 @@ export function NotesActivityTab({ candidate }: Props) {
   return (
     <div className="space-y-4 pt-4">
 
-      {/* Add Note — improved */}
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
-        <div className="flex items-center gap-2 mb-2">
-          <MessageSquare size={16} style={{ color: "#003c7e" }} />
-          <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Add a note</h4>
-        </div>
-        <Textarea
-          ref={taRef}
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, MAX_NOTE))}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          placeholder="Write what happened, what was said, or what to do next…"
-          rows={4}
-          className="resize-y text-sm"
-          disabled={!dbId || posting}
-        />
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[11px]" style={{ color: "#8893a7" }}>
-            Press <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ backgroundColor: "#f1f5f9", border: "1px solid #e3e8ef" }}>⌘/Ctrl + Enter</kbd> to post
-            <span className="mx-2">·</span>
-            <span style={{ color: text.length > MAX_NOTE * 0.9 ? "#b91c1c" : "#8893a7" }}>
-              {text.length} / {MAX_NOTE}
-            </span>
-          </span>
-          <Button
-            onClick={submit}
-            disabled={!dbId || posting || !text.trim()}
-            className="text-white"
-            style={{ backgroundColor: "#174be8" }}
-            size="sm"
-          >
-            {posting ? "Saving…" : "Add Note"}
-          </Button>
-        </div>
-        {!dbId && (
-          <p className="text-[11px] mt-2" style={{ color: "#6c757d" }}>
-            Notes can only be added for saved candidates.
-          </p>
-        )}
-      </div>
+
 
       {/* Notes panel — dedicated, pinned above the activity timeline */}
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>

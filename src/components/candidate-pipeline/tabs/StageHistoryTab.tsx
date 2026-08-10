@@ -47,20 +47,14 @@ export function StageHistoryTab({ candidate }: Props) {
     return () => { cancelled = true; };
   }, [dbId]);
 
-  if (loading) {
-    return <div className="py-6 text-sm text-muted-foreground">Loading…</div>;
-  }
-
-  if (!rows.length) {
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        No stage changes recorded yet.
-      </div>
-    );
-  }
-
   return (
-    <div className="py-4">
+    <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
+      <h4 className="font-semibold text-sm mb-3" style={{ color: "#003c7e" }}>Stage History</h4>
+      {loading ? (
+        <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
+      ) : !rows.length ? (
+        <p className="text-xs" style={{ color: "#6c757d" }}>No stage changes recorded yet.</p>
+      ) : (
       <ol className="relative border-l border-border ml-3 space-y-5">
         {rows.map((r) => (
           <li key={r.id} className="ml-4">
@@ -80,6 +74,7 @@ export function StageHistoryTab({ candidate }: Props) {
           </li>
         ))}
       </ol>
+      )}
     </div>
   );
 }

@@ -1,8 +1,6 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Candidate } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
   ArrowRight,
@@ -12,8 +10,9 @@ import {
   FileEdit,
 } from "lucide-react";
 
-import { logActivity, ActivityType } from "@/lib/candidateActivity";
-import { toast } from "sonner";
+import { ActivityType } from "@/lib/candidateActivity";
+import { StageHistoryTab } from "./StageHistoryTab";
+
 
 interface Props {
   candidate: Candidate;
@@ -88,12 +87,9 @@ const matchesFilter = (row: ActivityRow, f: FilterKey) => {
 };
 
 export function NotesActivityTab({ candidate }: Props) {
-  const [text, setText] = useState("");
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [posting, setPosting] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
-  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const dbId = (candidate as any).dbId as string | undefined;
 
   const load = useCallback(async () => {
@@ -120,16 +116,6 @@ export function NotesActivityTab({ candidate }: Props) {
     load();
   }, [load]);
 
-  const submit = async () => {
-    const content = text.trim();
-    if (!content || !dbId) return;
-    setPosting(true);
-    await logActivity(dbId, "note", content);
-    setPosting(false);
-    setText("");
-    toast.success("Note added");
-    load();
-  };
 
   const notes = useMemo(() => rows.filter((r) => r.type === "note"), [rows]);
   const events = useMemo(() => rows.filter((r) => r.type !== "note"), [rows]);
@@ -164,51 +150,7 @@ export function NotesActivityTab({ candidate }: Props) {
   return (
     <div className="space-y-4 pt-4">
 
-      {/* Add Note — improved */}
-      <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
-        <div className="flex items-center gap-2 mb-2">
-          <MessageSquare size={16} style={{ color: "#003c7e" }} />
-          <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Add a note</h4>
-        </div>
-        <Textarea
-          ref={taRef}
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, MAX_NOTE))}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          placeholder="Write what happened, what was said, or what to do next…"
-          rows={4}
-          className="resize-y text-sm"
-          disabled={!dbId || posting}
-        />
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[11px]" style={{ color: "#8893a7" }}>
-            Press <kbd className="px-1 py-0.5 rounded text-[10px]" style={{ backgroundColor: "#f1f5f9", border: "1px solid #e3e8ef" }}>⌘/Ctrl + Enter</kbd> to post
-            <span className="mx-2">·</span>
-            <span style={{ color: text.length > MAX_NOTE * 0.9 ? "#b91c1c" : "#8893a7" }}>
-              {text.length} / {MAX_NOTE}
-            </span>
-          </span>
-          <Button
-            onClick={submit}
-            disabled={!dbId || posting || !text.trim()}
-            className="text-white"
-            style={{ backgroundColor: "#174be8" }}
-            size="sm"
-          >
-            {posting ? "Saving…" : "Add Note"}
-          </Button>
-        </div>
-        {!dbId && (
-          <p className="text-[11px] mt-2" style={{ color: "#6c757d" }}>
-            Notes can only be added for saved candidates.
-          </p>
-        )}
-      </div>
+
 
       {/* Notes panel — dedicated, pinned above the activity timeline */}
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
@@ -224,7 +166,7 @@ export function NotesActivityTab({ candidate }: Props) {
           <p className="text-xs" style={{ color: "#6c757d" }}>Loading…</p>
         ) : notes.length === 0 ? (
           <p className="text-xs" style={{ color: "#6c757d" }}>
-            No notes yet. Use the box above to add the first one.
+            No notes recorded for this candidate.
           </p>
         ) : (
           <>
@@ -277,7 +219,11 @@ export function NotesActivityTab({ candidate }: Props) {
         )}
       </div>
 
+      {/* Stage history — moved here from its own tab */}
+      <StageHistoryTab candidate={candidate} />
+
       {/* Activity Timeline — system events only */}
+
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Activity Timeline</h4>

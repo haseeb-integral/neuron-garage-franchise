@@ -6,7 +6,7 @@ import { OverviewTab } from "./tabs/OverviewTab";
 import { LeadSheetTab } from "./tabs/LeadSheetTab";
 import { ProcessTab } from "./tabs/ProcessTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
-import { StageHistoryTab } from "./tabs/StageHistoryTab";
+
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
@@ -90,8 +90,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               {isEnabled("FF_CANDIDATE_PROCESS_V1") && (
                 <TabsTrigger value="process" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Process</TabsTrigger>
               )}
-              <TabsTrigger value="notes" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Notes &amp; Activity</TabsTrigger>
-              <TabsTrigger value="stage-history" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Stage History</TabsTrigger>
+              <TabsTrigger value="notes" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Activity</TabsTrigger>
+              
+
               
               <TabsTrigger value="committee" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Committee Votes</TabsTrigger>
               {isEnabled("FF_DOCUMENTS") && (
@@ -114,9 +115,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           <TabsContent value="notes">
             <NotesActivityTab candidate={candidate} />
           </TabsContent>
-          <TabsContent value="stage-history">
-            <StageHistoryTab candidate={candidate} />
-          </TabsContent>
+
           <TabsContent value="committee">
             <CommitteeVotesTab candidate={candidate} />
           </TabsContent>

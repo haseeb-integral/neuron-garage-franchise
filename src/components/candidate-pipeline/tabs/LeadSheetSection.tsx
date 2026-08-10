@@ -161,58 +161,73 @@ export function LeadSheetSection({ candidate }: Props) {
   const update = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  const handleSave = async () => {
+  // Change a field and immediately save (used for radio buttons, which never blur predictably).
+  const updateAndSave = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) =>
+    setForm((f) => {
+      const next = { ...f, [k]: v };
+      queueMicrotask(() => void saveForm(next, true));
+      return next;
+    });
+
+  const saveForm = async (current: ProfileForm, silent = false) => {
     if (!dbId) {
-      toast.error("Cannot save: candidate not linked to database.");
+      if (!silent) toast.error("Cannot save: candidate not linked to database.");
       return;
     }
     setSaving(true);
     const profilePayload = {
       candidate_id: dbId,
-      background: form.background || null,
-      motivation: form.motivation || null,
-      liquid_capital: form.liquid_capital ? Number(form.liquid_capital) : null,
-      net_worth: form.net_worth ? Number(form.net_worth) : null,
-      timeline: form.timeline || null,
-      location_preferences: form.location_preferences || null,
-      additional_notes: form.additional_notes || null,
-      role: form.role || null,
-      role_other: form.role === "other" ? (form.role_other || null) : null,
-      married: fromYesNo(form.married),
-      city: form.city || null,
-      discovery_source: form.discovery_source || null,
-      can_invest_min: fromYesNo(form.can_invest_min),
-      sweat_equity_ok: fromYesNo(form.sweat_equity_ok),
-      other_opportunities: form.other_opportunities || null,
+      background: current.background || null,
+      motivation: current.motivation || null,
+      liquid_capital: current.liquid_capital ? Number(current.liquid_capital) : null,
+      net_worth: current.net_worth ? Number(current.net_worth) : null,
+      timeline: current.timeline || null,
+      location_preferences: current.location_preferences || null,
+      additional_notes: current.additional_notes || null,
+      role: current.role || null,
+      role_other: current.role === "other" ? (current.role_other || null) : null,
+      married: fromYesNo(current.married),
+      city: current.city || null,
+      discovery_source: current.discovery_source || null,
+      can_invest_min: fromYesNo(current.can_invest_min),
+      sweat_equity_ok: fromYesNo(current.sweat_equity_ok),
+      other_opportunities: current.other_opportunities || null,
     };
-    // NOTE: partner_involved is owned by the Overview tab toggle (auto-saves on click).
-    // Do NOT write it here or we'll clobber a fresh toggle with this form's stale value.
+    // NOTE: partner_involved is owned by the toggle below (auto-saves on click).
     const { error: profileError } = await supabase
       .from("candidate_profiles")
       .upsert(profilePayload, { onConflict: "candidate_id" });
     setSaving(false);
     if (profileError) {
       toast.error("Failed to save lead sheet: " + profileError.message);
-    } else {
-      toast.success("Lead sheet saved");
-      if (dbId) {
-        const changes = diffForm(snapshot, form);
-        const { logActivity } = await import("@/lib/candidateActivity");
-        if (changes.length > 0) {
-          const labels = changes.map((c) => c.label).join(", ");
-          logActivity(
-            dbId,
-            "lead_sheet_saved",
-            `Lead sheet updated — ${changes.length} field${changes.length === 1 ? "" : "s"} changed: ${labels}`,
-            { changes },
-          );
-        } else {
-          logActivity(dbId, "lead_sheet_saved", "Lead sheet saved (no field changes)", { changes: [] });
-        }
-        setSnapshot(form);
-      }
+      return;
     }
+    if (!silent) toast.success("Lead sheet saved");
+    const changes = diffForm(snapshot, current);
+    const { logActivity } = await import("@/lib/candidateActivity");
+    if (changes.length > 0) {
+      const labels = changes.map((c) => c.label).join(", ");
+      logActivity(
+        dbId,
+        "lead_sheet_saved",
+        `Lead sheet updated — ${changes.length} field${changes.length === 1 ? "" : "s"} changed: ${labels}`,
+        { changes },
+      );
+    } else if (!silent) {
+      logActivity(dbId, "lead_sheet_saved", "Lead sheet saved (no field changes)", { changes: [] });
+    }
+    setSnapshot(current);
   };
+
+  const handleSave = () => saveForm(form);
+
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (saving || !dbId) return;
+    if (diffForm(snapshot, form).length === 0) return;
+    void saveForm(form, true);
+  };
+
 
 
   if (loading) {
@@ -220,13 +235,13 @@ export function LeadSheetSection({ candidate }: Props) {
   }
 
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-4 py-4" onBlur={handleAutoSave}>
       {/* Role */}
       <div className="space-y-2">
         <Label>Role in Neuron Garage</Label>
         <RadioGroup
           value={form.role}
-          onValueChange={(v) => update("role", v as Role)}
+          onValueChange={(v) => updateAndSave("role", v as Role)}
           className="flex flex-wrap gap-4"
         >
           <label className="flex items-center gap-2 cursor-pointer">
@@ -256,7 +271,7 @@ export function LeadSheetSection({ candidate }: Props) {
         <Label>Are you married?</Label>
         <RadioGroup
           value={form.married}
-          onValueChange={(v) => update("married", v as YesNo)}
+          onValueChange={(v) => updateAndSave("married", v as YesNo)}
           className="flex gap-4"
         >
           <label className="flex items-center gap-2 cursor-pointer">
@@ -363,7 +378,7 @@ export function LeadSheetSection({ candidate }: Props) {
           </Label>
           <RadioGroup
             value={form.can_invest_min}
-            onValueChange={(v) => update("can_invest_min", v as YesNo)}
+            onValueChange={(v) => updateAndSave("can_invest_min", v as YesNo)}
             className="flex gap-4"
           >
             <label className="flex items-center gap-2 cursor-pointer">
@@ -381,7 +396,7 @@ export function LeadSheetSection({ candidate }: Props) {
           <Label className="text-sm">Can commit 1 summer of sweat equity?</Label>
           <RadioGroup
             value={form.sweat_equity_ok}
-            onValueChange={(v) => update("sweat_equity_ok", v as YesNo)}
+            onValueChange={(v) => updateAndSave("sweat_equity_ok", v as YesNo)}
             className="flex gap-4"
           >
             <label className="flex items-center gap-2 cursor-pointer">

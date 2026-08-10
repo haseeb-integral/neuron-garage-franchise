@@ -103,7 +103,7 @@ export function ContactIntakeSection({
     setSource(candidate.source ?? "");
   };
 
-  const handleSave = async () => {
+  const handleSave = async (opts?: { silent?: boolean }) => {
     if (!onSave) return;
     if (!firstName.trim()) { toast.error("First name cannot be empty"); return; }
     if (!emailLocked && email.trim() && !EMAIL_RE.test(email.trim())) {
@@ -139,13 +139,20 @@ export function ContactIntakeSection({
     setSaving(true);
     try {
       await onSave(dbPatch, localPatch);
-      toast.success("Contact details saved");
+      if (!opts?.silent) toast.success("Contact details saved");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save");
     } finally {
       setSaving(false);
     }
   };
+
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || saving || !dirty) return;
+    void handleSave({ silent: true });
+  };
+
 
   const savePatch = async (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => {
     if (!onSave) return;
@@ -199,7 +206,7 @@ export function ContactIntakeSection({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" onBlur={handleAutoSave}>
           <Field label="First Name">
             <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
               value={firstName} onChange={(e) => setFirstName(e.target.value)} />
@@ -258,7 +265,7 @@ export function ContactIntakeSection({
           <div className="mt-3 flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={reset} disabled={saving}>Cancel</Button>
             <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
-              onClick={handleSave} disabled={saving}>
+              onClick={() => handleSave()} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
           </div>
@@ -292,9 +299,31 @@ function MailingAddressCard({
     (candidate.mailingState ?? "") !== state ||
     (candidate.mailingZip ?? "") !== zip;
 
+  const persist = () =>
+    onSave(
+      {
+        mailing_street: street.trim() || null,
+        mailing_city: city.trim() || null,
+        mailing_state: state.trim() || null,
+        mailing_zip: zip.trim() || null,
+      },
+      {
+        mailingStreet: street.trim(),
+        mailingCity: city.trim(),
+        mailingState: state.trim(),
+        mailingZip: zip.trim(),
+      },
+    );
+
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || !dirty) return;
+    void persist();
+  };
+
   return (
     <CardShell icon={Home} title="Mailing Address">
-      <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-6 gap-2" onBlur={handleAutoSave}>
         <input className={cn(inputCls, "sm:col-span-6")} placeholder="Street address" disabled={readOnly}
           value={street} onChange={(e) => setStreet(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
         <input className={cn(inputCls, "sm:col-span-3")} placeholder="City" disabled={readOnly}
@@ -313,20 +342,7 @@ function MailingAddressCard({
             setZip(candidate.mailingZip ?? "");
           }}>Cancel</Button>
           <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
-            onClick={() => onSave(
-              {
-                mailing_street: street.trim() || null,
-                mailing_city: city.trim() || null,
-                mailing_state: state.trim() || null,
-                mailing_zip: zip.trim() || null,
-              },
-              {
-                mailingStreet: street.trim(),
-                mailingCity: city.trim(),
-                mailingState: state.trim(),
-                mailingZip: zip.trim(),
-              },
-            )}
+            onClick={() => persist()}
           >Save</Button>
         </div>
       )}
@@ -375,6 +391,13 @@ function PartnerCard({
     onSave(dbPatch, localPatch);
   };
 
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || !dirty) return;
+    handleSave();
+  };
+
+
   return (
     <CardShell icon={Users} title="Spouse / Partner">
       <label className="flex items-center gap-2 cursor-pointer">
@@ -407,7 +430,7 @@ function PartnerCard({
       </label>
 
       {involved && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3" onBlur={handleAutoSave}>
           <input className={inputCls} placeholder="Partner name" disabled={readOnly}
             value={name} onChange={(e) => setName(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
           <input type="email" className={inputCls} placeholder="Partner email" disabled={readOnly}

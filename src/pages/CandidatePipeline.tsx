@@ -30,7 +30,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { startOnboardingForCandidate } from "@/lib/onboardingService";
-import { FIT_TAGS, FitTag } from "@/constants/fitTags";
+import { FIT_TAGS, FitTag, coerceFitTag } from "@/constants/fitTags";
+import { CANDIDATE_TAG_EVENT } from "@/components/candidate-pipeline/TagSelect";
+
 
 type OwnerFilter = string; // "all" or a user email
 interface TeamMember { email: string; firstName: string; }

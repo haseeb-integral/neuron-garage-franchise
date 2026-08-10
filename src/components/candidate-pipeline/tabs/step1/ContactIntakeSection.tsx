@@ -430,7 +430,7 @@ function PartnerCard({
       </label>
 
       {involved && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3" onBlur={handleAutoSave}>
           <input className={inputCls} placeholder="Partner name" disabled={readOnly}
             value={name} onChange={(e) => setName(e.target.value)} style={{ borderColor: "#e3e8ef" }} />
           <input type="email" className={inputCls} placeholder="Partner email" disabled={readOnly}

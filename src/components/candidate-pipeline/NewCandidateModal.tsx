@@ -129,7 +129,7 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
         state: form.state.trim().toUpperCase(),
         current_stage: dbStage as any,
         fit_score: form.fit_score,
-        fit_tag: deriveFitTag(form.fit_score),
+        fit_tag: form.fit_tag,
         status: "active",
         assigned_to: form.assigned_to,
       })

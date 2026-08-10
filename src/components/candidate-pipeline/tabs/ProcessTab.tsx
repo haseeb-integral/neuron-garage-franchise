@@ -458,6 +458,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
                 {step.trialClose && (
                   <TrialCloseBlock
+                    nameKey={`step-${step.num}`}
                     state={row.trial_close}
                     data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
@@ -579,11 +580,13 @@ function ChecklistBlock({
 }
 
 function TrialCloseBlock({
+  nameKey,
   state,
   data,
   onToggle,
   onField,
 }: {
+  nameKey: string;
   state: ChecklistMap;
   data: Record<string, any>;
   onToggle: (key: string, value: boolean) => void;
@@ -636,7 +639,7 @@ function TrialCloseBlock({
                     <label key={opt} className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "#07142f" }}>
                       <input
                         type="radio"
-                        name={`tc_move_forward_${i.key}_${String(data.__k ?? "")}`}
+                        name={`tc_move_forward_${nameKey}`}
                         checked={data.tc_move_forward === opt}
                         onChange={() => onField("tc_move_forward", opt)}
                       />

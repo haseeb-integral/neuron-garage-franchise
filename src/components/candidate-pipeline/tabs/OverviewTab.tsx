@@ -122,6 +122,8 @@ export function OverviewTab({ candidate, onScoresReplace }: Props) {
         )}
       </CardShell>
 
+      <RedFlagsSummary candidateDbId={(candidate as any).dbId} />
+
       <QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} />
 
       <div className="bg-white rounded-lg p-3" style={{ border: "1px solid #e3e8ef" }}>

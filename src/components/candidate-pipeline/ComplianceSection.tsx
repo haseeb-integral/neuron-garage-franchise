@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ShieldCheck, ChevronDown, ChevronRight, AlertTriangle, Lock } from "lucide-react";
+import { ShieldCheck, ChevronDown, ChevronRight, AlertTriangle, Lock, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

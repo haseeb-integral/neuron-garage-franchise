@@ -57,6 +57,34 @@ const empty: ProfileForm = {
   other_opportunities: "",
 };
 
+const REGISTRATION_STATE_ABBRS = [
+  "CA", "HI", "IL", "IN", "MD", "MI", "MN", "ND", "NY", "RI", "SD", "VA", "WA", "WI",
+];
+
+const REGISTRATION_STATE_NAMES: Record<string, string> = {
+  california: "CA", hawaii: "HI", illinois: "IL", indiana: "IN", maryland: "MD",
+  michigan: "MI", minnesota: "MN", "north dakota": "ND", "new york": "NY",
+  "rhode island": "RI", "south dakota": "SD", virginia: "VA", washington: "WA",
+  wisconsin: "WI",
+};
+
+// Look for a registration state inside free text like "Nashville, TN" or "Chicago, Illinois".
+function findRegistrationState(text: string): string | null {
+  const t = (text ?? "").toLowerCase();
+  if (!t.trim()) return null;
+  for (const [name, abbr] of Object.entries(REGISTRATION_STATE_NAMES)) {
+    if (new RegExp(`\\b${name}\\b`).test(t)) return abbr;
+  }
+  const upper = (text ?? "").toUpperCase();
+  for (const abbr of REGISTRATION_STATE_ABBRS) {
+    if (new RegExp(`\\b${abbr}\\b`).test(upper)) return abbr;
+  }
+  return null;
+}
+
+const REGISTRATION_NOTE =
+  "NOTE: If the prospect is located in a registration state, we need to politely end the call and let them know that we will reach out to them once we are properly registered to do franchise recruitment in their state.";
+
 const REGISTRATION_STATES_LABEL =
   "Registration states (pause call if prospect is in one): CA, HI, IL, IN, MD, MI, MN, ND, NY, RI, SD, VA, WA, WI";
 

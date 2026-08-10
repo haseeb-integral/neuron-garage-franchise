@@ -5,6 +5,9 @@ import {
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { QualificationSection } from "../QualificationSection";
 import { RedFlagsSummary } from "../RedFlagsSummary";
+import { TagSelect } from "../TagSelect";
+
+
 import { QualificationScores } from "@/data/pipelineData";
 
 interface TeamMember { email: string; firstName: string; }
@@ -64,7 +67,9 @@ export function OverviewTab({ candidate, onScoresReplace }: Props) {
             Summary only — edit these details in the <strong>Qualification Process</strong> tab, Step 1.
           </div>
         </div>
+        <TagSelect candidateDbId={(candidate as any).dbId} value={candidate.tag} />
       </div>
+
 
       {needsReg && (
         <div

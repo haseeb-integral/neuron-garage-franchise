@@ -30,7 +30,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { startOnboardingForCandidate } from "@/lib/onboardingService";
-import { FIT_TAGS, FitTag } from "@/constants/fitTags";
+import { FIT_TAGS, FitTag, coerceFitTag } from "@/constants/fitTags";
+import { CANDIDATE_TAG_EVENT } from "@/components/candidate-pipeline/TagSelect";
+
 
 type OwnerFilter = string; // "all" or a user email
 interface TeamMember { email: string; firstName: string; }
@@ -87,7 +89,7 @@ const CandidatePipeline = () => {
       stage: dbStageToUi(r.current_stage) ?? "new_lead",
       daysInStage: days,
       assignedTo: r.assigned_to ?? "",
-      tag: r.fit_tag ?? "Untagged",
+      tag: coerceFitTag(r.fit_tag),
       source: r.source ?? "",
       sourceType: r.source_type ?? "",
       sourceName: r.source_name ?? "",
@@ -267,7 +269,21 @@ const CandidatePipeline = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, candidates]);
 
+  // Keep cards in sync when the tag is changed from the Overview tab.
   useEffect(() => {
+    const handler = (e: Event) => {
+      const { dbId, tag } = (e as CustomEvent).detail ?? {};
+      if (!dbId) return;
+      setCandidates((prev) =>
+        prev.map((c: any) => (c.dbId === dbId ? { ...c, tag } : c)),
+      );
+    };
+    window.addEventListener(CANDIDATE_TAG_EVENT, handler);
+    return () => window.removeEventListener(CANDIDATE_TAG_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+
     setActive((prev) => {
       if (!prev) return prev;
       const prevDbId = (prev as any).dbId as string | undefined;

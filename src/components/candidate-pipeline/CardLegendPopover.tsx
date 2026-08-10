@@ -73,7 +73,8 @@ export function CardLegendPopover() {
               </span>
             }
             title="Blue tag — Qualitative label"
-            body='Short status like "Interested", "High Potential", "Follow-Up".'
+            body='Set by hand on the Overview tab. Options: "High Potential", "Interested", "Meeting Requested", "Follow-Up", "Not a Fit". Not linked to the Qual score.'
+
           />
           <LegendRow
             swatch={<span className="text-[10px] font-medium text-muted-foreground">Day 8</span>}

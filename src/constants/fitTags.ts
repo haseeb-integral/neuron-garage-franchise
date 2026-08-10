@@ -1,12 +1,19 @@
 /**
  * Single source of truth for candidate / prospect fit tags.
+ * Tags are chosen manually by a recruiter — nothing derives them automatically.
  * Used by:
  *  - New Candidate modal
- *  - Teacher Prospects → Promote logic
+ *  - Candidate detail → Overview tag picker
  *  - Candidate Pipeline tag filters
  *  - TagBadge styling
  */
-export const FIT_TAGS = ["High Potential", "Follow-Up", "Not a Fit"] as const;
+export const FIT_TAGS = [
+  "High Potential",
+  "Interested",
+  "Meeting Requested",
+  "Follow-Up",
+  "Not a Fit",
+] as const;
 
 export type FitTag = (typeof FIT_TAGS)[number];
 

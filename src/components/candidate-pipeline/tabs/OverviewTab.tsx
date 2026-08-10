@@ -339,12 +339,6 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
 
       {/* === Tier 2 cards === */}
 
-      <OtherOpportunitiesCard
-        candidate={candidate}
-        readOnly={readOnly}
-        onSave={savePatch}
-      />
-
       <MailingAddressCard
         candidate={candidate}
         readOnly={readOnly}
@@ -352,12 +346,6 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       />
 
       <PartnerCard
-        candidate={candidate}
-        readOnly={readOnly}
-        onSave={savePatch}
-      />
-
-      <ComplianceAuditCard
         candidate={candidate}
         readOnly={readOnly}
         onSave={savePatch}

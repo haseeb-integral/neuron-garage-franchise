@@ -89,7 +89,7 @@ const CandidatePipeline = () => {
       stage: dbStageToUi(r.current_stage) ?? "new_lead",
       daysInStage: days,
       assignedTo: r.assigned_to ?? "",
-      tag: r.fit_tag ?? "Untagged",
+      tag: coerceFitTag(r.fit_tag),
       source: r.source ?? "",
       sourceType: r.source_type ?? "",
       sourceName: r.source_name ?? "",

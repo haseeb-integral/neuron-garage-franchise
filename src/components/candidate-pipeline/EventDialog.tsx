@@ -210,18 +210,22 @@ export function EventDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 col-span-2">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as CandidateEventType)}>
+              <Select value={option} onValueChange={setOption}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="follow_up">Follow-up</SelectItem>
+                <SelectContent className="max-h-[280px]">
+                  {EVENT_TYPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5">
               <Label>Length (minutes)</Label>
               <Input

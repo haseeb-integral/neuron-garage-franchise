@@ -4,7 +4,9 @@ import {
 } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { QualificationSection } from "../QualificationSection";
+import { RedFlagsSummary } from "../RedFlagsSummary";
 import { TagSelect } from "../TagSelect";
+
 
 import { QualificationScores } from "@/data/pipelineData";
 

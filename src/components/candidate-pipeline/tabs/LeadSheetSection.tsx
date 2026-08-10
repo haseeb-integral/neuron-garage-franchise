@@ -26,6 +26,8 @@ interface ProfileForm {
   timeline: string;
   partner_involved: boolean;
   location_preferences: string;
+  desired_market_city: string;
+  desired_market_state: string;
   additional_notes: string;
   // new (Google Form Step 1)
   role: Role;
@@ -47,6 +49,8 @@ const empty: ProfileForm = {
   timeline: "",
   partner_involved: false,
   location_preferences: "",
+  desired_market_city: "",
+  desired_market_state: "",
   additional_notes: "",
   role: "",
   role_other: "",
@@ -102,7 +106,9 @@ const FIELD_LABELS: Record<keyof ProfileForm, string> = {
   net_worth: "Net worth",
   timeline: "Timeline",
   partner_involved: "Partner involved",
-  location_preferences: "Location preferences",
+  location_preferences: "Desired market",
+  desired_market_city: "Desired market city",
+  desired_market_state: "Desired market state",
   additional_notes: "Additional notes",
   role: "Role",
   role_other: "Role (other)",
@@ -183,6 +189,8 @@ export function LeadSheetSection({ candidate }: Props) {
           timeline: p.timeline ?? "",
           partner_involved: !!candidateData?.partner_involved,
           location_preferences: p.location_preferences ?? "",
+          desired_market_city: p.desired_market_city ?? "",
+          desired_market_state: p.desired_market_state ?? "",
           additional_notes: p.additional_notes ?? "",
           role: (p.role as Role) ?? "",
           role_other: p.role_other ?? "",
@@ -231,7 +239,13 @@ export function LeadSheetSection({ candidate }: Props) {
       liquid_capital: current.liquid_capital ? Number(current.liquid_capital) : null,
       net_worth: current.net_worth ? Number(current.net_worth) : null,
       timeline: current.timeline || null,
-      location_preferences: current.location_preferences || null,
+      desired_market_city: current.desired_market_city || null,
+      desired_market_state: current.desired_market_state || null,
+      // Keep the legacy combined text in sync so exports keep working.
+      location_preferences:
+        [current.desired_market_city.trim(), current.desired_market_state.trim()]
+          .filter(Boolean)
+          .join(", ") || null,
       additional_notes: current.additional_notes || null,
       role: current.role || null,
       role_other: current.role === "other" ? (current.role_other || null) : null,
@@ -281,7 +295,8 @@ export function LeadSheetSection({ candidate }: Props) {
   const regState =
     findRegistrationState(form.state) ??
     findRegistrationState(form.city) ??
-    findRegistrationState(form.location_preferences);
+    findRegistrationState(form.desired_market_state) ??
+    findRegistrationState(form.desired_market_city);
 
   if (loading) {
     return <div className="py-6 text-sm text-muted-foreground">Loading…</div>;
@@ -409,14 +424,21 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* Desired market */}
       <div className="space-y-2">
-        <Label htmlFor="ls-location">Desired Market</Label>
-        <Textarea
-          id="ls-location"
-          rows={2}
-          value={form.location_preferences}
-          onChange={(e) => update("location_preferences", e.target.value)}
-          placeholder="Where would they want to open?"
-        />
+        <Label htmlFor="ls-market-city">Desired Market (city and state)</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Input
+            id="ls-market-city"
+            value={form.desired_market_city}
+            onChange={(e) => update("desired_market_city", e.target.value)}
+            placeholder="City (e.g. Nashville)"
+          />
+          <Input
+            id="ls-market-state"
+            value={form.desired_market_state}
+            onChange={(e) => update("desired_market_state", e.target.value)}
+            placeholder="State (e.g. TN)"
+          />
+        </div>
       </div>
 
       {regState && (

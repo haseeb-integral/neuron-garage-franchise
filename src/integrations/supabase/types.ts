@@ -658,6 +658,36 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_source_options: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          sort_order: number
+          source_name: string | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          sort_order?: number
+          source_name?: string | null
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          sort_order?: number
+          source_name?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       candidate_stage_history: {
         Row: {
           candidate_id: string
@@ -768,6 +798,10 @@ export type Database = {
           phone: string | null
           prospect_id: string | null
           source: string | null
+          source_campaign: string | null
+          source_name: string | null
+          source_notes: string | null
+          source_type: string | null
           state: string
           status: string
           updated_at: string
@@ -799,6 +833,10 @@ export type Database = {
           phone?: string | null
           prospect_id?: string | null
           source?: string | null
+          source_campaign?: string | null
+          source_name?: string | null
+          source_notes?: string | null
+          source_type?: string | null
           state?: string
           status?: string
           updated_at?: string
@@ -830,6 +868,10 @@ export type Database = {
           phone?: string | null
           prospect_id?: string | null
           source?: string | null
+          source_campaign?: string | null
+          source_name?: string | null
+          source_notes?: string | null
+          source_type?: string | null
           state?: string
           status?: string
           updated_at?: string

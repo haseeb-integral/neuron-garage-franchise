@@ -71,7 +71,17 @@ export interface Candidate {
   daysInStage: number;
   assignedTo: string;
   tag: string;
+  /** Legacy single-field source. Kept for old rows; new data uses the three fields below. */
   source: string;
+  /** Level 1 — high-level channel, e.g. "Outbound Email". */
+  sourceType?: string;
+  /** Level 2 — specific source inside that channel, e.g. "SmartLead". */
+  sourceName?: string;
+  /** Level 3 — campaign name, e.g. "Houston Teachers – Apr 2026". */
+  sourceCampaign?: string;
+  /** Free-text context that does not fit the lists. */
+  sourceNotes?: string;
+
   createdDate: string;
   fddSentDate?: string;
   /** Optional candidate portrait URL. When set, CandidateAvatar renders the image; otherwise initials. */

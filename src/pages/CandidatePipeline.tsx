@@ -89,6 +89,11 @@ const CandidatePipeline = () => {
       assignedTo: r.assigned_to ?? "",
       tag: r.fit_tag ?? "Untagged",
       source: r.source ?? "",
+      sourceType: r.source_type ?? "",
+      sourceName: r.source_name ?? "",
+      sourceCampaign: r.source_campaign ?? "",
+      sourceNotes: r.source_notes ?? "",
+
       createdDate: r.created_at ?? new Date().toISOString(),
       otherOpportunities: r.other_opportunities ?? "",
       mailingStreet: r.mailing_street ?? "",

@@ -3,7 +3,8 @@ import { Candidate } from "@/data/pipelineData";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Camera, Home, Users, User } from "lucide-react";
+import { Camera, Home, Users, User, Tag } from "lucide-react";
+import { useCandidateSourceOptions } from "@/hooks/useCandidateSourceOptions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,6 @@ export type SaveFn = (dbPatch: Record<string, any>, localPatch: Partial<Candidat
 interface TeamMember { email: string; firstName: string; }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SOURCE_OPTIONS = ["Referral", "Web Form", "LinkedIn", "Discovery Day", "Event", "Outbound", "Other"];
 
 const inputCls =
   "w-full text-sm rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 disabled:bg-[#f8f9fa]";
@@ -65,7 +65,6 @@ export function ContactIntakeSection({
   const [city, setCity] = useState(candidate.city ?? "");
   const [state, setState] = useState(candidate.state ?? "");
   const [assignedTo, setAssignedTo] = useState(candidate.assignedTo ?? "");
-  const [source, setSource] = useState(candidate.source ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -78,7 +77,6 @@ export function ContactIntakeSection({
     setCity(candidate.city ?? "");
     setState(candidate.state ?? "");
     setAssignedTo(candidate.assignedTo ?? "");
-    setSource(candidate.source ?? "");
   }, [candidate.id]);
 
   const emailLocked = candidate.emailSource !== "manual";
@@ -91,8 +89,7 @@ export function ContactIntakeSection({
     phone !== (candidate.phone ?? "") ||
     city !== (candidate.city ?? "") ||
     state !== (candidate.state ?? "") ||
-    assignedTo !== (candidate.assignedTo ?? "") ||
-    source !== (candidate.source ?? "");
+    assignedTo !== (candidate.assignedTo ?? "");
 
   const reset = () => {
     const n = splitName(candidate.name);
@@ -100,7 +97,6 @@ export function ContactIntakeSection({
     setEmail(candidate.email ?? ""); setOtherEmail(candidate.otherEmail ?? "");
     setPhone(candidate.phone ?? ""); setCity(candidate.city ?? "");
     setState(candidate.state ?? ""); setAssignedTo(candidate.assignedTo ?? "");
-    setSource(candidate.source ?? "");
   };
 
   const handleSave = async (opts?: { silent?: boolean }) => {
@@ -121,7 +117,6 @@ export function ContactIntakeSection({
       city: city.trim() || null,
       state: state.trim().toUpperCase() || null,
       assigned_to: assignedTo.trim() || null,
-      source: source.trim() || null,
     };
     const localPatch: Partial<Candidate> = {
       name: fullName,
@@ -130,7 +125,6 @@ export function ContactIntakeSection({
       city: city.trim(),
       state: state.trim().toUpperCase(),
       assignedTo: assignedTo.trim(),
-      source: source.trim(),
     };
     if (!emailLocked) {
       dbPatch.email = email.trim();
@@ -252,13 +246,6 @@ export function ContactIntakeSection({
                 value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} />
             )}
           </Field>
-          <Field label="Source">
-            <select className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-              value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="">—</option>
-              {SOURCE_OPTIONS.map((s) => (<option key={s} value={s}>{s}</option>))}
-            </select>
-          </Field>
         </div>
 
         {!readOnly && dirty && (
@@ -272,6 +259,7 @@ export function ContactIntakeSection({
         )}
       </CardShell>
 
+      <SourceCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
       <MailingAddressCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
       <PartnerCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
     </div>
@@ -448,6 +436,106 @@ function PartnerCard({
             setPhone(candidate.partnerPhone ?? "");
           }}>Cancel</Button>
           <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }} onClick={handleSave}>Save</Button>
+        </div>
+      )}
+    </CardShell>
+  );
+}
+
+function SourceCard({
+  candidate, readOnly, onSave,
+}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
+  const { types, namesFor } = useCandidateSourceOptions();
+  const [type, setType] = useState(candidate.sourceType ?? "");
+  const [name, setName] = useState(candidate.sourceName ?? "");
+  const [campaign, setCampaign] = useState(candidate.sourceCampaign ?? "");
+  const [notes, setNotes] = useState(candidate.sourceNotes ?? "");
+
+  useEffect(() => {
+    setType(candidate.sourceType ?? "");
+    setName(candidate.sourceName ?? "");
+    setCampaign(candidate.sourceCampaign ?? "");
+    setNotes(candidate.sourceNotes ?? "");
+  }, [candidate.id]);
+
+  const dirty =
+    (candidate.sourceType ?? "") !== type ||
+    (candidate.sourceName ?? "") !== name ||
+    (candidate.sourceCampaign ?? "") !== campaign ||
+    (candidate.sourceNotes ?? "") !== notes;
+
+  const persist = (over?: { type?: string; name?: string }) => {
+    const t = over?.type ?? type;
+    const n = over?.name ?? name;
+    return onSave(
+      {
+        source_type: t.trim() || null,
+        source_name: n.trim() || null,
+        source_campaign: campaign.trim() || null,
+        source_notes: notes.trim() || null,
+      },
+      {
+        sourceType: t.trim(),
+        sourceName: n.trim(),
+        sourceCampaign: campaign.trim(),
+        sourceNotes: notes.trim(),
+      },
+    );
+  };
+
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || !dirty) return;
+    void persist();
+  };
+
+  const names = namesFor(type);
+
+  return (
+    <CardShell icon={Tag} title="Lead Source">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5" onBlur={handleAutoSave}>
+        <Field label="Source Type">
+          <select className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+            value={type}
+            onChange={(e) => {
+              const t = e.target.value;
+              setType(t);
+              setName("");
+              if (!readOnly) void persist({ type: t, name: "" });
+            }}>
+            <option value="">—</option>
+            {types.map((t) => (<option key={t} value={t}>{t}</option>))}
+          </select>
+        </Field>
+        <Field label="Source Name">
+          <select className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly || !type}
+            value={name}
+            onChange={(e) => {
+              const n = e.target.value;
+              setName(n);
+              if (!readOnly) void persist({ name: n });
+            }}>
+            <option value="">{type ? "—" : "Pick a type first"}</option>
+            {names.map((n) => (<option key={n} value={n}>{n}</option>))}
+          </select>
+        </Field>
+        <Field label="Campaign (optional)">
+          <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+            placeholder="e.g. Houston Teachers – Apr 2026"
+            value={campaign} onChange={(e) => setCampaign(e.target.value)} />
+        </Field>
+        <div className="sm:col-span-3">
+          <Field label="Source notes (optional)">
+            <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+              placeholder="Anything that does not fit the lists"
+              value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </Field>
+        </div>
+      </div>
+      {!readOnly && dirty && (
+        <div className="mt-2 flex justify-end">
+          <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
+            onClick={() => persist()}>Save</Button>
         </div>
       )}
     </CardShell>

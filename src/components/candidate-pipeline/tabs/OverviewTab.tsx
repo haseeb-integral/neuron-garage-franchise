@@ -90,7 +90,16 @@ export function OverviewTab({ candidate, onScoresReplace }: Props) {
           <Row icon={Phone} label="Phone" value={candidate.phone} />
           <Row icon={MapPin} label="Location" value={`${candidate.city}${candidate.state ? `, ${candidate.state}` : ""}`} />
           <Row icon={User} label="Assigned To" value={candidate.assignedTo} />
-          <Row icon={Tag} label="Source" value={candidate.source} />
+          <Row
+            icon={Tag}
+            label="Source"
+            value={
+              [candidate.sourceType, candidate.sourceName].filter(Boolean).join(" › ") ||
+              candidate.source
+            }
+          />
+          <Row icon={Tag} label="Campaign" value={candidate.sourceCampaign} />
+
           <Row icon={CalendarIcon} label="Created" value={candidate.createdDate} />
         </div>
       </div>

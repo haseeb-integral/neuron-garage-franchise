@@ -36,11 +36,20 @@ interface StepRow {
 }
 
 const TRIAL_CLOSE_ITEMS: { key: string; label: string }[] = [
-  { key: "answered_questions", label: "Answered all relevant questions" },
-  { key: "prospect_summarized", label: "Prospect summarized key takeaways" },
-  { key: "asked_move_forward", label: "Asked if they want to move forward" },
+  { key: "answered_questions", label: "Are there any other questions I can answer for you?" },
+  { key: "prospect_summarized", label: "Will you please summarize your key takeaways from today's call?" },
+  { key: "asked_move_forward", label: "Would you like to move forward with our process?" },
   { key: "scheduled_next_call", label: "Scheduled next call with clear agenda" },
   { key: "assigned_homework", label: "Assigned homework" },
+];
+
+const TIMEZONES = [
+  "ET (Eastern)",
+  "CT (Central)",
+  "MT (Mountain)",
+  "PT (Pacific)",
+  "AKT (Alaska)",
+  "HT (Hawaii)",
 ];
 
 interface StepDef {
@@ -448,11 +457,12 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 )}
 
                 {step.trialClose && (
-                  <ChecklistBlock
-                    title="Trial Close (5 components)"
-                    items={TRIAL_CLOSE_ITEMS}
+                  <TrialCloseBlock
+                    nameKey={`step-${step.num}`}
                     state={row.trial_close}
+                    data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
+                    onField={(k, v) => updateField(step.num, k, v)}
                   />
                 )}
 
@@ -562,6 +572,128 @@ function ChecklistBlock({
               <span>{i.label}</span>
             </label>
             {renderAction?.(i)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrialCloseBlock({
+  nameKey,
+  state,
+  data,
+  onToggle,
+  onField,
+}: {
+  nameKey: string;
+  state: ChecklistMap;
+  data: Record<string, any>;
+  onToggle: (key: string, value: boolean) => void;
+  onField: (key: string, value: any) => void;
+}) {
+  const sub = "ml-6 mt-1.5 space-y-1.5";
+  return (
+    <div className="mt-3">
+      <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>Trial Close (5 components)</div>
+      <div className="space-y-2.5">
+        {TRIAL_CLOSE_ITEMS.map((i) => (
+          <div key={i.key} className="text-sm" style={{ color: "#07142f" }}>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={!!state?.[i.key]}
+                onCheckedChange={(v) => onToggle(i.key, !!v)}
+                className="mt-0.5"
+              />
+              <span>{i.label}</span>
+            </label>
+
+            {i.key === "answered_questions" && (
+              <div className={sub}>
+                <Textarea
+                  value={(data.tc_other_questions as string) ?? ""}
+                  onChange={(e) => onField("tc_other_questions", e.target.value)}
+                  rows={2}
+                  className="text-sm"
+                  placeholder="Record any other questions they asked…"
+                />
+              </div>
+            )}
+
+            {i.key === "prospect_summarized" && (
+              <div className={sub}>
+                <Textarea
+                  value={(data.tc_key_takeaways as string) ?? ""}
+                  onChange={(e) => onField("tc_key_takeaways", e.target.value)}
+                  rows={2}
+                  className="text-sm"
+                  placeholder="Record their key takeaways…"
+                />
+              </div>
+            )}
+
+            {i.key === "asked_move_forward" && (
+              <div className={sub}>
+                <div className="flex items-center gap-4">
+                  {["yes", "no"].map((opt) => (
+                    <label key={opt} className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "#07142f" }}>
+                      <input
+                        type="radio"
+                        name={`tc_move_forward_${nameKey}`}
+                        checked={data.tc_move_forward === opt}
+                        onChange={() => onField("tc_move_forward", opt)}
+                      />
+                      {opt === "yes" ? "Yes" : "No"}
+                    </label>
+                  ))}
+                </div>
+                {data.tc_move_forward === "no" && (
+                  <Textarea
+                    value={(data.tc_move_forward_reason as string) ?? ""}
+                    onChange={(e) => onField("tc_move_forward_reason", e.target.value)}
+                    rows={2}
+                    className="text-sm"
+                    placeholder="Why not? Capture the reason…"
+                  />
+                )}
+              </div>
+            )}
+
+            {i.key === "scheduled_next_call" && (
+              <div className={`${sub} grid grid-cols-1 sm:grid-cols-3 gap-2`}>
+                <div>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Date</Label>
+                  <Input
+                    type="date"
+                    value={(data.tc_next_call_date as string) ?? ""}
+                    onChange={(e) => onField("tc_next_call_date", e.target.value)}
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Time</Label>
+                  <Input
+                    type="time"
+                    value={(data.tc_next_call_time as string) ?? ""}
+                    onChange={(e) => onField("tc_next_call_time", e.target.value)}
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Time zone</Label>
+                  <select
+                    value={(data.tc_next_call_tz as string) ?? ""}
+                    onChange={(e) => onField("tc_next_call_tz", e.target.value)}
+                    className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="">Select…</option>
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

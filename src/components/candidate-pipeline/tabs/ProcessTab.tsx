@@ -357,7 +357,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
         <div className="flex items-start gap-2">
           <Info size={14} className="mt-0.5 shrink-0" />
           <div>
-            <strong>Franchisee Qualification Process.</strong> Fill these in during/after each call. Steps are freely navigable — nothing is locked. Step 1 lead details live in the <em>Lead Sheet</em> tab; checkbox progress here drives the <em>Homework</em> tab.
+            <strong>Franchisee Qualification Process.</strong> Fill these in during/after each call. Steps are freely navigable — nothing is locked. All candidate details are entered in Step 1 below; checkbox progress here drives the <em>Homework</em> tab.
           </div>
         </div>
       </div>

@@ -465,9 +465,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
+                {step.num === 2 && (
+                  <MailingAddressCard candidate={candidate} onSave={onSaveProfile} />
+                )}
+
                 {step.trialClose && (
                   <TrialCloseBlock
                     nameKey={`step-${step.num}`}
+                    items={trialCloseItemsFor(step)}
                     state={row.trial_close}
                     data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
@@ -486,19 +491,22 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
                 {step.homework.length > 0 && (
                   <ChecklistBlock
-                    title="Assign & Track Homework"
+                    title="Track Homework"
                     items={step.homework}
                     state={row.homework}
                     onToggle={(k, v) => toggleChecklist(step.num, "homework", k, v)}
-                    renderAction={(item) => (
-                      <HomeworkUploadButton
-                        candidateDbId={dbId}
-                        itemKey={item.key}
-                        itemLabel={item.label}
-                      />
-                    )}
+                    renderAction={(item) =>
+                      NO_UPLOAD_HOMEWORK.has(item.key) ? null : (
+                        <HomeworkUploadButton
+                          candidateDbId={dbId}
+                          itemKey={item.key}
+                          itemLabel={item.label}
+                        />
+                      )
+                    }
                   />
                 )}
+
 
                 {step.num === 7 && (
                   <div className="rounded-md p-2 mt-3 text-xs" style={{ backgroundColor: "#fff4e5", border: "1px solid #ffd591", color: "#7a4a00" }}>

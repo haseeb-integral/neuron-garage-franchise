@@ -131,6 +131,7 @@ const STEPS: StepDef[] = [
     trialClose: true,
     postCall: [
       { key: "shared_with_committee", label: "Shared prospect's file with the Selection Committee (vote in Committee Votes tab)" },
+      { key: "reference_checks_done", label: "Completed candidate reference checks" },
     ],
     homework: [
       { key: "facility_form", label: "Facility prospect form — primary + backup locations (attach to contact card)" },
@@ -481,13 +482,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
-                {step.num === 5 && (
-                  <ReferencesBlock
-                    data={row.data ?? {}}
-                    onField={(k, v) => updateField(step.num, k, v)}
-                  />
-                )}
-
                 {step.postCall.length > 0 && (
                   <ChecklistBlock
                     title="Post-Call Actions"
@@ -496,6 +490,15 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
                   />
                 )}
+
+                {step.num === 5 && (
+                  <ReferencesBlock
+                    data={row.data ?? {}}
+                    onField={(k, v) => updateField(step.num, k, v)}
+                  />
+                )}
+
+
 
                 {step.homework.length > 0 && (
                   <ChecklistBlock

@@ -32,6 +32,8 @@ import {
 import { startOnboardingForCandidate } from "@/lib/onboardingService";
 import { FIT_TAGS, FitTag, coerceFitTag } from "@/constants/fitTags";
 import { CANDIDATE_TAG_EVENT } from "@/components/candidate-pipeline/TagSelect";
+import { FDD_WAIT_DAYS, daysRemaining, earliestSigningDate, formatDay } from "@/lib/fddCompliance";
+
 
 
 type OwnerFilter = string; // "all" or a user email
@@ -403,7 +405,7 @@ const CandidatePipeline = () => {
       console.log("[FDD_GATE] evaluating", { dbId, from: candidate.stage, to: toStage });
       const { data: comp, error: compErr } = await supabase
         .from("candidate_compliance")
-        .select("fdd_sent_at, compliance_override")
+        .select("fdd_sent_at, fdd_received_at, compliance_override")
         .eq("candidate_id", dbId)
         .maybeSingle();
       console.log("[FDD_GATE] compliance row", { comp, compErr });
@@ -418,22 +420,22 @@ const CandidatePipeline = () => {
       if (!comp?.compliance_override) {
         if (!comp?.fdd_sent_at) {
           toast.error("FDD sent date required", {
-            description: "Set the FDD sent date on the Homework tab before advancing.",
+            description: "Set the FDD sent date on the Uploaded Documents tab before advancing.",
           });
           return;
         }
-        const sentMs = new Date(comp.fdd_sent_at).getTime();
-        const daysElapsed = Math.floor((Date.now() - sentMs) / 86_400_000);
-        const daysRemaining = 16 - daysElapsed;
-        console.log("[FDD_GATE] math", { sentMs, daysElapsed, daysRemaining });
-        if (daysRemaining > 0) {
-          toast.error("16-day FDD lock active", {
-            description: `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining. Use compliance override on the Homework tab to bypass.`,
+        const remaining = daysRemaining(comp.fdd_sent_at, comp.fdd_received_at ?? null) ?? 0;
+        const earliest = earliestSigningDate(comp.fdd_sent_at, comp.fdd_received_at ?? null);
+        console.log("[FDD_GATE] math", { remaining, earliest });
+        if (remaining > 0) {
+          toast.error(`${FDD_WAIT_DAYS}-day FDD lock active`, {
+            description: `${remaining} day${remaining === 1 ? "" : "s"} remaining (earliest signing date ${formatDay(earliest)}). An admin can use the compliance override.`,
           });
           return;
         }
       }
     }
+
 
 
 

@@ -321,7 +321,10 @@ export type Database = {
           candidate_id: string
           compliance_override: boolean
           created_at: string
+          fa_proof_file_id: string | null
           fa_signed_at: string | null
+          fdd_proof_file_id: string | null
+          fdd_received_at: string | null
           fdd_sent_at: string | null
           override_at: string | null
           override_by: string | null
@@ -332,7 +335,10 @@ export type Database = {
           candidate_id: string
           compliance_override?: boolean
           created_at?: string
+          fa_proof_file_id?: string | null
           fa_signed_at?: string | null
+          fdd_proof_file_id?: string | null
+          fdd_received_at?: string | null
           fdd_sent_at?: string | null
           override_at?: string | null
           override_by?: string | null
@@ -343,14 +349,32 @@ export type Database = {
           candidate_id?: string
           compliance_override?: boolean
           created_at?: string
+          fa_proof_file_id?: string | null
           fa_signed_at?: string | null
+          fdd_proof_file_id?: string | null
+          fdd_received_at?: string | null
           fdd_sent_at?: string | null
           override_at?: string | null
           override_by?: string | null
           override_reason?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "candidate_compliance_fa_proof_file_id_fkey"
+            columns: ["fa_proof_file_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_compliance_fdd_proof_file_id_fkey"
+            columns: ["fdd_proof_file_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_files"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       candidate_compliance_audit: {
         Row: {
@@ -3605,6 +3629,10 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      fdd_effective_date: {
+        Args: { _received: string; _sent: string }
+        Returns: string
       }
       get_top_teacher_cities: {
         Args: { _limit?: number }

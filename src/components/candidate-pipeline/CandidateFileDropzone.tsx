@@ -38,6 +38,8 @@ interface Props {
   compact?: boolean;
   /** Limit listing to a single category (default: show all when not compact). */
   filterCategory?: DocumentCategory;
+  /** Called whenever the visible file list changes (upload, delete, initial load). */
+  onFilesChange?: (files: CandidateFileRow[]) => void;
 }
 
 function formatBytes(n: number | null) {
@@ -56,12 +58,15 @@ export function CandidateFileDropzone({
   category = "general",
   compact = false,
   filterCategory,
+  onFilesChange,
 }: Props) {
   const [files, setFiles] = useState<CandidateFileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const onFilesChangeRef = useRef(onFilesChange);
+  onFilesChangeRef.current = onFilesChange;
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -76,7 +81,9 @@ export function CandidateFileDropzone({
     if (error) {
       toast.error("Couldn't load files", { description: error.message });
     } else {
-      setFiles((data ?? []) as CandidateFileRow[]);
+      const rows = (data ?? []) as CandidateFileRow[];
+      setFiles(rows);
+      onFilesChangeRef.current?.(rows);
     }
     setLoading(false);
   }, [candidateDbId, filterCategory]);
@@ -84,6 +91,7 @@ export function CandidateFileDropzone({
   useEffect(() => {
     void loadFiles();
   }, [loadFiles]);
+
 
   const handleFiles = useCallback(
     async (fileList: FileList | File[]) => {

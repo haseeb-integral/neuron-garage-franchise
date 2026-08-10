@@ -457,11 +457,11 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 )}
 
                 {step.trialClose && (
-                  <ChecklistBlock
-                    title="Trial Close (5 components)"
-                    items={TRIAL_CLOSE_ITEMS}
+                  <TrialCloseBlock
                     state={row.trial_close}
+                    data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
+                    onField={(k, v) => updateField(step.num, k, v)}
                   />
                 )}
 

@@ -405,9 +405,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
                 {step.num === 1 && (
                   <>
-                    <div className="rounded-md p-2 mb-3 text-xs" style={{ backgroundColor: "#f6f9ff", border: "1px solid #dbe6ff", color: "#003c7e" }}>
-                      Everything you type here is the source of truth. The Overview tab shows a read-only summary of these answers.
-                    </div>
                     <ContactIntakeSection candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
                     <div className="mb-4">
                       <LeadSheetSection candidate={candidate} />

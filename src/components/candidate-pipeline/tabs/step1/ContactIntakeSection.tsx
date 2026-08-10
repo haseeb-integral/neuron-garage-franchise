@@ -281,10 +281,27 @@ export function ContactIntakeSection({
         )}
       </CardShell>
 
-      <SourceCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
-      <PartnerCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />
     </div>
   );
+}
+
+export function LeadSourceCard({
+  candidate,
+  onSave,
+}: {
+  candidate: Candidate;
+  onSave?: SaveFn;
+}) {
+  const readOnly = !onSave;
+  const savePatch = async (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => {
+    if (!onSave) return;
+    try {
+      await onSave(dbPatch, localPatch);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save");
+    }
+  };
+  return <SourceCard candidate={candidate} readOnly={readOnly} onSave={savePatch} />;
 }
 
 function PartnerCard({

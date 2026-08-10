@@ -30,6 +30,8 @@ import {
   updateEvent,
 } from "@/lib/candidateEvents";
 import { logActivity } from "@/lib/candidateActivity";
+import { EVENT_TYPE_OPTIONS, optionLabelForTitle } from "@/lib/candidateProcessSteps";
+
 
 interface Props {
   open: boolean;
@@ -59,12 +61,15 @@ export function EventDialog({
   const editing = !!event;
   const [candidateId, setCandidateId] = useState<string>("");
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<CandidateEventType>("call");
+  const [option, setOption] = useState<string>("step-1");
   const [when, setWhen] = useState("");
   const [duration, setDuration] = useState(30);
   const [status, setStatus] = useState<CandidateEventStatus>("scheduled");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const type: CandidateEventType =
+    EVENT_TYPE_OPTIONS.find((o) => o.value === option)?.kind ?? "call";
 
   const options = useMemo(
     () =>
@@ -80,7 +85,10 @@ export function EventDialog({
     if (event) {
       setCandidateId(event.candidate_id);
       setTitle(event.title);
-      setType(event.event_type);
+      setOption(
+        optionLabelForTitle(event.title) ??
+          (event.event_type === "follow_up" ? "follow-up" : "other-call"),
+      );
       setWhen(toLocalInput(event.starts_at));
       setDuration(event.duration_minutes);
       setStatus(event.status);
@@ -91,13 +99,14 @@ export function EventDialog({
       if (base.getHours() === 0 && defaultDate) base.setHours(9, 0, 0, 0);
       setCandidateId(lockedCandidateId ?? "");
       setTitle("");
-      setType("call");
+      setOption("step-1");
       setWhen(format(base, "yyyy-MM-dd'T'HH:mm"));
       setDuration(30);
       setStatus("scheduled");
       setNotes("");
     }
   }, [open, event, defaultDate, lockedCandidateId]);
+
 
   const save = async () => {
     if (!candidateId) {
@@ -111,8 +120,9 @@ export function EventDialog({
     setSaving(true);
     try {
       const startsAt = new Date(when).toISOString();
-      const finalTitle =
-        title.trim() || (type === "call" ? "Call" : "Follow-up");
+      const optLabel = EVENT_TYPE_OPTIONS.find((o) => o.value === option)?.label ?? "Call";
+      const defaultTitle = optLabel.includes(" — ") ? optLabel.split(" — ")[1] : optLabel;
+      const finalTitle = title.trim() || defaultTitle;
       if (editing && event) {
         await updateEvent(event.id, {
           candidate_id: candidateId,
@@ -203,18 +213,22 @@ export function EventDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 col-span-2">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as CandidateEventType)}>
+              <Select value={option} onValueChange={setOption}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="follow_up">Follow-up</SelectItem>
+                <SelectContent className="max-h-[280px]">
+                  {EVENT_TYPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5">
               <Label>Length (minutes)</Label>
               <Input

@@ -64,6 +64,7 @@ type FormState = {
   assigned_to: string;
   initial_stage: StageId;
   fit_score: number;
+  fit_tag: FitTag;
 };
 
 const blank = (defaultOwner: string): FormState => ({
@@ -76,7 +77,9 @@ const blank = (defaultOwner: string): FormState => ({
   assigned_to: defaultOwner,
   initial_stage: "new_lead",
   fit_score: 50,
+  fit_tag: DEFAULT_FIT_TAG,
 });
+
 
 export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }: Props) {
   const { user } = useAuth();

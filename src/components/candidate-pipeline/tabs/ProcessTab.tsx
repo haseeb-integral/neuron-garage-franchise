@@ -10,8 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
 
+interface TeamMember { email: string; firstName: string; }
+
 interface Props {
   candidate: Candidate;
+  teamMembers?: TeamMember[];
+  onSaveProfile?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
 }
 
 type ChecklistMap = Record<string, boolean>;

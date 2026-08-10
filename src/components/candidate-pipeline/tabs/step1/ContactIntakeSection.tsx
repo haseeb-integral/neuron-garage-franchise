@@ -252,13 +252,6 @@ export function ContactIntakeSection({
                 value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} />
             )}
           </Field>
-          <Field label="Source">
-            <select className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-              value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="">—</option>
-              {SOURCE_OPTIONS.map((s) => (<option key={s} value={s}>{s}</option>))}
-            </select>
-          </Field>
         </div>
 
         {!readOnly && dirty && (

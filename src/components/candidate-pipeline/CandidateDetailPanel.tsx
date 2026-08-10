@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { OverviewTab } from "./tabs/OverviewTab";
-import { LeadSheetTab } from "./tabs/LeadSheetTab";
+
 import { ProcessTab } from "./tabs/ProcessTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 

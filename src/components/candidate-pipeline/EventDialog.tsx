@@ -120,8 +120,9 @@ export function EventDialog({
     setSaving(true);
     try {
       const startsAt = new Date(when).toISOString();
-      const finalTitle =
-        title.trim() || (type === "call" ? "Call" : "Follow-up");
+      const optLabel = EVENT_TYPE_OPTIONS.find((o) => o.value === option)?.label ?? "Call";
+      const defaultTitle = optLabel.includes(" — ") ? optLabel.split(" — ")[1] : optLabel;
+      const finalTitle = title.trim() || defaultTitle;
       if (editing && event) {
         await updateEvent(event.id, {
           candidate_id: candidateId,

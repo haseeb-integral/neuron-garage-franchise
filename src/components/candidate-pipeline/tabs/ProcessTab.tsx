@@ -120,9 +120,7 @@ const STEPS: StepDef[] = [
       { key: "signed_item23", label: "Sign and return Item 23 of the FDD" },
       { key: "personality_profile", label: "Complete personality profile assessment" },
     ],
-    fields: [
-      { key: "fdd_sent_date", label: "FDD sent date", type: "date", hint: "Signing call cannot be scheduled until 16 days after this date" },
-    ],
+    fields: [],
   },
   {
     num: 5,

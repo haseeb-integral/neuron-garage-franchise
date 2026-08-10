@@ -4,7 +4,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { OverviewTab } from "./tabs/OverviewTab";
 import { LeadSheetTab } from "./tabs/LeadSheetTab";
-import { QualificationTab } from "./tabs/QualificationTab";
 import { ProcessTab } from "./tabs/ProcessTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
 import { StageHistoryTab } from "./tabs/StageHistoryTab";
@@ -29,10 +28,6 @@ interface Props {
 
 export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfile, teamMembers }: Props) {
   if (!candidate) return null;
-
-  const handleScoreChange = (key: keyof QualificationScores, value: number) => {
-    onUpdate({ ...candidate, qualificationScores: { ...candidate.qualificationScores, [key]: value } });
-  };
 
   const handleScoresReplace = (scores: QualificationScores) => {
     onUpdate({ ...candidate, qualificationScores: scores });
@@ -92,7 +87,6 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
             <TabsList className="inline-flex w-max gap-1 h-auto p-1 bg-transparent">
               <TabsTrigger value="overview" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Overview</TabsTrigger>
               <TabsTrigger value="lead-sheet" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Lead Sheet</TabsTrigger>
-              <TabsTrigger value="qualification" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Qualification</TabsTrigger>
               {isEnabled("FF_CANDIDATE_PROCESS_V1") && (
                 <TabsTrigger value="process" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Process</TabsTrigger>
               )}
@@ -107,13 +101,10 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           </div>
 
           <TabsContent value="overview">
-            <OverviewTab candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
+            <OverviewTab candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} onScoresReplace={handleScoresReplace} />
           </TabsContent>
           <TabsContent value="lead-sheet">
             <LeadSheetTab candidate={candidate} />
-          </TabsContent>
-          <TabsContent value="qualification">
-            <QualificationTab candidate={candidate} onScoreChange={handleScoreChange} onScoresReplace={handleScoresReplace} />
           </TabsContent>
           {isEnabled("FF_CANDIDATE_PROCESS_V1") && (
             <TabsContent value="process">

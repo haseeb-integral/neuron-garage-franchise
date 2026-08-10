@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, KeyboardEvent } from "react";
 import { Candidate, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
 import {
   AlertTriangle, Mail, Phone, MapPin, Calendar as CalendarIcon, User, Tag, Camera,
-  Pencil, Check, X, Lock, Briefcase, Home, Users, ShieldCheck,
+  Pencil, Check, X, Lock, Home, Users,
 } from "lucide-react";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { toast } from "sonner";
@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { QualificationSection } from "../QualificationSection";
+import { QualificationScores } from "@/data/pipelineData";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -19,6 +21,7 @@ interface Props {
   candidate: Candidate;
   teamMembers?: TeamMember[];
   onSave?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
+  onScoresReplace?: (scores: QualificationScores) => void;
 }
 
 type FieldKey = "name" | "email" | "otherEmail" | "phone" | "location" | "assignedTo" | "source";
@@ -27,7 +30,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SOURCE_OPTIONS = ["Referral", "Web Form", "LinkedIn", "Discovery Day", "Event", "Outbound", "Other"];
 
-export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
+export function OverviewTab({ candidate, teamMembers = [], onSave, onScoresReplace }: Props) {
   const stage = STAGES.find((s) => s.id === candidate.stage);
   const needsReg = stateRequiresRegistration(candidate.state);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -337,13 +340,9 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
         </div>
       </div>
 
-      {/* === Tier 2 cards === */}
+      <QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} />
 
-      <OtherOpportunitiesCard
-        candidate={candidate}
-        readOnly={readOnly}
-        onSave={savePatch}
-      />
+      {/* === Tier 2 cards === */}
 
       <MailingAddressCard
         candidate={candidate}
@@ -352,12 +351,6 @@ export function OverviewTab({ candidate, teamMembers = [], onSave }: Props) {
       />
 
       <PartnerCard
-        candidate={candidate}
-        readOnly={readOnly}
-        onSave={savePatch}
-      />
-
-      <ComplianceAuditCard
         candidate={candidate}
         readOnly={readOnly}
         onSave={savePatch}
@@ -404,45 +397,6 @@ function CardShell({ icon: Icon, title, children }: { icon: any; title: string; 
   );
 }
 
-function OtherOpportunitiesCard({
-  candidate, readOnly, onSave,
-}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
-  const [value, setValue] = useState(candidate.otherOpportunities ?? "");
-  useEffect(() => setValue(candidate.otherOpportunities ?? ""), [candidate.id]);
-  const dirty = (candidate.otherOpportunities ?? "") !== value;
-
-  return (
-    <CardShell icon={Briefcase} title="Other Opportunities Being Considered">
-      <textarea
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={readOnly}
-        rows={3}
-        placeholder="e.g. other franchises, business ideas, or career moves they're evaluating…"
-        className="w-full text-sm rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 disabled:bg-[#f8f9fa]"
-        style={{ borderColor: "#e3e8ef" }}
-      />
-      {!readOnly && dirty && (
-        <div className="mt-2 flex justify-end gap-2">
-          <Button size="sm" variant="outline" onClick={() => setValue(candidate.otherOpportunities ?? "")}>
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            className="text-white"
-            style={{ backgroundColor: "#07142f" }}
-            onClick={() => onSave(
-              { other_opportunities: value.trim() || null },
-              { otherOpportunities: value.trim() },
-            )}
-          >
-            Save
-          </Button>
-        </div>
-      )}
-    </CardShell>
-  );
-}
 
 function MailingAddressCard({
   candidate, readOnly, onSave,
@@ -723,31 +677,3 @@ function DateField({
   );
 }
 
-function ComplianceAuditCard({
-  candidate, readOnly, onSave,
-}: { candidate: Candidate; readOnly: boolean; onSave: SaveFn }) {
-  return (
-    <CardShell icon={ShieldCheck} title="Compliance Audit">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <DateField
-          label="Background check completed"
-          value={candidate.backgroundCheckCompletedAt}
-          disabled={readOnly}
-          onChange={(iso) => onSave(
-            { background_check_completed_at: iso },
-            { backgroundCheckCompletedAt: iso ?? "" },
-          )}
-        />
-        <DateField
-          label="Credit check completed"
-          value={candidate.creditCheckCompletedAt}
-          disabled={readOnly}
-          onChange={(iso) => onSave(
-            { credit_check_completed_at: iso },
-            { creditCheckCompletedAt: iso ?? "" },
-          )}
-        />
-      </div>
-    </CardShell>
-  );
-}

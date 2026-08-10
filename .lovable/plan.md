@@ -50,6 +50,12 @@ Only an admin can turn the override on, a reason is required, and the packet pri
 - Nothing outside the compliance panel, the stage-move check, and the Documents tab changes. Scoring, pipeline stages, and the qualification process are not touched.
 - Testing after each phase: save a date with no file (should refuse), enter a signing date 5 days out (should refuse), 20 days out (should pass), turn on override as a non-admin (should refuse), export the packet.
 
-## Question before Phase 1
+## How the 16 days are counted (decided)
 
-Do you want the 16 days counted as **calendar days** (day 1 = the day after the FDD was sent, signing allowed on day 17) or do you want an extra safety buffer, for example blocking until day 18?
+The FTC rule is 14 full days. We use 16 calendar days to stay safely on the conservative side.
+
+- **Day 1 = the day the FDD was sent.**
+- Signing is blocked until day 16 has passed, so the earliest allowed signing date is **day 17** (16 full calendar days after the send day).
+- Example: FDD sent Monday March 2 (day 1) → earliest signing date is Tuesday March 17.
+- The same math is used in three places so they can never disagree: the countdown shown in the compliance panel, the stage-move block, and the database check on the signing date.
+

@@ -15,7 +15,7 @@ import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateD
 import { PageHeader } from "@/components/PageHeader";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
-import { getEffectivePillarScores } from "@/lib/candidateScoring";
+import { getEffectivePillarScores, computeComposite } from "@/lib/candidateScoring";
 import { toDbStage, fromDbStage } from "@/lib/stageDbMapping";
 
 
@@ -66,7 +66,7 @@ const CandidatePipeline = () => {
   const [newOpen, setNewOpen] = useState(false);
   const [metrics, setMetrics] = useState({
     totalInPipeline: 0,
-    hotLeads: 0,
+    highQualified: 0,
     conversionRate: 0,
     newThisWeek: 0,
   });
@@ -87,7 +87,6 @@ const CandidatePipeline = () => {
       emailSource: (r.email_source ?? "imported") as "imported" | "manual" | "verified",
       otherEmail: r.other_email ?? "",
       phone: r.phone ?? "",
-      fitScore: r.fit_score ?? 0,
       stage: dbStageToUi(r.current_stage) ?? "new_lead",
       daysInStage: days,
       assignedTo: r.assigned_to ?? "",
@@ -137,7 +136,7 @@ const CandidatePipeline = () => {
   const computeMetrics = async () => {
     const { data: cands } = await supabase
       .from("candidates")
-      .select("id, current_stage, status, fit_score, created_at");
+      .select("id, current_stage, status, created_at");
     const all = cands ?? [];
     const active = all.filter(
       (c: any) => c.status !== "disqualified" && c.current_stage !== "disqualified",
@@ -147,7 +146,18 @@ const CandidatePipeline = () => {
     const now = Date.now();
     const weekAgo = now - 7 * dayMs;
 
-    const hot = active.filter((c: any) => (c.fit_score ?? 0) >= 80).length;
+    // "High qualification" = composite qualification score of 80 or more.
+    const activeIds = active.map((c: any) => c.id);
+    let hot = 0;
+    if (activeIds.length > 0) {
+      const { data: qualRows } = await supabase
+        .from("candidate_qualification")
+        .select("*")
+        .in("candidate_id", activeIds);
+      hot = (qualRows ?? []).filter(
+        (q: any) => getEffectivePillarScores(q).composite >= 80,
+      ).length;
+    }
 
     // Conversion = candidates who EVER reached "signing" (qualified), not just those
     // currently parked there. Reads from stage history so signed candidates who moved
@@ -169,7 +179,7 @@ const CandidatePipeline = () => {
 
     setMetrics({
       totalInPipeline: active.length,
-      hotLeads: hot,
+      highQualified: hot,
       conversionRate: conv,
       newThisWeek: newWeek,
     });
@@ -302,7 +312,7 @@ const CandidatePipeline = () => {
   const setOwnerFilter = useCandidatePipelineStore((s) => s.setOwnerFilter);
   const tagFilter = useCandidatePipelineStore((s) => s.tagFilter);
   const setTagFilter = useCandidatePipelineStore((s) => s.setTagFilter);
-  const fitFilter = useCandidatePipelineStore((s) => s.fitFilter);
+  const qualFilter = useCandidatePipelineStore((s) => s.qualFilter);
   const setFitFilter = useCandidatePipelineStore((s) => s.setFitFilter);
   const daysFilter = useCandidatePipelineStore((s) => s.daysInStageFilter);
   const setDaysFilter = useCandidatePipelineStore((s) => s.setDaysInStageFilter);
@@ -311,20 +321,21 @@ const CandidatePipeline = () => {
     return candidates.filter((c) => {
       if (ownerFilter !== "all" && c.assignedTo !== ownerFilter) return false;
       if (tagFilter !== "all" && c.tag !== tagFilter) return false;
-      if (fitFilter === "90" && c.fitScore < 90) return false;
-      if (fitFilter === "80" && c.fitScore < 80) return false;
-      if (fitFilter === "70" && c.fitScore < 70) return false;
-      if (fitFilter === "60" && c.fitScore < 60) return false;
-      if (fitFilter === "lt60" && c.fitScore >= 60) return false;
+      const qual = computeComposite(c.qualificationScores);
+      if (qualFilter === "90" && qual < 90) return false;
+      if (qualFilter === "80" && qual < 80) return false;
+      if (qualFilter === "70" && qual < 70) return false;
+      if (qualFilter === "60" && qual < 60) return false;
+      if (qualFilter === "lt60" && qual >= 60) return false;
       if (daysFilter === "fresh" && c.daysInStage > 3) return false;
       if (daysFilter === "watch" && (c.daysInStage < 4 || c.daysInStage > 7)) return false;
       if (daysFilter === "stalled" && c.daysInStage < 8) return false;
       return true;
     });
-  }, [candidates, ownerFilter, tagFilter, fitFilter, daysFilter]);
+  }, [candidates, ownerFilter, tagFilter, qualFilter, daysFilter]);
 
   const filtersActive =
-    ownerFilter !== "all" || tagFilter !== "all" || fitFilter !== "all" || daysFilter !== "all";
+    ownerFilter !== "all" || tagFilter !== "all" || qualFilter !== "all" || daysFilter !== "all";
   const clearFilters = () => {
     setOwnerFilter("all");
     setTagFilter("all");
@@ -828,7 +839,7 @@ const CandidatePipeline = () => {
 
       <PipelineAnalyticsBar
         totalInPipeline={metrics.totalInPipeline}
-        hotLeads={metrics.hotLeads}
+        highQualified={metrics.highQualified}
         conversionRate={metrics.conversionRate}
         newThisWeek={metrics.newThisWeek}
       />
@@ -880,20 +891,20 @@ const CandidatePipeline = () => {
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-medium" style={{ color: "#526078" }}>Fit:</span>
+          <span className="text-[11px] font-medium" style={{ color: "#526078" }}>Qualification:</span>
           {([
-            { id: "all" as FitFilter, label: "All" },
-            { id: "90" as FitFilter, label: "90+" },
-            { id: "80" as FitFilter, label: "80+" },
-            { id: "70" as FitFilter, label: "70+" },
-            { id: "60" as FitFilter, label: "60+" },
-            { id: "lt60" as FitFilter, label: "<60" },
+            { id: "all" as QualFilter, label: "All" },
+            { id: "90" as QualFilter, label: "90+" },
+            { id: "80" as QualFilter, label: "80+" },
+            { id: "70" as QualFilter, label: "70+" },
+            { id: "60" as QualFilter, label: "60+" },
+            { id: "lt60" as QualFilter, label: "<60" },
           ]).map((f) => (
             <button
               key={f.id}
-              onClick={() => setFitFilter(f.id)}
+              onClick={() => setQualFilter(f.id)}
               className={chipBase}
-              style={fitFilter === f.id ? chipActive : chipInactive}
+              style={qualFilter === f.id ? chipActive : chipInactive}
             >
               {f.label}
             </button>

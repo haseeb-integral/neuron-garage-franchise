@@ -2,20 +2,20 @@ import { Users, Flame, TrendingUp, Sparkles } from "lucide-react";
 
 interface Props {
   totalInPipeline: number;
-  hotLeads: number;
+  highQualified: number;
   conversionRate: number;
   newThisWeek: number;
 }
 
 export function PipelineAnalyticsBar({
   totalInPipeline,
-  hotLeads,
+  highQualified,
   conversionRate,
   newThisWeek,
 }: Props) {
   const stats = [
     { label: "Total in Pipeline", value: totalInPipeline, Icon: Users, tint: "#174be8" },
-    { label: "Hot Leads (Fit ≥ 80)", value: hotLeads, Icon: Flame, tint: "#fd7e14" },
+    { label: "High Qualification (≥ 80)", value: highQualified, Icon: Flame, tint: "#fd7e14" },
     { label: "Conversion Rate", value: `${conversionRate}%`, Icon: TrendingUp, tint: "#20c997" },
     { label: "New This Week", value: newThisWeek, Icon: Sparkles, tint: "#6f42c1" },
   ];

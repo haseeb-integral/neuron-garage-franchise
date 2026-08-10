@@ -4,19 +4,19 @@ import type { FitTag } from "@/constants/fitTags";
 
 type OwnerFilter = string;
 type TagFilter = "all" | FitTag;
-type FitFilter = "all" | "90" | "80" | "70" | "60" | "lt60";
+type QualFilter = "all" | "90" | "80" | "70" | "60" | "lt60";
 type DaysInStageFilter = "all" | "fresh" | "watch" | "stalled";
 
 interface CandidatePipelineState {
   ownerFilter: OwnerFilter;
   tagFilter: TagFilter;
-  fitFilter: FitFilter;
+  qualFilter: QualFilter;
   daysInStageFilter: DaysInStageFilter;
   compact: boolean;
 
   setOwnerFilter: (v: OwnerFilter) => void;
   setTagFilter: (v: TagFilter) => void;
-  setFitFilter: (v: FitFilter) => void;
+  setQualFilter: (v: QualFilter) => void;
   setDaysInStageFilter: (v: DaysInStageFilter) => void;
   setCompact: (v: boolean) => void;
 }
@@ -26,23 +26,23 @@ export const useCandidatePipelineStore = create<CandidatePipelineState>()(
     (set) => ({
       ownerFilter: "all",
       tagFilter: "all",
-      fitFilter: "all",
+      qualFilter: "all",
       daysInStageFilter: "all",
       compact: false,
       setOwnerFilter: (v) => set({ ownerFilter: v }),
       setTagFilter: (v) => set({ tagFilter: v }),
-      setFitFilter: (v) => set({ fitFilter: v }),
+      setQualFilter: (v) => set({ qualFilter: v }),
       setDaysInStageFilter: (v) => set({ daysInStageFilter: v }),
       setCompact: (v) => set({ compact: v }),
     }),
     {
       name: "ng:candidate-pipeline-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       partialize: (s) => ({
         ownerFilter: s.ownerFilter,
         tagFilter: s.tagFilter,
-        fitFilter: s.fitFilter,
+        qualFilter: s.qualFilter,
         daysInStageFilter: s.daysInStageFilter,
         compact: s.compact,
       }),

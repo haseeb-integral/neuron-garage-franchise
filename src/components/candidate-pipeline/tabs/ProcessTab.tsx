@@ -56,7 +56,7 @@ const STEPS: StepDef[] = [
   {
     num: 1,
     title: "Initial Qualification",
-    goal: "20–30 min phone call. Quickly determine if the prospect is a viable fit. Assert process leadership.",
+    goal: "20–30 min phone call. Quickly determine if the prospect is a viable fit. This is more of a disqualification call. Assert process leadership -- our process has been designed very deliberately to maximize exposure to our business model so you and we can make an informed decision.",
     trialClose: true,
     postCall: [
       { key: "asked_move_forward", label: "Asked if they want to move forward with our process" },

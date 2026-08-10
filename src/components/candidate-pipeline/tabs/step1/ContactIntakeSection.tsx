@@ -265,7 +265,7 @@ export function ContactIntakeSection({
           <div className="mt-3 flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={reset} disabled={saving}>Cancel</Button>
             <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
-              onClick={handleSave} disabled={saving}>
+              onClick={() => handleSave()} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
           </div>

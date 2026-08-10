@@ -108,6 +108,7 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
         }
         setOverrides(ovs);
         setComposite(eff.composite);
+        setNotes(((data as any).pillar_notes ?? {}) as Record<string, string>);
         // Sync effective scores into in-memory candidate so other tabs/badge see them — batched in one update
         const needsSync = (Object.keys(eff.effective) as (keyof QualificationScores)[])
           .some((k) => candidate.qualificationScores[k] !== eff.effective[k]);
@@ -120,8 +121,10 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
       } else {
         setScores(candidate.qualificationScores);
         setOverrides({});
+        setNotes({});
         setComposite(computeComposite(candidate.qualificationScores));
       }
+
       setLoaded(true);
     })();
     return () => {

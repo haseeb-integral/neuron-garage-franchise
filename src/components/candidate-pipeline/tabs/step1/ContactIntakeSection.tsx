@@ -61,10 +61,6 @@ export function ContactIntakeSection({
   const [email, setEmail] = useState(candidate.email ?? "");
   const [otherEmail, setOtherEmail] = useState(candidate.otherEmail ?? "");
   const [phone, setPhone] = useState(candidate.phone ?? "");
-  const [mStreet, setMStreet] = useState(candidate.mailingStreet ?? "");
-  const [mCity, setMCity] = useState(candidate.mailingCity ?? "");
-  const [mState, setMState] = useState(candidate.mailingState ?? "");
-  const [mZip, setMZip] = useState(candidate.mailingZip ?? "");
   const [assignedTo, setAssignedTo] = useState(candidate.assignedTo ?? "");
   const [saving, setSaving] = useState(false);
 

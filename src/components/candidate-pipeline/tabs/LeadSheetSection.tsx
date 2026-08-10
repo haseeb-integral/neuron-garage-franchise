@@ -284,7 +284,7 @@ export function LeadSheetSection({ candidate }: Props) {
     <div className="space-y-4 py-4" onBlur={handleAutoSave}>
       {/* Role */}
       <div className="space-y-2">
-        <Label>Role in Neuron Garage</Label>
+        <Label>What would be your role in Neuron Garage?</Label>
         <RadioGroup
           value={form.role}
           onValueChange={(v) => updateAndSave("role", v as Role)}

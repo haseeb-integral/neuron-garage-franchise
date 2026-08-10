@@ -39,7 +39,7 @@ import { FDD_WAIT_DAYS, daysRemaining, earliestSigningDate, formatDay } from "@/
 type OwnerFilter = string; // "all" or a user email
 interface TeamMember { email: string; firstName: string; }
 type TagFilter = "all" | FitTag;
-type FitFilter = "all" | "90" | "80" | "70" | "60" | "lt60";
+type QualFilter = "all" | "90" | "80" | "70" | "60" | "lt60";
 
 interface PendingMove {
   candidate: Candidate;
@@ -313,7 +313,7 @@ const CandidatePipeline = () => {
   const tagFilter = useCandidatePipelineStore((s) => s.tagFilter);
   const setTagFilter = useCandidatePipelineStore((s) => s.setTagFilter);
   const qualFilter = useCandidatePipelineStore((s) => s.qualFilter);
-  const setFitFilter = useCandidatePipelineStore((s) => s.setFitFilter);
+  const setQualFilter = useCandidatePipelineStore((s) => s.setQualFilter);
   const daysFilter = useCandidatePipelineStore((s) => s.daysInStageFilter);
   const setDaysFilter = useCandidatePipelineStore((s) => s.setDaysInStageFilter);
 
@@ -339,7 +339,7 @@ const CandidatePipeline = () => {
   const clearFilters = () => {
     setOwnerFilter("all");
     setTagFilter("all");
-    setFitFilter("all");
+    setQualFilter("all");
     setDaysFilter("all");
   };
 

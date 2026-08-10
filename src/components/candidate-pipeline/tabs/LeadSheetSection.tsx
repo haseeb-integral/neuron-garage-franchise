@@ -344,7 +344,7 @@ export function LeadSheetSection({ candidate }: Props) {
               }
               const prev = form.partner_involved;
               update("partner_involved", v);
-              const patch: Record<string, any> = v
+              const patch = v
                 ? { partner_involved: true }
                 : { partner_involved: false, partner_name: null, partner_email: null };
               if (!v) { setPartnerFirst(""); setPartnerLast(""); setPartnerEmail(""); }

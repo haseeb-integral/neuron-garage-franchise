@@ -136,11 +136,6 @@ const STEPS: StepDef[] = [
       { key: "facility_form", label: "Facility prospect form — primary + backup locations (attach to contact card)" },
       { key: "marketing_plan", label: "Local marketing plan summary (attach to contact card)" },
     ],
-    fields: [
-      { key: "reference_1", label: "Reference Check #1 (~20 min)", type: "textarea" },
-      { key: "reference_2", label: "Reference Check #2 (~20 min)", type: "textarea" },
-      { key: "reference_3", label: "Reference Check #3 (~20 min)", type: "textarea" },
-    ],
   },
   {
     num: 6,

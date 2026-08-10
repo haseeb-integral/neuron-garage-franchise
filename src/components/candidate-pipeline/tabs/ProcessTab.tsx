@@ -143,7 +143,7 @@ const STEPS: StepDef[] = [
     goal: "Final alignment + commitment. 'The selection committee approved your award of a franchise.' First half = franchisor commitments. Second half = prospect Q&A.",
     trialClose: true,
     postCall: [
-      { key: "overnight_pen", label: "Overnighted a personalized Neuron Garage pen with their franchise $ on it" },
+      { key: "overnight_pen", label: "Overnighted a personalized Neuron Garage pen with their franchise number on it." },
     ],
     homework: [],
   },

@@ -11,6 +11,7 @@ import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
+import { HomeworkUploadButton } from "../HomeworkUploadButton";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -59,7 +60,7 @@ const STEPS: StepDef[] = [
     goal: "20–30 min phone call. Quickly determine if the prospect is a viable fit. This is more of a disqualification call. Assert process leadership -- our process has been designed very deliberately to maximize exposure to our business model so you and we can make an informed decision.",
     trialClose: true,
     postCall: [
-      { key: "asked_move_forward", label: "Asked if they want to move forward with our process" },
+      { key: "update_qualification_scores", label: "Update the qualification scores on the Overview tab" },
     ],
     homework: [
       { key: "rfc_part1", label: "Complete Request for Consideration – Part 1 (non-financial), due 2 days before next call" },
@@ -470,6 +471,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     items={step.homework}
                     state={row.homework}
                     onToggle={(k, v) => toggleChecklist(step.num, "homework", k, v)}
+                    renderAction={(item) => (
+                      <HomeworkUploadButton
+                        candidateDbId={dbId}
+                        itemKey={item.key}
+                        itemLabel={item.label}
+                      />
+                    )}
                   />
                 )}
 
@@ -530,25 +538,31 @@ function ChecklistBlock({
   items,
   state,
   onToggle,
+  renderAction,
 }: {
   title: string;
   items: { key: string; label: string }[];
   state: ChecklistMap;
   onToggle: (key: string, value: boolean) => void;
+  /** Optional trailing control per item (used for homework uploads). */
+  renderAction?: (item: { key: string; label: string }) => React.ReactNode;
 }) {
   return (
     <div className="mt-3">
       <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>{title}</div>
       <div className="space-y-1.5">
         {items.map((i) => (
-          <label key={i.key} className="flex items-start gap-2 cursor-pointer text-sm" style={{ color: "#07142f" }}>
-            <Checkbox
-              checked={!!state?.[i.key]}
-              onCheckedChange={(v) => onToggle(i.key, !!v)}
-              className="mt-0.5"
-            />
-            <span>{i.label}</span>
-          </label>
+          <div key={i.key} className="flex items-start gap-2 text-sm" style={{ color: "#07142f" }}>
+            <label className="flex items-start gap-2 cursor-pointer flex-1 min-w-0">
+              <Checkbox
+                checked={!!state?.[i.key]}
+                onCheckedChange={(v) => onToggle(i.key, !!v)}
+                className="mt-0.5"
+              />
+              <span>{i.label}</span>
+            </label>
+            {renderAction?.(i)}
+          </div>
         ))}
       </div>
     </div>

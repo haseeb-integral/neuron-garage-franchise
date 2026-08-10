@@ -160,15 +160,6 @@ export function ContactIntakeSection({
   };
 
 
-  const savePatch = async (dbPatch: Record<string, any>, localPatch: Partial<Candidate>) => {
-    if (!onSave) return;
-    try {
-      await onSave(dbPatch, localPatch);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save");
-    }
-  };
-
   return (
     <div className="space-y-3 mb-4">
       <CardShell icon={User} title="Contact & Basics">

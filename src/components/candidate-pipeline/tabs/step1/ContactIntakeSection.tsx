@@ -391,6 +391,13 @@ function PartnerCard({
     onSave(dbPatch, localPatch);
   };
 
+  // Auto-save when the user leaves a field with unsaved changes.
+  const handleAutoSave = () => {
+    if (readOnly || !dirty) return;
+    handleSave();
+  };
+
+
   return (
     <CardShell icon={Users} title="Spouse / Partner">
       <label className="flex items-center gap-2 cursor-pointer">

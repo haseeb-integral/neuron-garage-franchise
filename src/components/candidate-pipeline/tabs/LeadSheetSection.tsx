@@ -32,6 +32,7 @@ interface ProfileForm {
   role_other: string;
   married: YesNo;
   city: string;
+  state: string;
   discovery_source: string;
   can_invest_min: YesNo;
   sweat_equity_ok: YesNo;
@@ -51,6 +52,7 @@ const empty: ProfileForm = {
   role_other: "",
   married: "",
   city: "",
+  state: "",
   discovery_source: "",
   can_invest_min: "",
   sweat_equity_ok: "",
@@ -106,6 +108,7 @@ const FIELD_LABELS: Record<keyof ProfileForm, string> = {
   role_other: "Role (other)",
   married: "Married",
   city: "City",
+  state: "State",
   discovery_source: "Discovery source",
   can_invest_min: "Can invest minimum",
   sweat_equity_ok: "Sweat equity OK",
@@ -185,6 +188,7 @@ export function LeadSheetSection({ candidate }: Props) {
           role_other: p.role_other ?? "",
           married: toYesNo(p.married),
           city: p.city ?? "",
+          state: p.state ?? "",
           discovery_source: p.discovery_source ?? "",
           can_invest_min: toYesNo(p.can_invest_min),
           sweat_equity_ok: toYesNo(p.sweat_equity_ok),
@@ -233,6 +237,7 @@ export function LeadSheetSection({ candidate }: Props) {
       role_other: current.role === "other" ? (current.role_other || null) : null,
       married: fromYesNo(current.married),
       city: current.city || null,
+      state: current.state || null,
       discovery_source: current.discovery_source || null,
       can_invest_min: fromYesNo(current.can_invest_min),
       sweat_equity_ok: fromYesNo(current.sweat_equity_ok),
@@ -274,7 +279,9 @@ export function LeadSheetSection({ candidate }: Props) {
   };
 
   const regState =
-    findRegistrationState(form.city) ?? findRegistrationState(form.location_preferences);
+    findRegistrationState(form.state) ??
+    findRegistrationState(form.city) ??
+    findRegistrationState(form.location_preferences);
 
   if (loading) {
     return <div className="py-6 text-sm text-muted-foreground">Loading…</div>;
@@ -376,13 +383,21 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* City */}
       <div className="space-y-2">
-        <Label htmlFor="ls-city">What city are you located in?</Label>
-        <Input
-          id="ls-city"
-          value={form.city}
-          onChange={(e) => update("city", e.target.value)}
-          placeholder="e.g. Nashville, TN"
-        />
+        <Label htmlFor="ls-city">What city and state are you located in?</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Input
+            id="ls-city"
+            value={form.city}
+            onChange={(e) => update("city", e.target.value)}
+            placeholder="City (e.g. Nashville)"
+          />
+          <Input
+            id="ls-state"
+            value={form.state}
+            onChange={(e) => update("state", e.target.value)}
+            placeholder="State (e.g. TN)"
+          />
+        </div>
         <div
           className="flex items-start gap-2 rounded-md p-2 text-xs"
           style={{ backgroundColor: "#fff4e5", border: "1px solid #ffd591", color: "#7a4a00" }}
@@ -446,7 +461,7 @@ export function LeadSheetSection({ candidate }: Props) {
 
         <div className="space-y-2">
           <Label className="text-sm">
-            Can invest ~$1,000 franchise fee + ~$15,000 working capital?
+            Can you invest ~$1,000 franchise fee + ~$15,000 working capital?
           </Label>
           <RadioGroup
             value={form.can_invest_min}
@@ -465,7 +480,7 @@ export function LeadSheetSection({ candidate }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm">Can commit 1 summer of sweat equity?</Label>
+          <Label className="text-sm">Can you commit one summer of sweat equity?</Label>
           <RadioGroup
             value={form.sweat_equity_ok}
             onValueChange={(v) => updateAndSave("sweat_equity_ok", v as YesNo)}
@@ -508,7 +523,7 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* Motivation */}
       <div className="space-y-2">
-        <Label htmlFor="ls-motivation">Why interested in owning a Neuron Garage franchise?</Label>
+        <Label htmlFor="ls-motivation">Why are you interested in owning your own garage franchise? What is intriguing to you about our model?</Label>
         <p className="text-xs text-muted-foreground">
           Uncover underlying pain or motivation. Financial / Undervalued / No agency / Legacy + mentorship / Other.
         </p>
@@ -522,34 +537,12 @@ export function LeadSheetSection({ candidate }: Props) {
 
       {/* Other opportunities */}
       <div className="space-y-2">
-        <Label htmlFor="ls-other-opps">Other summer-income opportunities being considered?</Label>
+        <Label htmlFor="ls-other-opps">What other opportunities for summer income are you looking at or considering?</Label>
         <Textarea
           id="ls-other-opps"
           rows={2}
           value={form.other_opportunities}
           onChange={(e) => update("other_opportunities", e.target.value)}
-        />
-      </div>
-
-      {/* Background (recruiter context) */}
-      <div className="space-y-2">
-        <Label htmlFor="ls-background">Background (recruiter notes)</Label>
-        <Textarea
-          id="ls-background"
-          rows={3}
-          value={form.background}
-          onChange={(e) => update("background", e.target.value)}
-        />
-      </div>
-
-      {/* Additional notes */}
-      <div className="space-y-2">
-        <Label htmlFor="ls-notes">Additional notes</Label>
-        <Textarea
-          id="ls-notes"
-          rows={3}
-          value={form.additional_notes}
-          onChange={(e) => update("additional_notes", e.target.value)}
         />
       </div>
 

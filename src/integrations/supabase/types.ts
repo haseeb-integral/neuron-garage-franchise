@@ -498,6 +498,7 @@ export type Database = {
           partner_involved: boolean
           role: string | null
           role_other: string | null
+          state: string | null
           sweat_equity_ok: boolean | null
           timeline: string | null
           updated_at: string
@@ -519,6 +520,7 @@ export type Database = {
           partner_involved?: boolean
           role?: string | null
           role_other?: string | null
+          state?: string | null
           sweat_equity_ok?: boolean | null
           timeline?: string | null
           updated_at?: string
@@ -540,6 +542,7 @@ export type Database = {
           partner_involved?: boolean
           role?: string | null
           role_other?: string | null
+          state?: string | null
           sweat_equity_ok?: boolean | null
           timeline?: string | null
           updated_at?: string

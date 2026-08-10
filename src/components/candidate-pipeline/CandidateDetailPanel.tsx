@@ -6,7 +6,7 @@ import { OverviewTab } from "./tabs/OverviewTab";
 import { LeadSheetTab } from "./tabs/LeadSheetTab";
 import { ProcessTab } from "./tabs/ProcessTab";
 import { NotesActivityTab } from "./tabs/NotesActivityTab";
-import { StageHistoryTab } from "./tabs/StageHistoryTab";
+
 import { CommitteeVotesTab } from "./tabs/CommitteeVotesTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";

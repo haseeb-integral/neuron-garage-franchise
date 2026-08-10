@@ -30,6 +30,8 @@ import {
   updateEvent,
 } from "@/lib/candidateEvents";
 import { logActivity } from "@/lib/candidateActivity";
+import { EVENT_TYPE_OPTIONS, optionLabelForTitle } from "@/lib/candidateProcessSteps";
+
 
 interface Props {
   open: boolean;

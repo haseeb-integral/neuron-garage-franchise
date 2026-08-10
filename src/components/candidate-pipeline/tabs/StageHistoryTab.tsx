@@ -74,6 +74,7 @@ export function StageHistoryTab({ candidate }: Props) {
           </li>
         ))}
       </ol>
+      )}
     </div>
   );
 }

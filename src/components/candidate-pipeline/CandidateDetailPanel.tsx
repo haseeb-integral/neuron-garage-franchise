@@ -115,9 +115,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           <TabsContent value="notes">
             <NotesActivityTab candidate={candidate} />
           </TabsContent>
-          <TabsContent value="stage-history">
-            <StageHistoryTab candidate={candidate} />
-          </TabsContent>
+
           <TabsContent value="committee">
             <CommitteeVotesTab candidate={candidate} />
           </TabsContent>

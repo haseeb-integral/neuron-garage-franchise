@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { STAGES, StageId } from "@/data/pipelineData";
-import { deriveFitTag } from "@/utils/fitScore";
+import { FIT_TAGS, FitTag, DEFAULT_FIT_TAG } from "@/constants/fitTags";
 import {
   Dialog,
   DialogContent,

@@ -273,7 +273,8 @@ export function LeadSheetSection({ candidate }: Props) {
     void saveForm(form, true);
   };
 
-
+  const regState =
+    findRegistrationState(form.city) ?? findRegistrationState(form.location_preferences);
 
   if (loading) {
     return <div className="py-6 text-sm text-muted-foreground">Loading…</div>;

@@ -90,10 +90,6 @@ export function ContactIntakeSection({
     (!emailLocked && email !== (candidate.email ?? "")) ||
     otherEmail !== (candidate.otherEmail ?? "") ||
     phone !== (candidate.phone ?? "") ||
-    mStreet !== (candidate.mailingStreet ?? "") ||
-    mCity !== (candidate.mailingCity ?? "") ||
-    mState !== (candidate.mailingState ?? "") ||
-    mZip !== (candidate.mailingZip ?? "") ||
     assignedTo !== (candidate.assignedTo ?? "");
 
   const reset = () => {

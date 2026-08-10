@@ -66,7 +66,6 @@ export interface Candidate {
   emailSource?: "imported" | "manual" | "verified";
   otherEmail?: string;
   phone: string;
-  fitScore: number;
   stage: StageId;
   daysInStage: number;
   assignedTo: string;

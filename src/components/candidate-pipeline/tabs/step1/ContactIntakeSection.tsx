@@ -353,3 +353,92 @@ function SourceCard({
     </CardShell>
   );
 }
+
+/** Mailing address, edited in Step 2 of the Qualification Process. */
+export function MailingAddressCard({
+  candidate,
+  onSave,
+}: {
+  candidate: Candidate;
+  onSave?: SaveFn;
+}) {
+  const readOnly = !onSave;
+  const [street, setStreet] = useState(candidate.mailingStreet ?? "");
+  const [city, setCity] = useState(candidate.mailingCity ?? "");
+  const [state, setState] = useState(candidate.mailingState ?? "");
+  const [zip, setZip] = useState(candidate.mailingZip ?? "");
+
+  useEffect(() => {
+    setStreet(candidate.mailingStreet ?? "");
+    setCity(candidate.mailingCity ?? "");
+    setState(candidate.mailingState ?? "");
+    setZip(candidate.mailingZip ?? "");
+  }, [candidate.id]);
+
+  const dirty =
+    street !== (candidate.mailingStreet ?? "") ||
+    city !== (candidate.mailingCity ?? "") ||
+    state !== (candidate.mailingState ?? "") ||
+    zip !== (candidate.mailingZip ?? "");
+
+  const persist = async () => {
+    if (!onSave) return;
+    try {
+      await onSave(
+        {
+          mailing_street: street.trim() || null,
+          mailing_city: city.trim() || null,
+          mailing_state: state.trim().toUpperCase() || null,
+          mailing_zip: zip.trim() || null,
+        },
+        {
+          mailingStreet: street.trim(),
+          mailingCity: city.trim(),
+          mailingState: state.trim().toUpperCase(),
+          mailingZip: zip.trim(),
+        },
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save");
+    }
+  };
+
+  const handleAutoSave = () => {
+    if (readOnly || !dirty) return;
+    void persist();
+  };
+
+  return (
+    <div className="mt-3">
+      <CardShell icon={User} title="Mailing Address">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" onBlur={handleAutoSave}>
+          <div className="sm:col-span-2">
+            <Field label="Mailing Address">
+              <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+                placeholder="Street address" value={street} onChange={(e) => setStreet(e.target.value)} />
+            </Field>
+          </div>
+          <Field label="City">
+            <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+              placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+          </Field>
+          <Field label="State / ZIP">
+            <div className="flex gap-2">
+              <input className={cn(inputCls, "w-16")} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+                placeholder="ST" maxLength={2} value={state}
+                onChange={(e) => setState(e.target.value.toUpperCase())} />
+              <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+                placeholder="ZIP" value={zip} onChange={(e) => setZip(e.target.value)} />
+            </div>
+          </Field>
+        </div>
+        {!readOnly && dirty && (
+          <div className="mt-2 flex justify-end">
+            <Button size="sm" className="text-white" style={{ backgroundColor: "#07142f" }}
+              onClick={() => void persist()}>Save</Button>
+          </div>
+        )}
+      </CardShell>
+    </div>
+  );
+}

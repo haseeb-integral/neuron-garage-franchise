@@ -121,22 +121,15 @@ export function ContactIntakeSection({
       last_name: lastName.trim(),
       other_email: otherEmail.trim() || null,
       phone: phone.trim() || null,
-      mailing_street: mStreet.trim() || null,
-      mailing_city: mCity.trim() || null,
-      mailing_state: mState.trim().toUpperCase() || null,
-      mailing_zip: mZip.trim() || null,
       assigned_to: assignedTo.trim() || null,
     };
     const localPatch: Partial<Candidate> = {
       name: fullName,
       otherEmail: otherEmail.trim(),
       phone: phone.trim(),
-      mailingStreet: mStreet.trim(),
-      mailingCity: mCity.trim(),
-      mailingState: mState.trim().toUpperCase(),
-      mailingZip: mZip.trim(),
       assignedTo: assignedTo.trim(),
     };
+
     if (!emailLocked) {
       dbPatch.email = email.trim();
       localPatch.email = email.trim();

@@ -235,13 +235,13 @@ export function LeadSheetSection({ candidate }: Props) {
   }
 
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-4 py-4" onBlur={handleAutoSave}>
       {/* Role */}
       <div className="space-y-2">
         <Label>Role in Neuron Garage</Label>
         <RadioGroup
           value={form.role}
-          onValueChange={(v) => update("role", v as Role)}
+          onValueChange={(v) => updateAndSave("role", v as Role)}
           className="flex flex-wrap gap-4"
         >
           <label className="flex items-center gap-2 cursor-pointer">
@@ -271,7 +271,7 @@ export function LeadSheetSection({ candidate }: Props) {
         <Label>Are you married?</Label>
         <RadioGroup
           value={form.married}
-          onValueChange={(v) => update("married", v as YesNo)}
+          onValueChange={(v) => updateAndSave("married", v as YesNo)}
           className="flex gap-4"
         >
           <label className="flex items-center gap-2 cursor-pointer">
@@ -378,7 +378,7 @@ export function LeadSheetSection({ candidate }: Props) {
           </Label>
           <RadioGroup
             value={form.can_invest_min}
-            onValueChange={(v) => update("can_invest_min", v as YesNo)}
+            onValueChange={(v) => updateAndSave("can_invest_min", v as YesNo)}
             className="flex gap-4"
           >
             <label className="flex items-center gap-2 cursor-pointer">
@@ -396,7 +396,7 @@ export function LeadSheetSection({ candidate }: Props) {
           <Label className="text-sm">Can commit 1 summer of sweat equity?</Label>
           <RadioGroup
             value={form.sweat_equity_ok}
-            onValueChange={(v) => update("sweat_equity_ok", v as YesNo)}
+            onValueChange={(v) => updateAndSave("sweat_equity_ok", v as YesNo)}
             className="flex gap-4"
           >
             <label className="flex items-center gap-2 cursor-pointer">

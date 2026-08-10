@@ -269,7 +269,21 @@ const CandidatePipeline = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, candidates]);
 
+  // Keep cards in sync when the tag is changed from the Overview tab.
   useEffect(() => {
+    const handler = (e: Event) => {
+      const { dbId, tag } = (e as CustomEvent).detail ?? {};
+      if (!dbId) return;
+      setCandidates((prev) =>
+        prev.map((c: any) => (c.dbId === dbId ? { ...c, tag } : c)),
+      );
+    };
+    window.addEventListener(CANDIDATE_TAG_EVENT, handler);
+    return () => window.removeEventListener(CANDIDATE_TAG_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+
     setActive((prev) => {
       if (!prev) return prev;
       const prevDbId = (prev as any).dbId as string | undefined;

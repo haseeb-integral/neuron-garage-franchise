@@ -32,6 +32,8 @@ import {
 import { startOnboardingForCandidate } from "@/lib/onboardingService";
 import { FIT_TAGS, FitTag, coerceFitTag } from "@/constants/fitTags";
 import { CANDIDATE_TAG_EVENT } from "@/components/candidate-pipeline/TagSelect";
+import { FDD_WAIT_DAYS, daysRemaining, earliestSigningDate, formatDay } from "@/lib/fddCompliance";
+
 
 
 type OwnerFilter = string; // "all" or a user email

@@ -247,27 +247,72 @@ export function QualificationTab({ candidate, onScoreChange, onScoresReplace }: 
       </div>
 
       <div className="bg-white rounded-lg p-3 space-y-4" style={{ border: "1px solid #e3e8ef" }}>
-        {CRITERIA.map((c) => (
-          <div key={c.key} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div>
-                <div className="text-sm font-medium">{c.label}</div>
-                {c.hint && <div className="text-xs" style={{ color: "#6c757d" }}>{c.hint}</div>}
+        {CRITERIA.map((c) => {
+          const noteVal = notes[c.key] ?? "";
+          const open = openNotes.has(c.key as string);
+          return (
+            <div key={c.key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div>
+                    <div className="text-sm font-medium">{c.label}</div>
+                    {c.hint && <div className="text-xs" style={{ color: "#6c757d" }}>{c.hint}</div>}
+                  </div>
+                  {adjustedKeys.has(c.key as PillarKey) && (
+                    <Badge variant="secondary" className="text-[10px]">Adjusted</Badge>
+                  )}
+                </div>
+                <StarRating
+                  value={displayValue(c.key)}
+                  onChange={(v) => handleChange(c.key, v)}
+                />
               </div>
-              {adjustedKeys.has(c.key as PillarKey) && (
-                <Badge variant="secondary" className="text-[10px]">Adjusted</Badge>
+
+              {open ? (
+                <Textarea
+                  autoFocus
+                  rows={2}
+                  placeholder="Why this rating?"
+                  className="text-sm"
+                  value={noteVal}
+                  onChange={(e) => setNotes((n) => ({ ...n, [c.key]: e.target.value }))}
+                  onBlur={() => {
+                    saveNotes({ ...notes, [c.key]: noteVal });
+                    setOpenNotes((s) => {
+                      const next = new Set(s);
+                      next.delete(c.key as string);
+                      return next;
+                    });
+                  }}
+                />
+              ) : noteVal.trim() ? (
+                <button
+                  type="button"
+                  className="flex items-start gap-1.5 text-left text-xs hover:underline"
+                  style={{ color: "#6c757d" }}
+                  onClick={() => setOpenNotes((s) => new Set(s).add(c.key as string))}
+                >
+                  <Pencil size={12} className="mt-0.5 shrink-0" />
+                  <span>{noteVal}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs hover:underline"
+                  style={{ color: "#003c7e" }}
+                  onClick={() => setOpenNotes((s) => new Set(s).add(c.key as string))}
+                >
+                  + Add note
+                </button>
               )}
             </div>
-            <StarRating
-              value={displayValue(c.key)}
-              onChange={(v) => handleChange(c.key, v)}
-            />
-          </div>
-        ))}
+          );
+        })}
         {!loaded && (
           <div className="text-xs" style={{ color: "#6c757d" }}>Loading saved scores…</div>
         )}
       </div>
+
 
       <div className="rounded-lg p-3" style={{ backgroundColor: "#e7f1ff", border: "1px solid #b6d4fe" }}>
         <div className="flex items-start gap-2">

@@ -290,11 +290,26 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
               value={form.fit_score}
               onChange={(e) => set("fit_score", Number(e.target.value))}
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Tag will be set to <strong>{deriveFitTag(form.fit_score)}</strong> based on this score.
-            </p>
             {fieldErr("fit_score")}
           </div>
+
+          <div>
+            <Label>Tag</Label>
+            <Select value={form.fit_tag} onValueChange={(v) => set("fit_tag", v as FitTag)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FIT_TAGS.map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Set by hand. You can change it later on the candidate's Overview tab.
+            </p>
+          </div>
+
         </div>
 
         <DialogFooter className="mt-4">

@@ -233,7 +233,11 @@ export function NotesActivityTab({ candidate }: Props) {
         )}
       </div>
 
+      {/* Stage history — moved here from its own tab */}
+      <StageHistoryTab candidate={candidate} />
+
       {/* Activity Timeline — system events only */}
+
       <div className="bg-white rounded-lg p-4" style={{ border: "1px solid #e3e8ef" }}>
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h4 className="font-semibold text-sm" style={{ color: "#003c7e" }}>Activity Timeline</h4>

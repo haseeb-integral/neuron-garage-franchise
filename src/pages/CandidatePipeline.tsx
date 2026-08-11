@@ -269,7 +269,7 @@ const CandidatePipeline = () => {
     })();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reloadKey]);
 
   // Open detail panel when arriving via global search (?candidate=ID)
   // ID may be the DB uuid (from global search) or numeric local id.

@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     if (action_type === "remove_from_watchlist") {
       const cityId = String(payload.cityId ?? "");
       const { error } = await supa.from("watchlist_items")
-        .delete().eq("city_id", cityId).eq("user_id", user.id);
+        .delete().eq("city_id", cityId);
       if (error) {
         await logRow("failed", error.message);
         return new Response(JSON.stringify({ error: error.message }), {

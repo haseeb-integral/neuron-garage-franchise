@@ -592,7 +592,7 @@ All tables have RLS enabled. Source of truth = generated \`src/integrations/supa
 - \`custom_criteria\` — user-defined extra scoring criteria.
 - \`scoring_config\` — per-user master-weight preset.
 - \`saved_searches\` — per-user saved \`master_weights\` + \`sub_weights\` jsonb.
-- \`watchlist_items\` — per-user Favorites (cities).
+- \`watchlist_items\` — shared team Favorites (cities).
 - \`ask_city_conversations\` — persisted Ask AI threads scoped to a city.
 
 ### Teachers

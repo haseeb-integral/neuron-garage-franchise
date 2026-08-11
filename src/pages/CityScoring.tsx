@@ -288,7 +288,7 @@ const CityScoring = () => {
 
   // (saved-search default name, refresh effect, and openSaveDialog moved into useSavedSearches)
 
-  // ─── Watchlist (per-user, persisted to Supabase) ───────────────────────
+  // ─── Watchlist (shared team list, persisted to Supabase) ───────────────
   const [watchlistCityIds, setWatchlistCityIds] = useState<Set<string>>(new Set());
   const [watchlistOnly, setWatchlistOnly] = useState(false);
 
@@ -316,8 +316,7 @@ const CityScoring = () => {
       const { error } = await supabase
         .from("watchlist_items")
         .delete()
-        .eq("city_id", cityId)
-        .eq("user_id", user.id);
+        .eq("city_id", cityId);
       if (error) { console.error(error); toast.error("Remove failed"); refreshWatchlist(); return; }
       toast.success("Removed from watchlist");
     } else {

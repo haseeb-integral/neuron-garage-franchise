@@ -846,33 +846,30 @@ const CandidatePipeline = () => {
         newThisWeek={metrics.newThisWeek}
       />
 
-      {/* Board / Calendar switch */}
+      {/* Board / Calendar / Table switch */}
       <div className="flex items-center gap-2 mb-3">
         <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #cfe0ff" }}>
-          <button
-            onClick={() => setViewMode("board")}
-            className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
-            style={{
-              backgroundColor: viewMode === "board" ? "#174be8" : "#ffffff",
-              color: viewMode === "board" ? "#ffffff" : "#495057",
-            }}
-          >
-            <LayoutGrid size={13} /> Board
-          </button>
-          <button
-            onClick={() => setViewMode("calendar")}
-            className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
-            style={{
-              backgroundColor: viewMode === "calendar" ? "#174be8" : "#ffffff",
-              color: viewMode === "calendar" ? "#ffffff" : "#495057",
-            }}
-          >
-            <CalendarDays size={13} /> Calendar
-          </button>
+          {([
+            { key: "board" as const, label: "Board", Icon: LayoutGrid },
+            { key: "calendar" as const, label: "Calendar", Icon: CalendarDays },
+            { key: "table" as const, label: "Table", Icon: Table2 },
+          ]).map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              onClick={() => setViewMode(key)}
+              className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
+              style={{
+                backgroundColor: viewMode === key ? "#174be8" : "#ffffff",
+                color: viewMode === key ? "#ffffff" : "#495057",
+              }}
+            >
+              <Icon size={13} /> {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {viewMode === "board" && (
+      {viewMode !== "calendar" && (
       <>
       {/* Filter strip */}
 

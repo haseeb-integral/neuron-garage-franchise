@@ -1034,17 +1034,26 @@ const CandidatePipeline = () => {
       </div>
 
 
-      <KanbanBoard
-        candidates={filteredCandidates}
-        onStageChange={handleStageDrop}
-        onCardClick={setActive}
-        onStartOnboarding={handleStartOnboarding}
-        collapsed={collapsed}
-        onToggleCollapse={toggleCollapse}
-        compact={compact}
-      />
+      {viewMode === "board" ? (
+        <KanbanBoard
+          candidates={filteredCandidates}
+          onStageChange={handleStageDrop}
+          onCardClick={setActive}
+          onStartOnboarding={handleStartOnboarding}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
+          compact={compact}
+        />
+      ) : (
+        <CandidatesTable
+          candidates={filteredCandidates}
+          allCandidates={candidates}
+          onOpenCandidate={setActive}
+        />
+      )}
       </>
       )}
+
 
       {viewMode === "calendar" && (
         <CandidateCalendar candidates={candidates} onOpenCandidate={setActive} />

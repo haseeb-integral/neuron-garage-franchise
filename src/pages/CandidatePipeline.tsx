@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays } from "lucide-react";
+import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays, Table2 } from "lucide-react";
 import { CandidateCalendar } from "@/components/candidate-pipeline/CandidateCalendar";
+import { CandidatesTable } from "@/components/candidate-pipeline/CandidatesTable";
 import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateModal";
 import { toast } from "sonner";
 import { Candidate, StageId, STAGES, STAGE_HOMEWORK } from "@/data/pipelineData";

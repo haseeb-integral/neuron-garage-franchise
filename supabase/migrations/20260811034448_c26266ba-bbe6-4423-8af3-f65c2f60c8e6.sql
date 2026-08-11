@@ -1,0 +1,2 @@
+ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS import_batch_id text;
+CREATE INDEX IF NOT EXISTS candidates_import_batch_id_idx ON public.candidates (import_batch_id) WHERE import_batch_id IS NOT NULL;

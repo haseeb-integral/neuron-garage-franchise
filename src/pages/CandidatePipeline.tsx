@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays } from "lucide-react";
+import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays, Table2 } from "lucide-react";
 import { CandidateCalendar } from "@/components/candidate-pipeline/CandidateCalendar";
+import { CandidatesTable } from "@/components/candidate-pipeline/CandidatesTable";
+import { CandidateImportWizard } from "@/components/candidate-pipeline/CandidateImportWizard";
 import { NewCandidateModal } from "@/components/candidate-pipeline/NewCandidateModal";
 import { toast } from "sonner";
 import { Candidate, StageId, STAGES, STAGE_HOMEWORK } from "@/data/pipelineData";
@@ -54,8 +56,10 @@ const CandidatePipeline = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
   const [active, setActive] = useState<Candidate | null>(null);
-  const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
+  const [viewMode, setViewMode] = useState<"board" | "calendar" | "table">("board");
   const compact = useCandidatePipelineStore((s) => s.compact);
   const setCompact = useCandidatePipelineStore((s) => s.setCompact);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());
@@ -266,7 +270,7 @@ const CandidatePipeline = () => {
     })();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reloadKey]);
 
   // Open detail panel when arriving via global search (?candidate=ID)
   // ID may be the DB uuid (from global search) or numeric local id.
@@ -846,33 +850,30 @@ const CandidatePipeline = () => {
         newThisWeek={metrics.newThisWeek}
       />
 
-      {/* Board / Calendar switch */}
+      {/* Board / Calendar / Table switch */}
       <div className="flex items-center gap-2 mb-3">
         <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid #cfe0ff" }}>
-          <button
-            onClick={() => setViewMode("board")}
-            className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
-            style={{
-              backgroundColor: viewMode === "board" ? "#174be8" : "#ffffff",
-              color: viewMode === "board" ? "#ffffff" : "#495057",
-            }}
-          >
-            <LayoutGrid size={13} /> Board
-          </button>
-          <button
-            onClick={() => setViewMode("calendar")}
-            className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
-            style={{
-              backgroundColor: viewMode === "calendar" ? "#174be8" : "#ffffff",
-              color: viewMode === "calendar" ? "#ffffff" : "#495057",
-            }}
-          >
-            <CalendarDays size={13} /> Calendar
-          </button>
+          {([
+            { key: "board" as const, label: "Board", Icon: LayoutGrid },
+            { key: "calendar" as const, label: "Calendar", Icon: CalendarDays },
+            { key: "table" as const, label: "Table", Icon: Table2 },
+          ]).map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              onClick={() => setViewMode(key)}
+              className="px-3 py-1.5 text-xs font-medium flex items-center gap-1"
+              style={{
+                backgroundColor: viewMode === key ? "#174be8" : "#ffffff",
+                color: viewMode === key ? "#ffffff" : "#495057",
+              }}
+            >
+              <Icon size={13} /> {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {viewMode === "board" && (
+      {viewMode !== "calendar" && (
       <>
       {/* Filter strip */}
 
@@ -1015,6 +1016,7 @@ const CandidatePipeline = () => {
             </span>
           </div>
         </div>
+        {viewMode === "board" && (
         <div className="flex items-center gap-2">
           <CardLegendPopover />
           {collapsed.size > 0 && (
@@ -1034,24 +1036,45 @@ const CandidatePipeline = () => {
             <Minimize2 size={12} /> Collapse empty
           </button>
         </div>
+        )}
       </div>
 
 
-      <KanbanBoard
-        candidates={filteredCandidates}
-        onStageChange={handleStageDrop}
-        onCardClick={setActive}
-        onStartOnboarding={handleStartOnboarding}
-        collapsed={collapsed}
-        onToggleCollapse={toggleCollapse}
-        compact={compact}
-      />
+
+      {viewMode === "board" ? (
+        <KanbanBoard
+          candidates={filteredCandidates}
+          onStageChange={handleStageDrop}
+          onCardClick={setActive}
+          onStartOnboarding={handleStartOnboarding}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
+          compact={compact}
+        />
+      ) : (
+        <CandidatesTable
+          candidates={filteredCandidates}
+          allCandidates={candidates}
+          onOpenCandidate={setActive}
+          onImportClick={() => setImportOpen(true)}
+        />
+
+      )}
       </>
       )}
+
 
       {viewMode === "calendar" && (
         <CandidateCalendar candidates={candidates} onOpenCandidate={setActive} />
       )}
+
+      <CandidateImportWizard
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => setReloadKey((k) => k + 1)}
+      />
+
+
 
 
       <CandidateDetailPanel

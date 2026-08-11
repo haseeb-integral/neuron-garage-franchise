@@ -1013,6 +1013,7 @@ const CandidatePipeline = () => {
             </span>
           </div>
         </div>
+        {viewMode === "board" && (
         <div className="flex items-center gap-2">
           <CardLegendPopover />
           {collapsed.size > 0 && (
@@ -1032,7 +1033,9 @@ const CandidatePipeline = () => {
             <Minimize2 size={12} /> Collapse empty
           </button>
         </div>
+        )}
       </div>
+
 
 
       {viewMode === "board" ? (

@@ -1055,7 +1055,9 @@ const CandidatePipeline = () => {
           candidates={filteredCandidates}
           allCandidates={candidates}
           onOpenCandidate={setActive}
+          onImportClick={() => setImportOpen(true)}
         />
+
       )}
       </>
       )}

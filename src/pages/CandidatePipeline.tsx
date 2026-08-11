@@ -56,7 +56,7 @@ const CandidatePipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Candidate | null>(null);
-  const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
+  const [viewMode, setViewMode] = useState<"board" | "calendar" | "table">("board");
   const compact = useCandidatePipelineStore((s) => s.compact);
   const setCompact = useCandidatePipelineStore((s) => s.setCompact);
   const [collapsed, setCollapsed] = useState<Set<StageId>>(new Set());

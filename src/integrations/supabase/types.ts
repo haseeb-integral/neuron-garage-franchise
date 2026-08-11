@@ -873,6 +873,7 @@ export type Database = {
           fit_score: number
           fit_tag: string
           id: string
+          import_batch_id: string | null
           last_name: string
           mailing_city: string | null
           mailing_state: string | null
@@ -908,6 +909,7 @@ export type Database = {
           fit_score?: number
           fit_tag?: string
           id?: string
+          import_batch_id?: string | null
           last_name: string
           mailing_city?: string | null
           mailing_state?: string | null
@@ -943,6 +945,7 @@ export type Database = {
           fit_score?: number
           fit_tag?: string
           id?: string
+          import_batch_id?: string | null
           last_name?: string
           mailing_city?: string | null
           mailing_state?: string | null

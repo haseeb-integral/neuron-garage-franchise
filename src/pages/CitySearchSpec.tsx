@@ -158,7 +158,7 @@ Natural-language input at the top of the page (e.g. *"show me Tier A cities in T
 
 ## 13. Saved searches (per-user)
 
-- Table: \`public.saved_searches\` (RLS: own-row only).
+- Table: \`public.saved_searches\` (RLS: shared team list — any staff user can view, add, remove).
 - Stores filters + master weights + preset name.
 - Load restores the full view. Delete removes the row.
 - Managed by \`useSavedSearches\` hook (\`src/hooks/citySearch/useSavedSearches.ts\`).
@@ -167,7 +167,7 @@ Natural-language input at the top of the page (e.g. *"show me Tier A cities in T
 
 ## 14. Watchlist (per-user)
 
-- Table: \`public.watchlist_items\` (RLS: own-row only).
+- Table: \`public.watchlist_items\` (RLS: shared team list — any staff user can view, add, remove).
 - Star icon on any row toggles membership.
 - "Watchlist only" filter narrows the list to starred cities.
 

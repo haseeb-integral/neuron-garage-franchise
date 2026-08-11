@@ -1067,6 +1067,14 @@ const CandidatePipeline = () => {
         <CandidateCalendar candidates={candidates} onOpenCandidate={setActive} />
       )}
 
+      <CandidateImportWizard
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => setReloadKey((k) => k + 1)}
+      />
+
+
+
 
       <CandidateDetailPanel
         candidate={active}

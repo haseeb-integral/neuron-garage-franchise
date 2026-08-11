@@ -55,6 +55,8 @@ const CandidatePipeline = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
   const [active, setActive] = useState<Candidate | null>(null);
   const [viewMode, setViewMode] = useState<"board" | "calendar" | "table">("board");
   const compact = useCandidatePipelineStore((s) => s.compact);

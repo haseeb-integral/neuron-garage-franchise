@@ -497,7 +497,36 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   desc="Store + send rows with verified emails to a SmartLead campaign." />
               </div>
             </div>
+            <div>
+              <Label className="text-xs font-bold">What should this import do?</Label>
+              <div className="mt-1 grid grid-cols-3 gap-2">
+                <DestCard active={importMode === "add_only"} onClick={() => { setImportMode("add_only"); setQa(null); }}
+                  icon={<Database size={14} />} title="Add new only"
+                  desc="Teachers already in the pool are skipped. Nothing existing is changed." />
+                <DestCard active={importMode === "add_and_enrich"} onClick={() => { setImportMode("add_and_enrich"); setQa(null); }}
+                  icon={<Sparkles size={14} />} title="Add new + enrich existing"
+                  desc="New teachers are added, and matching teachers get the extra columns filled in." />
+                <DestCard active={importMode === "enrich_only"} onClick={() => { setImportMode("enrich_only"); setQa(null); }}
+                  icon={<Sparkles size={14} />} title="Enrich existing only"
+                  desc="No new rows. Only updates teachers already in the pool." />
+              </div>
+            </div>
+            {importMode !== "add_only" && (
+              <div>
+                <Label className="text-xs font-bold">If a field already has a value</Label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <DestCard active={conflictMode === "fill_blanks"} onClick={() => { setConflictMode("fill_blanks"); setQa(null); }}
+                    icon={<CheckCircle2 size={14} />} title="Fill blanks only"
+                    desc="Safest. Only writes where the record has nothing yet." />
+                  <DestCard active={conflictMode === "overwrite"} onClick={() => { setConflictMode("overwrite"); setQa(null); }}
+                    icon={<ArrowRight size={14} />} title="Overwrite with CSV"
+                    desc="The CSV wins. Empty CSV cells never erase existing data." />
+                </div>
+                <div className="mt-1 text-[10px] text-[#8794ab]">Matching uses email first, then first + last name with city and state.</div>
+              </div>
+            )}
           </div>
+
         )}
 
         {step === 2 && (

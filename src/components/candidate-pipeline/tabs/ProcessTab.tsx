@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { ContactIntakeSection, LeadSourceCard, MailingAddressCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
+import { FddSentDateField } from "../FddSentDateField";
+
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
 
 interface TeamMember { email: string; firstName: string; }

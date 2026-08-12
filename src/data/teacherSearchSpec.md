@@ -31,10 +31,34 @@ Not in scope: sending outreach emails (Email Outreach), running the recruiter in
 | **NCES public-school directory** | `public_schools` table | Anchors each teacher to a known school and NCES id. |
 | **School-staff enrichment** | `enrich-school-staff` edge function | Pulls staff / email from linked NCES schools on demand. |
 | **CSV upload (single)** | Teacher Import Wizard | Ad-hoc list uploads with AI column mapping. |
-| **CSV upload (bulk pool)** | Master Pool Import Wizard | Bulk loading into the Master Teacher DB with dedupe on `lower(email)`. |
+| **CSV upload (bulk pool)** | Master Pool Import Wizard | Bulk loading into the Master Teacher DB with dedupe on the generated `dedupe_key`. |
 | **Manual add / edit** | Detail panel | Inline edits, tags, status changes. |
 
 All rows land in `public.teacher_prospects`. Apollo, purchased vendor lists, and a planned `teacher_prospects_master` multi-source pool are **not yet wired** (Phase 2).
+
+### Import modes (Master Pool Import Wizard)
+
+Step 1 of the wizard picks what the import does:
+
+| Mode | Behaviour |
+|---|---|
+| **Add new only** (default) | Rows matching an existing teacher are skipped. Nothing existing changes. |
+| **Add new + enrich existing** | New rows are inserted; matching rows get their missing columns filled. |
+| **Enrich existing only** | No inserts. Only updates teachers already in the pool. |
+
+Matching uses the generated `dedupe_key`: `email:<lower(email)>` when an email is
+present, otherwise `name:<first>|<last>||<state>|<city>`.
+
+Conflict handling when enriching:
+
+- **Fill blanks only** (default) — a field is written only when the stored record is empty.
+- **Overwrite with CSV** — the CSV value wins. Empty CSV cells never erase stored data.
+
+Enriched rows get `last_enriched_at`, the new `import_batch_id`, unmapped CSV columns
+merged into `raw`, and an audit entry appended to `raw.enrichment_history`
+(batch id, timestamp, mode, fields written, fields overwritten). The batch row in
+`teacher_import_batches` stores inserted / enriched / skipped counts in `dedupe_stats`.
+
 
 ---
 

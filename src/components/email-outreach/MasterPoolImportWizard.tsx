@@ -121,6 +121,26 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     });
   };
 
+  /* ---------- Shared helpers ---------- */
+  // Mirrors the generated `dedupe_key` column on teacher_prospects.
+  const dedupeKeyForRow = (row: Record<string, string>): string => {
+    const get = (f: TargetField) => {
+      const col = mapping[f];
+      return col ? (row[col] ?? "").trim() : "";
+    };
+    const email = get("email").toLowerCase();
+    if (email) return `email:${email}`;
+    const cityV = (mapping.city ? get("city") : defaultCity).trim().toLowerCase();
+    const stateV = (mapping.state ? get("state") : defaultState).trim().toLowerCase();
+    return `name:${get("first_name").toLowerCase()}|${get("last_name").toLowerCase()}||${stateV}|${cityV}`;
+  };
+
+  // Fields we can write onto an existing record (phone has no column today).
+  const ENRICHABLE: TargetField[] = [
+    "name", "first_name", "last_name", "email", "school", "district",
+    "city", "state", "grade", "subject", "teacher_type", "experience_years", "linkedin_url",
+  ];
+
   /* ---------- Step 3: QA preview ---------- */
   const computeQa = async () => {
     setQaLoading(true);
@@ -128,8 +148,6 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     try {
       setQaPhase("Scanning rows");
       const emailCol = mapping.email;
-      const fnCol = mapping.first_name;
-      const lnCol = mapping.last_name;
       const stateCol = mapping.state;
       const cityCol = mapping.city;
       const seen = new Set<string>();
@@ -144,23 +162,41 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           withEmail++;
           if (isEmail(email)) validEmail++;
           if (seen.has(email)) inBatchDupes++; else seen.add(email);
-          dedupeKeys.push(`email:${email}`);
-        } else {
-          const fn = (fnCol ? (row[fnCol] ?? "") : "").trim().toLowerCase();
-          const ln = (lnCol ? (row[lnCol] ?? "") : "").trim().toLowerCase();
-          dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
         }
+        dedupeKeys.push(dedupeKeyForRow(row));
       }
       const unique = Array.from(new Set(dedupeKeys));
-      setQaPhase("Checking existing duplicates in Master Pool");
-      toast.loading(`Checking duplicates in Master Pool…`, { id: tId });
+      setQaPhase("Checking existing records in Master Pool");
+      toast.loading(`Checking existing records in Master Pool…`, { id: tId });
+      const wantMatches = importMode !== "add_only";
       const { data: dedupeData, error: dedupeError } = await supabase.functions.invoke("teacher-prospects-dedupe-count", {
-        body: { dedupe_keys: unique },
+        body: { dedupe_keys: unique, with_matches: wantMatches },
       });
       if (dedupeError) throw new Error(`Dedupe check failed: ${dedupeError.message}`);
-      const existingInMaster = Number((dedupeData as { existing_count?: number } | null)?.existing_count ?? 0);
+      const payload = dedupeData as { existing_count?: number; matches?: MatchInfo[] } | null;
+      const existingInMaster = Number(payload?.existing_count ?? 0);
 
-      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
+      const map = new Map<string, MatchInfo>();
+      for (const m of payload?.matches ?? []) map.set(m.dedupe_key, m);
+      setMatchMap(map);
+
+      // How many individual cells would actually be written on existing rows.
+      let fieldsToFill = 0;
+      if (wantMatches && map.size) {
+        for (const row of csvRows) {
+          const match = map.get(dedupeKeyForRow(row));
+          if (!match) continue;
+          for (const f of ENRICHABLE) {
+            const col = mapping[f];
+            if (!col) continue;
+            const v = (row[col] ?? "").trim();
+            if (!v) continue;
+            if (conflictMode === "overwrite" || match.empty_fields.includes(f)) fieldsToFill++;
+          }
+        }
+      }
+
+      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -171,6 +207,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       setQaLoading(false);
     }
   };
+
 
   /* ---------- Step 4: Insert into master pool ---------- */
   const runImport = async () => {

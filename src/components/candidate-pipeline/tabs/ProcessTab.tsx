@@ -344,14 +344,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
 
 
-  const earliestSignDate = useMemo(() => {
-    const sent = rows[4]?.data?.fdd_sent_date as string | undefined;
-    if (!sent) return null;
-    const d = new Date(sent);
-    if (isNaN(d.getTime())) return null;
-    d.setDate(d.getDate() + 16);
-    return d;
-  }, [rows]);
 
   if (!dbId) {
     return (

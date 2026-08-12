@@ -12,6 +12,11 @@ import { Upload, Sparkles, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Databas
 
 type Step = 1 | 2 | 3 | 4;
 type Destination = "master_only" | "master_and_smartlead";
+type ImportMode = "add_only" | "add_and_enrich" | "enrich_only";
+type ConflictMode = "fill_blanks" | "overwrite";
+
+type MatchInfo = { dedupe_key: string; id: string; empty_fields: string[] };
+
 
 const TARGET_FIELDS = [
   "first_name", "last_name", "name", "email", "school", "district",

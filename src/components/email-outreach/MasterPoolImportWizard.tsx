@@ -12,6 +12,11 @@ import { Upload, Sparkles, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Databas
 
 type Step = 1 | 2 | 3 | 4;
 type Destination = "master_only" | "master_and_smartlead";
+type ImportMode = "add_only" | "add_and_enrich" | "enrich_only";
+type ConflictMode = "fill_blanks" | "overwrite";
+
+type MatchInfo = { dedupe_key: string; id: string; empty_fields: string[] };
+
 
 const TARGET_FIELDS = [
   "first_name", "last_name", "name", "email", "school", "district",
@@ -35,6 +40,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [batchName, setBatchName] = useState("");
   const [source, setSource] = useState("Manus");
   const [destination, setDestination] = useState<Destination>("master_only");
+  const [importMode, setImportMode] = useState<ImportMode>("add_only");
+  const [conflictMode, setConflictMode] = useState<ConflictMode>("fill_blanks");
   const [defaultCity, setDefaultCity] = useState("");
   const [defaultState, setDefaultState] = useState("");
   // Step 2
@@ -45,12 +52,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   // Step 3
-  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number } | null>(null);
+  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number; fieldsToFill: number } | null>(null);
+  const [matchMap, setMatchMap] = useState<Map<string, MatchInfo>>(new Map());
   const [qaLoading, setQaLoading] = useState(false);
   const [qaPhase, setQaPhase] = useState<string>("");
   // Step 4
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ inserted: number; skipped: number; batch_id: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ inserted: number; enriched: number; skipped: number; batch_id: string } | null>(null);
   // Step 5
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [destCampaignId, setDestCampaignId] = useState("");
@@ -60,11 +68,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   useEffect(() => {
     if (!open) {
       setStep(1); setBatchName(""); setSource("Manus"); setDestination("master_only");
+      setImportMode("add_only"); setConflictMode("fill_blanks");
       setDefaultCity(""); setDefaultState("");
       setCsvHeaders([]); setCsvRows([]); setMapping({}); setUnmapped([]); setAiReasoning("");
-      setQa(null); setImportResult(null); setDestCampaignId(""); setIncludeCatchAll(false);
+      setQa(null); setMatchMap(new Map()); setImportResult(null); setDestCampaignId(""); setIncludeCatchAll(false);
     }
   }, [open]);
+
 
   // Auto-run QA the moment user lands on Review step
   useEffect(() => {
@@ -111,6 +121,26 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     });
   };
 
+  /* ---------- Shared helpers ---------- */
+  // Mirrors the generated `dedupe_key` column on teacher_prospects.
+  const dedupeKeyForRow = (row: Record<string, string>): string => {
+    const get = (f: TargetField) => {
+      const col = mapping[f];
+      return col ? (row[col] ?? "").trim() : "";
+    };
+    const email = get("email").toLowerCase();
+    if (email) return `email:${email}`;
+    const cityV = (mapping.city ? get("city") : defaultCity).trim().toLowerCase();
+    const stateV = (mapping.state ? get("state") : defaultState).trim().toLowerCase();
+    return `name:${get("first_name").toLowerCase()}|${get("last_name").toLowerCase()}||${stateV}|${cityV}`;
+  };
+
+  // Fields we can write onto an existing record (phone has no column today).
+  const ENRICHABLE: TargetField[] = [
+    "name", "first_name", "last_name", "email", "school", "district",
+    "city", "state", "grade", "subject", "teacher_type", "experience_years", "linkedin_url",
+  ];
+
   /* ---------- Step 3: QA preview ---------- */
   const computeQa = async () => {
     setQaLoading(true);
@@ -118,8 +148,6 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     try {
       setQaPhase("Scanning rows");
       const emailCol = mapping.email;
-      const fnCol = mapping.first_name;
-      const lnCol = mapping.last_name;
       const stateCol = mapping.state;
       const cityCol = mapping.city;
       const seen = new Set<string>();
@@ -134,23 +162,41 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           withEmail++;
           if (isEmail(email)) validEmail++;
           if (seen.has(email)) inBatchDupes++; else seen.add(email);
-          dedupeKeys.push(`email:${email}`);
-        } else {
-          const fn = (fnCol ? (row[fnCol] ?? "") : "").trim().toLowerCase();
-          const ln = (lnCol ? (row[lnCol] ?? "") : "").trim().toLowerCase();
-          dedupeKeys.push(`name:${fn}|${ln}||${stateV.toLowerCase()}|${cityV.toLowerCase()}`);
         }
+        dedupeKeys.push(dedupeKeyForRow(row));
       }
       const unique = Array.from(new Set(dedupeKeys));
-      setQaPhase("Checking existing duplicates in Master Pool");
-      toast.loading(`Checking duplicates in Master Pool…`, { id: tId });
+      setQaPhase("Checking existing records in Master Pool");
+      toast.loading(`Checking existing records in Master Pool…`, { id: tId });
+      const wantMatches = importMode !== "add_only";
       const { data: dedupeData, error: dedupeError } = await supabase.functions.invoke("teacher-prospects-dedupe-count", {
-        body: { dedupe_keys: unique },
+        body: { dedupe_keys: unique, with_matches: wantMatches },
       });
       if (dedupeError) throw new Error(`Dedupe check failed: ${dedupeError.message}`);
-      const existingInMaster = Number((dedupeData as { existing_count?: number } | null)?.existing_count ?? 0);
+      const payload = dedupeData as { existing_count?: number; matches?: MatchInfo[] } | null;
+      const existingInMaster = Number(payload?.existing_count ?? 0);
 
-      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired });
+      const map = new Map<string, MatchInfo>();
+      for (const m of payload?.matches ?? []) map.set(m.dedupe_key, m);
+      setMatchMap(map);
+
+      // How many individual cells would actually be written on existing rows.
+      let fieldsToFill = 0;
+      if (wantMatches && map.size) {
+        for (const row of csvRows) {
+          const match = map.get(dedupeKeyForRow(row));
+          if (!match) continue;
+          for (const f of ENRICHABLE) {
+            const col = mapping[f];
+            if (!col) continue;
+            const v = (row[col] ?? "").trim();
+            if (!v) continue;
+            if (conflictMode === "overwrite" || match.empty_fields.includes(f)) fieldsToFill++;
+          }
+        }
+      }
+
+      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -161,6 +207,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       setQaLoading(false);
     }
   };
+
 
   /* ---------- Step 4: Insert into master pool ---------- */
   const runImport = async () => {
@@ -179,7 +226,14 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       }).select("id").single();
       if (bErr || !batch) throw new Error(bErr?.message ?? "batch insert failed");
 
-      const targetRows = csvRows.map((r) => {
+      type Prepared = {
+        key: string;
+        values: Record<string, unknown>;   // only fields present in the CSV
+        rawUnmapped: Record<string, string>;
+        email: string | null;
+      };
+
+      const prepared = csvRows.map((r): Prepared | null => {
         const get = (f: TargetField): string | null => {
           const col = mapping[f]; if (!col) return null;
           const v = (r[col] ?? "").trim(); return v === "" ? null : v;
@@ -191,7 +245,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         const state = get("state") ?? (defaultState || null);
         if (!city || !state) return null;
         const exp = get("experience_years");
-        return {
+        const values: Record<string, unknown> = {
           first_name: get("first_name"),
           last_name: get("last_name"),
           name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
@@ -204,54 +258,67 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           teacher_type: get("teacher_type"),
           experience_years: exp && /^\d+$/.test(exp) ? parseInt(exp, 10) : null,
           linkedin_url: get("linkedin_url"),
-          needs_email_enrichment: !email,
+        };
+        return { key: dedupeKeyForRow(r), values, rawUnmapped, email };
+      }).filter(Boolean) as Prepared[];
+
+      // ---- Split: rows that match an existing teacher vs brand new rows ----
+      const enrichEnabled = importMode !== "add_only";
+      const seenKeys = new Set<string>();
+      const newRows: Array<Record<string, unknown>> = [];
+      const toEnrich: Prepared[] = [];
+      let skippedInBatch = 0;
+      let skippedExisting = 0;
+
+      for (const p of prepared) {
+        if (seenKeys.has(p.key)) { skippedInBatch++; continue; }
+        seenKeys.add(p.key);
+        const match = matchMap.get(p.key);
+        if (match) {
+          if (enrichEnabled) toEnrich.push(p);
+          else skippedExisting++;
+          continue;
+        }
+        if (importMode === "enrich_only") { skippedExisting++; continue; }
+        newRows.push({
+          ...p.values,
+          needs_email_enrichment: !p.email,
           status: "new",
           enrichment_source: source,
           import_batch_id: batch.id,
-          raw: Object.keys(rawUnmapped).length ? rawUnmapped : null,
-        };
-      }).filter(Boolean) as Array<Record<string, unknown>>;
-
-      // ---- Dedupe: within-batch + against existing Master Pool ----
-      const seenEmails = new Set<string>();
-      const dedupedRows: Array<Record<string, unknown>> = [];
-      let skippedInBatch = 0;
-      for (const r of targetRows) {
-        const em = (r.email as string | null) ?? null;
-        if (em) {
-          if (seenEmails.has(em)) { skippedInBatch++; continue; }
-          seenEmails.add(em);
-        }
-        dedupedRows.push(r);
+          raw: Object.keys(p.rawUnmapped).length ? p.rawUnmapped : null,
+        });
       }
 
-      const allEmails = Array.from(seenEmails);
-      const existingSet = new Set<string>();
-      const EMAIL_CHECK_CHUNK = 500;
-      for (let i = 0; i < allEmails.length; i += EMAIL_CHECK_CHUNK) {
-        const slice = allEmails.slice(i, i + EMAIL_CHECK_CHUNK);
-        const { data: existing, error: exErr } = await supabase
-          .from("teacher_prospects")
-          .select("email")
-          .in("email", slice);
-        if (exErr) throw new Error(`Duplicate check failed: ${exErr.message}`);
-        for (const row of existing ?? []) {
-          if (row.email) existingSet.add(String(row.email).toLowerCase());
+      // When enrich is off we still need the legacy email-based safety net so an
+      // existing row (not present in matchMap) can't create a duplicate.
+      let rowsToInsert = newRows;
+      if (!enrichEnabled) {
+        const allEmails = newRows.map((r) => r.email as string | null).filter(Boolean) as string[];
+        const existingSet = new Set<string>();
+        const EMAIL_CHECK_CHUNK = 500;
+        for (let i = 0; i < allEmails.length; i += EMAIL_CHECK_CHUNK) {
+          const slice = allEmails.slice(i, i + EMAIL_CHECK_CHUNK);
+          const { data: existing, error: exErr } = await supabase
+            .from("teacher_prospects").select("email").in("email", slice);
+          if (exErr) throw new Error(`Duplicate check failed: ${exErr.message}`);
+          for (const row of existing ?? []) if (row.email) existingSet.add(String(row.email).toLowerCase());
         }
+        rowsToInsert = newRows.filter((r) => {
+          const em = (r.email as string | null) ?? null;
+          if (em && existingSet.has(em)) { skippedExisting++; return false; }
+          return true;
+        });
       }
 
-      const rowsToInsert = dedupedRows.filter((r) => {
-        const em = (r.email as string | null) ?? null;
-        return !em || !existingSet.has(em);
-      });
-      const skippedExisting = dedupedRows.length - rowsToInsert.length;
       const totalSkipped = skippedInBatch + skippedExisting;
 
-      // Chunked insert with progress (per-row safe: pre-filtered duplicates)
+      // ---- Chunked insert of the brand new rows ----
       const CHUNK = 500;
       const totalChunks = Math.max(1, Math.ceil(rowsToInsert.length / CHUNK));
-      const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped as duplicates)` : ""}`);
+      const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} new rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped)` : ""}`);
       let inserted = 0;
+      let enriched = 0;
       let skippedConflict = 0;
       try {
         for (let i = 0; i < rowsToInsert.length; i += CHUNK) {
@@ -276,21 +343,71 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           const done = Math.floor(i / CHUNK) + 1;
           toast.loading(`Importing… ${done}/${totalChunks} (${inserted.toLocaleString()} rows)`, { id: tId });
         }
+
+        // ---- Enrich existing rows, one update per matched record ----
+        if (toEnrich.length) {
+          const existingRaws = new Map<string, Record<string, unknown> | null>();
+          const ID_CHUNK = 500;
+          const ids = toEnrich.map((p) => matchMap.get(p.key)!.id);
+          for (let i = 0; i < ids.length; i += ID_CHUNK) {
+            const { data: rawRows } = await supabase
+              .from("teacher_prospects").select("id, raw").in("id", ids.slice(i, i + ID_CHUNK));
+            for (const r of rawRows ?? []) existingRaws.set(String(r.id), (r.raw ?? null) as Record<string, unknown> | null);
+          }
+
+          for (let i = 0; i < toEnrich.length; i++) {
+            const p = toEnrich[i];
+            const match = matchMap.get(p.key)!;
+            const patch: Record<string, unknown> = {};
+            const before: Record<string, unknown> = {};
+            for (const f of ENRICHABLE) {
+              const v = p.values[f];
+              if (v === null || v === undefined || v === "") continue;
+              const isEmptyOnRecord = match.empty_fields.includes(f);
+              if (conflictMode === "fill_blanks" && !isEmptyOnRecord) continue;
+              patch[f] = v;
+              if (!isEmptyOnRecord) before[f] = "(overwritten)";
+            }
+            const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
+            const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
+            const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
+            mergedRaw.enrichment_history = [
+              ...history,
+              { batch_id: batch.id, at: new Date().toISOString(), mode: conflictMode, fields: Object.keys(patch), overwritten: Object.keys(before) },
+            ];
+
+            if (Object.keys(patch).length === 0 && !Object.keys(p.rawUnmapped).length) continue;
+
+            const { error: upErr } = await supabase.from("teacher_prospects")
+              .update({
+                ...patch,
+                raw: mergedRaw as never,
+                last_enriched_at: new Date().toISOString(),
+                import_batch_id: batch.id,
+                ...(patch.email ? { needs_email_enrichment: false } : {}),
+              } as never)
+              .eq("id", match.id);
+            if (upErr) throw new Error(`enrich failed on ${match.id}: ${upErr.message}`);
+            enriched++;
+            if (i % 100 === 0) toast.loading(`Enriching existing records… ${enriched.toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
+          }
+        }
       } catch (e) {
         await supabase.from("teacher_import_batches")
-          .update({ status: "failed", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, skipped_duplicates: totalSkipped } })
+          .update({ status: "failed", approved_count: inserted, record_count: prepared.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, enriched_before_failure: enriched, skipped_duplicates: totalSkipped } })
           .eq("id", batch.id);
-        toast.error(`Import failed after ${inserted.toLocaleString()} rows: ${(e as Error).message}`, { id: tId });
+        toast.error(`Import failed after ${inserted.toLocaleString()} inserted / ${enriched.toLocaleString()} enriched: ${(e as Error).message}`, { id: tId });
         throw e;
       }
 
       const finalSkipped = totalSkipped + skippedConflict;
       await supabase.from("teacher_import_batches")
-        .update({ status: "complete", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict } })
+        .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, import_mode: importMode, conflict_mode: conflictMode } })
         .eq("id", batch.id);
 
-      setImportResult({ inserted, skipped: finalSkipped, batch_id: batch.id });
-      toast.success(`Imported ${inserted.toLocaleString()} teachers${finalSkipped ? ` (skipped ${finalSkipped.toLocaleString()} duplicates)` : ""}`, { id: tId });
+      setImportResult({ inserted, enriched, skipped: finalSkipped, batch_id: batch.id });
+      toast.success(`Imported ${inserted.toLocaleString()} new${enriched ? `, enriched ${enriched.toLocaleString()}` : ""}${finalSkipped ? `, skipped ${finalSkipped.toLocaleString()}` : ""}`, { id: tId });
+
 
       if (destination === "master_and_smartlead") {
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");
@@ -380,7 +497,36 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   desc="Store + send rows with verified emails to a SmartLead campaign." />
               </div>
             </div>
+            <div>
+              <Label className="text-xs font-bold">What should this import do?</Label>
+              <div className="mt-1 grid grid-cols-3 gap-2">
+                <DestCard active={importMode === "add_only"} onClick={() => { setImportMode("add_only"); setQa(null); }}
+                  icon={<Database size={14} />} title="Add new only"
+                  desc="Teachers already in the pool are skipped. Nothing existing is changed." />
+                <DestCard active={importMode === "add_and_enrich"} onClick={() => { setImportMode("add_and_enrich"); setQa(null); }}
+                  icon={<Sparkles size={14} />} title="Add new + enrich existing"
+                  desc="New teachers are added, and matching teachers get the extra columns filled in." />
+                <DestCard active={importMode === "enrich_only"} onClick={() => { setImportMode("enrich_only"); setQa(null); }}
+                  icon={<Sparkles size={14} />} title="Enrich existing only"
+                  desc="No new rows. Only updates teachers already in the pool." />
+              </div>
+            </div>
+            {importMode !== "add_only" && (
+              <div>
+                <Label className="text-xs font-bold">If a field already has a value</Label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <DestCard active={conflictMode === "fill_blanks"} onClick={() => { setConflictMode("fill_blanks"); setQa(null); }}
+                    icon={<CheckCircle2 size={14} />} title="Fill blanks only"
+                    desc="Safest. Only writes where the record has nothing yet." />
+                  <DestCard active={conflictMode === "overwrite"} onClick={() => { setConflictMode("overwrite"); setQa(null); }}
+                    icon={<ArrowRight size={14} />} title="Overwrite with CSV"
+                    desc="The CSV wins. Empty CSV cells never erase existing data." />
+                </div>
+                <div className="mt-1 text-[10px] text-[#8794ab]">Matching uses email first, then first + last name with city and state.</div>
+              </div>
+            )}
           </div>
+
         )}
 
         {step === 2 && (
@@ -452,18 +598,27 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               <>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                   <QaCard label="Total rows" value={qa.total} />
-                  <QaCard label="With email" value={qa.withEmail} />
-                  <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
+                  <QaCard label="New rows" value={Math.max(0, qa.total - qa.inBatchDupes - qa.existingInMaster)} />
+                  <QaCard label={importMode === "add_only" ? "Already in master" : "Rows to enrich"} value={qa.existingInMaster} tone={importMode === "add_only" && qa.existingInMaster > 0 ? "warn" : undefined} />
+                  {importMode === "add_only"
+                    ? <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
+                    : <QaCard label="Fields to fill" value={qa.fieldsToFill} tone={qa.fieldsToFill > 0 ? "good" : undefined} />}
                   <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
-                  <QaCard label="Already in master" value={qa.existingInMaster} tone={qa.existingInMaster > 0 ? "warn" : undefined} />
                   <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
                 </div>
 
                 {qa.existingInMaster > 0 && (
-                  <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
-                    {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool (matched by dedupe_key). Importing will create duplicate rows.
-                  </div>
+                  importMode === "add_only" ? (
+                    <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                      {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool. They will be skipped — nothing about them gets updated. Go Back and pick an enrich mode if you want to fill in their missing details.
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] p-2 text-[11px] text-[#15803d]">
+                      {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} match existing teachers — they will be enriched, not duplicated. {qa.fieldsToFill.toLocaleString()} field{qa.fieldsToFill === 1 ? "" : "s"} will be written ({conflictMode === "fill_blanks" ? "blanks only" : "overwrite"}).
+                    </div>
+                  )
                 )}
+
                 {qa.missingRequired > 0 && (
                   <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
                     {qa.missingRequired} row{qa.missingRequired === 1 ? "" : "s"} missing city/state will be skipped. Go Back and set defaults on Setup to keep them.
@@ -473,11 +628,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                 {!importResult ? (
                   <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
                     <div className="text-xs text-[#526078]">
-                      Ready to insert <strong className="text-[#07142f]">{(qa.total - qa.missingRequired).toLocaleString()}</strong> teachers into the Master Pool.
+                      {importMode === "enrich_only"
+                        ? <>Ready to enrich <strong className="text-[#07142f]">{qa.existingInMaster.toLocaleString()}</strong> existing teachers.</>
+                        : importMode === "add_and_enrich"
+                          ? <>Ready to add <strong className="text-[#07142f]">{Math.max(0, qa.total - qa.missingRequired - qa.inBatchDupes - qa.existingInMaster).toLocaleString()}</strong> new teachers and enrich <strong className="text-[#07142f]">{qa.existingInMaster.toLocaleString()}</strong> existing ones.</>
+                          : <>Ready to insert <strong className="text-[#07142f]">{(qa.total - qa.missingRequired).toLocaleString()}</strong> teachers into the Master Pool.</>}
                     </div>
                     <Button onClick={runImport} disabled={importing || !canImport} className="bg-[#174be8] hover:bg-[#0d3aa8]">
                       {importing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Database size={14} className="mr-1" />}
-                      Import to Master Pool
+                      {importMode === "enrich_only" ? "Enrich Master Pool" : "Import to Master Pool"}
                     </Button>
                     <button onClick={computeQa} disabled={qaLoading} className="text-[10px] text-[#8794ab] underline hover:text-[#526078]">
                       Re-run QA
@@ -487,12 +646,16 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
                     <CheckCircle2 size={28} className="text-[#16a34a]" />
                     <div className="text-sm font-bold">Inserted {importResult.inserted.toLocaleString()} rows</div>
+                    {importResult.enriched > 0 && (
+                      <div className="text-sm font-bold text-[#15803d]">Enriched {importResult.enriched.toLocaleString()} existing {importResult.enriched === 1 ? "teacher" : "teachers"}</div>
+                    )}
                     {importResult.skipped > 0 && (
                       <div className="text-xs text-[#526078]">Skipped {importResult.skipped.toLocaleString()} duplicate {importResult.skipped === 1 ? "row" : "rows"} (already in Master Pool or repeated in the file).</div>
                     )}
                     {destination === "master_only" && <div className="text-xs text-[#526078]">Done. Close this window to continue.</div>}
                   </div>
                 )}
+
               </>
             )}
           </div>

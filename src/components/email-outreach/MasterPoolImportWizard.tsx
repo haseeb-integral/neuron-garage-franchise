@@ -628,11 +628,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                 {!importResult ? (
                   <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
                     <div className="text-xs text-[#526078]">
-                      Ready to insert <strong className="text-[#07142f]">{(qa.total - qa.missingRequired).toLocaleString()}</strong> teachers into the Master Pool.
+                      {importMode === "enrich_only"
+                        ? <>Ready to enrich <strong className="text-[#07142f]">{qa.existingInMaster.toLocaleString()}</strong> existing teachers.</>
+                        : importMode === "add_and_enrich"
+                          ? <>Ready to add <strong className="text-[#07142f]">{Math.max(0, qa.total - qa.missingRequired - qa.inBatchDupes - qa.existingInMaster).toLocaleString()}</strong> new teachers and enrich <strong className="text-[#07142f]">{qa.existingInMaster.toLocaleString()}</strong> existing ones.</>
+                          : <>Ready to insert <strong className="text-[#07142f]">{(qa.total - qa.missingRequired).toLocaleString()}</strong> teachers into the Master Pool.</>}
                     </div>
                     <Button onClick={runImport} disabled={importing || !canImport} className="bg-[#174be8] hover:bg-[#0d3aa8]">
                       {importing ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Database size={14} className="mr-1" />}
-                      Import to Master Pool
+                      {importMode === "enrich_only" ? "Enrich Master Pool" : "Import to Master Pool"}
                     </Button>
                     <button onClick={computeQa} disabled={qaLoading} className="text-[10px] text-[#8794ab] underline hover:text-[#526078]">
                       Re-run QA
@@ -642,12 +646,16 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   <div className="flex flex-col items-center gap-2 border-t border-[#edf2f8] pt-3">
                     <CheckCircle2 size={28} className="text-[#16a34a]" />
                     <div className="text-sm font-bold">Inserted {importResult.inserted.toLocaleString()} rows</div>
+                    {importResult.enriched > 0 && (
+                      <div className="text-sm font-bold text-[#15803d]">Enriched {importResult.enriched.toLocaleString()} existing {importResult.enriched === 1 ? "teacher" : "teachers"}</div>
+                    )}
                     {importResult.skipped > 0 && (
                       <div className="text-xs text-[#526078]">Skipped {importResult.skipped.toLocaleString()} duplicate {importResult.skipped === 1 ? "row" : "rows"} (already in Master Pool or repeated in the file).</div>
                     )}
                     {destination === "master_only" && <div className="text-xs text-[#526078]">Done. Close this window to continue.</div>}
                   </div>
                 )}
+
               </>
             )}
           </div>

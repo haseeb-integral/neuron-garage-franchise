@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { ContactIntakeSection, LeadSourceCard, MailingAddressCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
+import { FddSentDateField } from "../FddSentDateField";
+
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
 
 interface TeamMember { email: string; firstName: string; }
@@ -342,14 +344,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
 
 
-  const earliestSignDate = useMemo(() => {
-    const sent = rows[4]?.data?.fdd_sent_date as string | undefined;
-    if (!sent) return null;
-    const d = new Date(sent);
-    if (isNaN(d.getTime())) return null;
-    d.setDate(d.getDate() + 16);
-    return d;
-  }, [rows]);
 
   if (!dbId) {
     return (
@@ -501,24 +495,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 )}
 
                 {step.num === 4 && (
-                  <div className="mt-3 rounded-md p-3" style={{ backgroundColor: "#f7faff", border: "1px solid #dee2e6" }}>
-                    <Label className="text-xs" style={{ color: "#07142f" }}>FDD sent date</Label>
-                    <Input
-                      type="date"
-                      value={(row.data?.fdd_sent_date as string) ?? ""}
-                      onChange={(e) => updateField(4, "fdd_sent_date", e.target.value)}
-                      className="mt-1 text-sm max-w-[220px]"
-                    />
-                    <div className="text-[11px] mt-1" style={{ color: "#8893a7" }}>
-                      Upload the proof of sending above, then enter the date here. Signing call cannot be scheduled until 16 days after this date.
-                    </div>
-                    {earliestSignDate && (
-                      <div className="rounded-md p-2 mt-2 text-xs" style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
-                        Earliest signing date: <strong>{earliestSignDate.toLocaleDateString()}</strong> (FDD sent + 16 days)
-                      </div>
-                    )}
-                  </div>
+                  <FddSentDateField
+                    candidateDbId={dbId}
+                    fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
+                    onMirror={(v) => updateField(4, "fdd_sent_date", v)}
+                  />
                 )}
+
 
 
                 {step.num === 5 && (

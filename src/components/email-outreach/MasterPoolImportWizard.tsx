@@ -598,18 +598,27 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               <>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                   <QaCard label="Total rows" value={qa.total} />
-                  <QaCard label="With email" value={qa.withEmail} />
-                  <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
+                  <QaCard label="New rows" value={Math.max(0, qa.total - qa.inBatchDupes - qa.existingInMaster)} />
+                  <QaCard label={importMode === "add_only" ? "Already in master" : "Rows to enrich"} value={qa.existingInMaster} tone={importMode === "add_only" && qa.existingInMaster > 0 ? "warn" : undefined} />
+                  {importMode === "add_only"
+                    ? <QaCard label="Valid emails" value={qa.validEmail} tone="good" />
+                    : <QaCard label="Fields to fill" value={qa.fieldsToFill} tone={qa.fieldsToFill > 0 ? "good" : undefined} />}
                   <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
-                  <QaCard label="Already in master" value={qa.existingInMaster} tone={qa.existingInMaster > 0 ? "warn" : undefined} />
                   <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
                 </div>
 
                 {qa.existingInMaster > 0 && (
-                  <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
-                    {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool (matched by dedupe_key). Importing will create duplicate rows.
-                  </div>
+                  importMode === "add_only" ? (
+                    <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                      {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} already exist in the Master Pool. They will be skipped — nothing about them gets updated. Go Back and pick an enrich mode if you want to fill in their missing details.
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] p-2 text-[11px] text-[#15803d]">
+                      {qa.existingInMaster.toLocaleString()} row{qa.existingInMaster === 1 ? "" : "s"} match existing teachers — they will be enriched, not duplicated. {qa.fieldsToFill.toLocaleString()} field{qa.fieldsToFill === 1 ? "" : "s"} will be written ({conflictMode === "fill_blanks" ? "blanks only" : "overwrite"}).
+                    </div>
+                  )
                 )}
+
                 {qa.missingRequired > 0 && (
                   <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
                     {qa.missingRequired} row{qa.missingRequired === 1 ? "" : "s"} missing city/state will be skipped. Go Back and set defaults on Setup to keep them.

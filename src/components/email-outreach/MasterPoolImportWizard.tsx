@@ -226,7 +226,14 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       }).select("id").single();
       if (bErr || !batch) throw new Error(bErr?.message ?? "batch insert failed");
 
-      const targetRows = csvRows.map((r) => {
+      type Prepared = {
+        key: string;
+        values: Record<string, unknown>;   // only fields present in the CSV
+        rawUnmapped: Record<string, string>;
+        email: string | null;
+      };
+
+      const prepared = csvRows.map((r): Prepared | null => {
         const get = (f: TargetField): string | null => {
           const col = mapping[f]; if (!col) return null;
           const v = (r[col] ?? "").trim(); return v === "" ? null : v;
@@ -238,7 +245,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         const state = get("state") ?? (defaultState || null);
         if (!city || !state) return null;
         const exp = get("experience_years");
-        return {
+        const values: Record<string, unknown> = {
           first_name: get("first_name"),
           last_name: get("last_name"),
           name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
@@ -251,54 +258,67 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           teacher_type: get("teacher_type"),
           experience_years: exp && /^\d+$/.test(exp) ? parseInt(exp, 10) : null,
           linkedin_url: get("linkedin_url"),
-          needs_email_enrichment: !email,
+        };
+        return { key: dedupeKeyForRow(r), values, rawUnmapped, email };
+      }).filter(Boolean) as Prepared[];
+
+      // ---- Split: rows that match an existing teacher vs brand new rows ----
+      const enrichEnabled = importMode !== "add_only";
+      const seenKeys = new Set<string>();
+      const newRows: Array<Record<string, unknown>> = [];
+      const toEnrich: Prepared[] = [];
+      let skippedInBatch = 0;
+      let skippedExisting = 0;
+
+      for (const p of prepared) {
+        if (seenKeys.has(p.key)) { skippedInBatch++; continue; }
+        seenKeys.add(p.key);
+        const match = matchMap.get(p.key);
+        if (match) {
+          if (enrichEnabled) toEnrich.push(p);
+          else skippedExisting++;
+          continue;
+        }
+        if (importMode === "enrich_only") { skippedExisting++; continue; }
+        newRows.push({
+          ...p.values,
+          needs_email_enrichment: !p.email,
           status: "new",
           enrichment_source: source,
           import_batch_id: batch.id,
-          raw: Object.keys(rawUnmapped).length ? rawUnmapped : null,
-        };
-      }).filter(Boolean) as Array<Record<string, unknown>>;
-
-      // ---- Dedupe: within-batch + against existing Master Pool ----
-      const seenEmails = new Set<string>();
-      const dedupedRows: Array<Record<string, unknown>> = [];
-      let skippedInBatch = 0;
-      for (const r of targetRows) {
-        const em = (r.email as string | null) ?? null;
-        if (em) {
-          if (seenEmails.has(em)) { skippedInBatch++; continue; }
-          seenEmails.add(em);
-        }
-        dedupedRows.push(r);
+          raw: Object.keys(p.rawUnmapped).length ? p.rawUnmapped : null,
+        });
       }
 
-      const allEmails = Array.from(seenEmails);
-      const existingSet = new Set<string>();
-      const EMAIL_CHECK_CHUNK = 500;
-      for (let i = 0; i < allEmails.length; i += EMAIL_CHECK_CHUNK) {
-        const slice = allEmails.slice(i, i + EMAIL_CHECK_CHUNK);
-        const { data: existing, error: exErr } = await supabase
-          .from("teacher_prospects")
-          .select("email")
-          .in("email", slice);
-        if (exErr) throw new Error(`Duplicate check failed: ${exErr.message}`);
-        for (const row of existing ?? []) {
-          if (row.email) existingSet.add(String(row.email).toLowerCase());
+      // When enrich is off we still need the legacy email-based safety net so an
+      // existing row (not present in matchMap) can't create a duplicate.
+      let rowsToInsert = newRows;
+      if (!enrichEnabled) {
+        const allEmails = newRows.map((r) => r.email as string | null).filter(Boolean) as string[];
+        const existingSet = new Set<string>();
+        const EMAIL_CHECK_CHUNK = 500;
+        for (let i = 0; i < allEmails.length; i += EMAIL_CHECK_CHUNK) {
+          const slice = allEmails.slice(i, i + EMAIL_CHECK_CHUNK);
+          const { data: existing, error: exErr } = await supabase
+            .from("teacher_prospects").select("email").in("email", slice);
+          if (exErr) throw new Error(`Duplicate check failed: ${exErr.message}`);
+          for (const row of existing ?? []) if (row.email) existingSet.add(String(row.email).toLowerCase());
         }
+        rowsToInsert = newRows.filter((r) => {
+          const em = (r.email as string | null) ?? null;
+          if (em && existingSet.has(em)) { skippedExisting++; return false; }
+          return true;
+        });
       }
 
-      const rowsToInsert = dedupedRows.filter((r) => {
-        const em = (r.email as string | null) ?? null;
-        return !em || !existingSet.has(em);
-      });
-      const skippedExisting = dedupedRows.length - rowsToInsert.length;
       const totalSkipped = skippedInBatch + skippedExisting;
 
-      // Chunked insert with progress (per-row safe: pre-filtered duplicates)
+      // ---- Chunked insert of the brand new rows ----
       const CHUNK = 500;
       const totalChunks = Math.max(1, Math.ceil(rowsToInsert.length / CHUNK));
-      const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped as duplicates)` : ""}`);
+      const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} new rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped)` : ""}`);
       let inserted = 0;
+      let enriched = 0;
       let skippedConflict = 0;
       try {
         for (let i = 0; i < rowsToInsert.length; i += CHUNK) {
@@ -323,21 +343,71 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           const done = Math.floor(i / CHUNK) + 1;
           toast.loading(`Importing… ${done}/${totalChunks} (${inserted.toLocaleString()} rows)`, { id: tId });
         }
+
+        // ---- Enrich existing rows, one update per matched record ----
+        if (toEnrich.length) {
+          const existingRaws = new Map<string, Record<string, unknown> | null>();
+          const ID_CHUNK = 500;
+          const ids = toEnrich.map((p) => matchMap.get(p.key)!.id);
+          for (let i = 0; i < ids.length; i += ID_CHUNK) {
+            const { data: rawRows } = await supabase
+              .from("teacher_prospects").select("id, raw").in("id", ids.slice(i, i + ID_CHUNK));
+            for (const r of rawRows ?? []) existingRaws.set(String(r.id), (r.raw ?? null) as Record<string, unknown> | null);
+          }
+
+          for (let i = 0; i < toEnrich.length; i++) {
+            const p = toEnrich[i];
+            const match = matchMap.get(p.key)!;
+            const patch: Record<string, unknown> = {};
+            const before: Record<string, unknown> = {};
+            for (const f of ENRICHABLE) {
+              const v = p.values[f];
+              if (v === null || v === undefined || v === "") continue;
+              const isEmptyOnRecord = match.empty_fields.includes(f);
+              if (conflictMode === "fill_blanks" && !isEmptyOnRecord) continue;
+              patch[f] = v;
+              if (!isEmptyOnRecord) before[f] = "(overwritten)";
+            }
+            const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
+            const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
+            const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
+            mergedRaw.enrichment_history = [
+              ...history,
+              { batch_id: batch.id, at: new Date().toISOString(), mode: conflictMode, fields: Object.keys(patch), overwritten: Object.keys(before) },
+            ];
+
+            if (Object.keys(patch).length === 0 && !Object.keys(p.rawUnmapped).length) continue;
+
+            const { error: upErr } = await supabase.from("teacher_prospects")
+              .update({
+                ...patch,
+                raw: mergedRaw as never,
+                last_enriched_at: new Date().toISOString(),
+                import_batch_id: batch.id,
+                ...(patch.email ? { needs_email_enrichment: false } : {}),
+              } as never)
+              .eq("id", match.id);
+            if (upErr) throw new Error(`enrich failed on ${match.id}: ${upErr.message}`);
+            enriched++;
+            if (i % 100 === 0) toast.loading(`Enriching existing records… ${enriched.toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
+          }
+        }
       } catch (e) {
         await supabase.from("teacher_import_batches")
-          .update({ status: "failed", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, skipped_duplicates: totalSkipped } })
+          .update({ status: "failed", approved_count: inserted, record_count: prepared.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, enriched_before_failure: enriched, skipped_duplicates: totalSkipped } })
           .eq("id", batch.id);
-        toast.error(`Import failed after ${inserted.toLocaleString()} rows: ${(e as Error).message}`, { id: tId });
+        toast.error(`Import failed after ${inserted.toLocaleString()} inserted / ${enriched.toLocaleString()} enriched: ${(e as Error).message}`, { id: tId });
         throw e;
       }
 
       const finalSkipped = totalSkipped + skippedConflict;
       await supabase.from("teacher_import_batches")
-        .update({ status: "complete", approved_count: inserted, record_count: targetRows.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict } })
+        .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, import_mode: importMode, conflict_mode: conflictMode } })
         .eq("id", batch.id);
 
-      setImportResult({ inserted, skipped: finalSkipped, batch_id: batch.id });
-      toast.success(`Imported ${inserted.toLocaleString()} teachers${finalSkipped ? ` (skipped ${finalSkipped.toLocaleString()} duplicates)` : ""}`, { id: tId });
+      setImportResult({ inserted, enriched, skipped: finalSkipped, batch_id: batch.id });
+      toast.success(`Imported ${inserted.toLocaleString()} new${enriched ? `, enriched ${enriched.toLocaleString()}` : ""}${finalSkipped ? `, skipped ${finalSkipped.toLocaleString()}` : ""}`, { id: tId });
+
 
       if (destination === "master_and_smartlead") {
         const { data } = await supabase.from("campaign_cache").select("id, name, status").order("name");

@@ -40,6 +40,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [batchName, setBatchName] = useState("");
   const [source, setSource] = useState("Manus");
   const [destination, setDestination] = useState<Destination>("master_only");
+  const [importMode, setImportMode] = useState<ImportMode>("add_only");
+  const [conflictMode, setConflictMode] = useState<ConflictMode>("fill_blanks");
   const [defaultCity, setDefaultCity] = useState("");
   const [defaultState, setDefaultState] = useState("");
   // Step 2
@@ -50,12 +52,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   // Step 3
-  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number } | null>(null);
+  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number; fieldsToFill: number } | null>(null);
+  const [matchMap, setMatchMap] = useState<Map<string, MatchInfo>>(new Map());
   const [qaLoading, setQaLoading] = useState(false);
   const [qaPhase, setQaPhase] = useState<string>("");
   // Step 4
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ inserted: number; skipped: number; batch_id: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ inserted: number; enriched: number; skipped: number; batch_id: string } | null>(null);
   // Step 5
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [destCampaignId, setDestCampaignId] = useState("");
@@ -65,11 +68,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   useEffect(() => {
     if (!open) {
       setStep(1); setBatchName(""); setSource("Manus"); setDestination("master_only");
+      setImportMode("add_only"); setConflictMode("fill_blanks");
       setDefaultCity(""); setDefaultState("");
       setCsvHeaders([]); setCsvRows([]); setMapping({}); setUnmapped([]); setAiReasoning("");
-      setQa(null); setImportResult(null); setDestCampaignId(""); setIncludeCatchAll(false);
+      setQa(null); setMatchMap(new Map()); setImportResult(null); setDestCampaignId(""); setIncludeCatchAll(false);
     }
   }, [open]);
+
 
   // Auto-run QA the moment user lands on Review step
   useEffect(() => {

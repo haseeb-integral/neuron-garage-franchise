@@ -437,7 +437,7 @@ const CandidatePipeline = () => {
       if (!comp?.compliance_override) {
         if (!comp?.fdd_sent_at) {
           toast.error("FDD sent date required", {
-            description: "Set the FDD sent date on the Uploaded Documents tab before advancing.",
+            description: "Set the FDD sent date on Step 4 of the Qualification Process (or the Uploaded Documents tab) before advancing.",
           });
           return;
         }

@@ -56,8 +56,8 @@ export const CANDIDATE_CSV_COLUMNS: CandidateCsvColumn[] = [
   { header: "Responsiveness", get: (c) => String(c.qualificationScores?.teaching ?? 0) },
   { header: "Elementary Experience", get: (c) => String(c.qualificationScores?.leadership ?? 0) },
   { header: "Process Alignment", get: (c) => String(c.qualificationScores?.financial ?? 0) },
-  { header: "Philosophical Alignment", get: (c) => String(c.qualificationScores?.cultureFit ?? 0) },
-  { header: "Market Fit", get: (c) => String(c.qualificationScores?.marketFit ?? 0) },
+  { header: "Philosophical Alignment", get: (c) => String(c.qualificationScores?.marketFit ?? 0) },
+  { header: "Market Fit", get: (c) => String(c.qualificationScores?.cultureFit ?? 0) },
   { header: "Days In Stage", get: (c) => String(c.daysInStage ?? 0) },
   { header: "Created Date", get: (c) => (c.createdDate ? c.createdDate.slice(0, 10) : "") },
 ];

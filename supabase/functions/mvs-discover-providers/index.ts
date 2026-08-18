@@ -7,7 +7,7 @@
 // tier classification (2.2) can weight cross-source presence as a quality
 // signal.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   BreakerOpenError,
   checkBreaker,

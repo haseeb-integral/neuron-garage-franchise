@@ -3,7 +3,7 @@
 // counts nearby schools, computes the SAS pillars, and writes a row to
 // public.site_analyses. Demo path on the frontend is unaffected unless the
 // VITE_SAS_ENGINE_LIVE flag is true.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   geocode,
   isochrone,

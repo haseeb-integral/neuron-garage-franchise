@@ -18,7 +18,7 @@
 // Auth: manager/admin (matches other MVS step functions). Non-fatal in the
 // orchestrator — callers should tolerate a 200 with `skipped: true`.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

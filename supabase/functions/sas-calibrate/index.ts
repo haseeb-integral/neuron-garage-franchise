@@ -2,7 +2,7 @@
 // LeafSpring (anchor FAIL), and a private-elementary control through compute-sas
 // and reports whether the calibration gate is met.
 // Gate: Trinity >= 80 AND LeafSpring <= 50 AND margin >= 25.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

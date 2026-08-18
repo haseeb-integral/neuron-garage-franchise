@@ -10,7 +10,7 @@
 // public.city_narratives table so the second view of a city is instant.
 // ============================================================================
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { KB_FULL_CONTEXT } from "../_shared/knowledge.ts";
 
 const corsHeaders = {

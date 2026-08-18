@@ -12,7 +12,7 @@
 // Output: streaming SSE chunks (OpenAI-style) — frontend reads token by token.
 // ============================================================================
 
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { KB_FULL_CONTEXT } from "../_shared/knowledge.ts";
 
 const corsHeaders = {

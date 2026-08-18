@@ -28,7 +28,7 @@
 //     are deltas applied client-side to the existing sub-weight store.
 //   - Multi-turn capped at 6 turns.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

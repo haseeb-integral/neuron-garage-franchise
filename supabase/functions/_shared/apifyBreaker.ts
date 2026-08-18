@@ -18,7 +18,7 @@
 //   - Exponential back-off: 10m, 20m, 40m, capped at 60m
 //   - Any success closes the breaker
 
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

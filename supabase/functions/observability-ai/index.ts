@@ -12,7 +12,7 @@
 //   SECURITY DEFINER RPC that re-checks the role server-side.
 // ============================================================================
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { OBSERVABILITY_KB, SECTION_GUIDANCE } from "../_shared/observabilityKnowledge.ts";
 
 const corsHeaders = {

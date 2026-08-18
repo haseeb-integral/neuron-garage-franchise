@@ -9,7 +9,7 @@
 //   - Self-explaining failures (the AI re-frames tool errors as helpful prose).
 // ============================================================================
 
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { APP_KNOWLEDGE, SCREEN_KNOWLEDGE } from "../_shared/appKnowledge.ts";
 
 const corsHeaders = {

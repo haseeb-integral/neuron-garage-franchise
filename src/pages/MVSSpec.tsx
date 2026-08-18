@@ -235,7 +235,8 @@ Precedence, top wins:
 | mvs_providers | Active | provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url |
 | mvs_weeks | Retired | (no new writes; legacy rows retained) |
 | mvs_qa_queue | Retired | (page shows retired notice; \`activeQaCount\` filters retired reasons out) |
-| mvs_operator_watchlist | Active | operator_name, default_overlap, notes |
+| mvs_operator_watchlist | Active | operator_name, aliases, default_overlap, is_premium_brand, notes — **the only brand list in the system** |
+| apify_breaker_state | Active | source, failure_count, state (closed / open), opened_at — Apify circuit breaker |
 | mvs_city_overlap_overrides | Active | city, state, operator_name, overlap |
 | mvs_pipeline_runs | Active | run_id, city, state, triggered_by, started_at, finished_at, status, error, provider_count, firecrawl_calls, **fallback_data_date** |
 

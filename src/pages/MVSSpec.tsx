@@ -341,17 +341,22 @@ const EXCLUDED = [
 // ----- Rendered content (kept in sync with SPEC_MD above) -----
 
 const SCOPE_ROWS: Array<{ decision: string; current: string; deferred: string }> = [
-  { decision: "Discovery sources", current: "Sawyer + ActivityHero + Google Maps + Yelp + Google Search (5 sources)", deferred: "More platforms case-by-case" },
+  { decision: "Discovery sources", current: "Sawyer (summer-camps-for-kids category page only) + ActivityHero + Google Maps (100 places/search) + Yelp (Summer Camps for Kids category filter) + Google Search. The word \"tuition\" is banned from every query.", deferred: "More platforms case-by-case" },
   { decision: "Scheduling", current: 'Manual trigger ("Run Pipeline" button per city)', deferred: "Inngest / Trigger.dev post-client-meeting" },
   { decision: "Cities in scope", current: "Any city can be added; freshness rules apply uniformly", deferred: "—" },
   { decision: "Scrape cadence", current: "1 run per click, gated by freshness rules", deferred: "Multi-scrape history once cadence is automated" },
   { decision: "Freshness rules", current: "0–90 days auto-skip (use saved). 91–120 prompt user. >120 fresh crawl. Force fresh always overrides. Backend hard-guard enforces this even if UI is bypassed.", deferred: "—" },
   { decision: "Soft-fail fallback", current: "If a fresh crawl fails but saved data ≤120 days exists → status done_stale, score stays visible, amber banner shown", deferred: "—" },
   { decision: "Market Absorption", current: "Removed from composite (weight 0)", deferred: "Not planned" },
+  { decision: "Market Balance Index (MBI)", current: "Not scored (weight 0). Two-sided review flag only: Saturated / Healthy / Unproven.", deferred: "Calibrate the ratio thresholds from live data" },
+  { decision: "Premium tier rule", current: "Two gates — listed price_min ≥ $300 AND price_max ≥ $400. Hard override: a priced provider that fails the gate can never be Premium.", deferred: "—" },
+  { decision: "National / premium brand list", current: "One list — mvs_operator_watchlist with aliases + is_premium_brand. No hard-coded brand arrays anywhere.", deferred: "—" },
   { decision: "Registration-page scraping (old Stage 3)", current: "Retired. mvs-extract-weeks is a no-op shell. No week rows written.", deferred: "Not planned" },
   { decision: "Normalization", current: "Fixed reference ranges (see §5)", deferred: "Across-shortlist normalization once ≥20 cities have live data" },
   { decision: "QA queue", current: "Retired for the absorption flow. Page shows a retired notice. Per-pillar confidence chips replace the old global QA gate.", deferred: "—" },
   { decision: "Firecrawl cost cap", current: "50 calls per run total, sub-caps: discover ≤25, classify ≤15, extract ≤15", deferred: "—" },
+  { decision: "Apify reliability", current: "Circuit breaker (apify_breaker_state) trips after repeated failures; rollout card in the UI shows breaker state.", deferred: "—" },
+  { decision: "Bulk price refresh", current: "DB-backed queue + mvs_resume_stuck_b3_runs() cron so a crashed batch resumes instead of stalling.", deferred: "—" },
 ];
 
 const PRICING_STEPS: Array<{ step: string; detail: string; isNew: boolean }> = [

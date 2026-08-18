@@ -144,21 +144,26 @@ See §5. All math lives in one helper. No stored composite scores — always rec
 
 ---
 
-## **5. Sub-score formulas + v1.6 reference ranges**
+## **5. Sub-score formulas + v1.9 reference ranges**
 
-Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
+Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below mirror \`src/lib/mvs/computeMvs.ts\` exactly.
 
 ### Score 1 — Pricing Acceptance (26.67%)
 
 \`\`\`
-0.40 × normalize(median weekly price,       range $300–$700)
-0.40 × normalize(75th-percentile price,     range $400–$800)
-0.20 × (% Premium providers at ≥ $500/week,  0–100)
+Denominator = ALL priced providers in the city (not premium-only).
+Per-provider price = price_min, falling back to price_max when min is null.
+
+0.40 × normalize(median weekly price,        range $300–$700)
+0.40 × normalize(75th-percentile price,      range $400–$800)
+0.20 × (% of ALL priced providers ≥ $500/week, 0–100)
 \`\`\`
+
+> **Changed in v1.8.** The denominator used to be premium-only, which self-selected for high prices (Indianapolis showed 50% ≥ $500 on 6 premium rows vs ~4% across all 190 priced providers). \`price_min\` is used because directory \`price_max\` is usually a multi-week or full-season bundle.
 
 ### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated in v1.6.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
+> **Deprecated in v1.1.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
 \`\`\`
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
@@ -177,9 +182,9 @@ Scaled Operator Score =
 + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))
 \`\`\`
 
-Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer.
+Operator watchlist lives in \`mvs_operator_watchlist\` (editable in the UI). Each row carries a name, \`aliases\` (alternate spellings matched case-insensitively), a default overlap of **direct / adjacent / distant**, and \`is_premium_brand\`. Per-city overlap can be overridden in \`mvs_city_overlap_overrides\`. **This table is the only brand list in the system** — the scrapers no longer carry hard-coded brand arrays.
 
-### Score 4 — Enrichment Diversity (13.33%)
+### Score 4 — Enrichment Diversity (33.33%)
 
 \`\`\`
 Category Count = distinct eligible categories with ≥1 premium provider (of 19)
@@ -189,20 +194,37 @@ Score = normalize( clamp(Category Count, 2, 10), 2, 10 ) × 100
 Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.
 \`\`\`
 
+> **Changed in v1.7.** Picked up MBI's 20% weight. The old categories/providers ratio was dropped because it quietly punished large healthy markets; breadth alone now drives the score.
+
 ### Score 5 — Market Depth (13.33%)
 
 \`\`\`
-Market Depth Score = normalize(Premium Provider Count, 4–40)
+Market Depth Score = normalize( clamp(Premium Provider Count, 4, 15), 4, 15 )
 \`\`\`
 
-### Score 6 — Market Balance Index (20%)
+> **Tightened in v1.7** (was 4–40). Depth answers a threshold question — "is the premium ecosystem big enough to prove camp culture?" — so it saturates quickly. UI bands: **8–14 Moderate · 15–19 Deep · 20+ Very Deep.**
+
+### Score 6 — Market Balance Index — REVIEW FLAG ONLY (weight 0)
 
 \`\`\`
-Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
-Score          = normalize(Coverage Ratio, 50–500)
+MBI Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+
+Ratio < 200    → "Saturated"  (dense supply vs. affluent demand)
+Ratio > 8,000  → "Unproven"   (near-empty market — validate camp culture first)
+otherwise      → "Healthy"
+No premium providers found → "Unproven", ratio null
 \`\`\`
 
-Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated.
+> **Rebuilt in v1.7.** MBI contributes **no points**. It renders as a Saturated / Healthy / Unproven badge that triggers human review. The 200 and 8,000 thresholds are placeholders to be calibrated from the live distribution.
+
+### Tier rules (how a provider becomes "Premium")
+
+Precedence, top wins:
+
+1. **Community / childcare** — YMCA, JCC, parks-and-rec, library, municipal, church, non-profit, or a daycare/preschool/after-school-care name → \`community\`, regardless of price. Excluded from competitor counts.
+2. **Price gate (hard override)** — if the provider has a real listed price: Premium requires **\`price_min ≥ $300\` AND \`price_max ≥ $400\`**. Under $200 on both ends → \`budget\`. Anything else → \`mid\`. A priced provider that fails the gate **cannot** be Premium, even if the AI or the brand list says otherwise.
+3. **Known premium brand** — no listed price + a match in \`mvs_operator_watchlist\` where \`is_premium_brand = true\` (name or alias) → \`premium\`.
+4. **AI guess** — used only where the rules above do not decide. No price and not a known premium brand → never Premium (falls back to \`mid\`).
 
 ---
 

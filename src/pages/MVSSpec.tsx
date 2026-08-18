@@ -52,26 +52,32 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | Freshness rules | **0–90 days: auto-skip (use saved). 91–120: prompt user. >120: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
 | Soft-fail fallback | If a fresh crawl fails but saved data ≤120 days exists → status \`done_stale\`, score stays visible, amber banner shown | — |
 | Market Absorption | **Removed from composite (weight 0)** | Not planned |
+| Market Balance Index (MBI) | **Not scored (weight 0).** Two-sided review flag only: Saturated / Healthy / Unproven | Calibrate the ratio thresholds from live data |
+| Premium tier rule | **Two gates:** listed \`price_min ≥ $300\` AND \`price_max ≥ $400\`. Hard override — a priced provider that fails the gate can never be Premium | — |
+| National / premium brand list | **One list:** \`mvs_operator_watchlist\` with \`aliases\` + \`is_premium_brand\`. No hard-coded brand arrays anywhere | — |
 | Registration-page scraping (old Stage 3) | **Retired.** \`mvs-extract-weeks\` is a no-op shell. No week rows are written. | Not planned |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
 | QA queue | **Retired** for the absorption flow. Page shows a retired notice. Per-pillar confidence chips replace the old global QA gate. | — |
 | Firecrawl cost cap | **50 calls per run total**, sub-caps: discover ≤25, classify ≤15, extract ≤15 | — |
+| Apify reliability | **Circuit breaker** (\`apify_breaker_state\`) trips after repeated failures; rollout card in the UI shows breaker state | — |
+| Bulk price refresh | **DB-backed queue** + \`mvs_resume_stuck_b3_runs()\` cron so a crashed batch resumes instead of stalling | — |
 
 ---
 
-## **3. MVS composite — v1.6**
+## **3. MVS composite — v1.9**
 
 \`\`\`
 MVS = 0.2667 × Pricing Acceptance
     + 0.2667 × Scaled Operator
-    + 0.1333 × Enrichment Diversity
+    + 0.3333 × Enrichment Diversity
     + 0.1333 × Market Depth
-    + 0.2000 × Market Balance Index
 \`\`\`
 
-Rounded to one decimal place. All sub-scores 0–100. Weights exposed as preview sliders per card. Market Absorption removed (weight 0); the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.
+Rounded to one decimal place. All sub-scores 0–100. Weights exposed as preview sliders per card.
 
-**SOW divergence flag (open question for Sam):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. We keep it inside at 20% because the demo UI renders it that way.
+**Zero-weight pillars:** Market Absorption (retired 2026-06-24, sellout scraping unreliable) and Market Balance Index (rebuilt 2026-07-14 as a review flag). MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four contributing weights sum to 1.0.
+
+**SOW alignment:** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. As of v1.7 the code matches the SOW — MBI is outside the composite.
 
 ---
 

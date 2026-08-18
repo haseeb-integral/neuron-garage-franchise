@@ -87,7 +87,7 @@ One manual run per city (subject to freshness rules). Stages write to Supabase; 
 
 \`\`\`
 Stage 1 → Multi-source discovery       → providers from Sawyer, ActivityHero, Google Maps, Yelp, Google Search
-Stage 2 → Premium tier classification  → filter to Premium (≥$400/wk, eligible category)
+Stage 2 → Premium tier classification  → two-gate price rule (min ≥ $300 AND max ≥ $400), eligible category
 Stage 3 → Census ACS pull              → Market Balance + Operator denominators
 Stage 4 → Score calculation            → 5 sub-scores → MVS composite
 \`\`\`

@@ -381,16 +381,20 @@ const FORMULAS: Array<{ title: string; weight: string; body: string; note?: stri
   {
     title: "Score 1 — Pricing Acceptance",
     weight: "26.67%",
-    body: `0.40 × normalize(median weekly price,     range $300–$700)
-0.40 × normalize(75th-percentile price,   range $400–$800)
-0.20 × (% Premium providers at ≥ $500/week, 0–100)`,
+    body: `Denominator = ALL priced providers (not premium-only)
+Per-provider price = price_min, falling back to price_max
+
+0.40 × normalize(median weekly price,       range $300–$700)
+0.40 × normalize(75th-percentile price,     range $400–$800)
+0.20 × (% of ALL priced providers ≥ $500/week, 0–100)`,
+    note: "Changed in v1.8. The old premium-only denominator self-selected for high prices and inflated the \"% ≥ $500/wk\" number. price_min is used because directory price_max is usually a multi-week or full-season bundle.",
   },
   {
     title: "Score 2 — Market Absorption",
     weight: "RETIRED (weight 0)",
     body: `Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
 Market Absorption Score = normalize(Sellout Rate, range 0%–80%)`,
-    note: "Deprecated in v1.6. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
+    note: "Deprecated in v1.1. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
   },
   {
     title: "Score 3 — Scaled Operator",
@@ -402,39 +406,66 @@ Direct Competitor Load = Σ site counts for operators tagged 'direct'
 Scaled Operator Score =
   0.65 × normalize(Operator Validation, 0–8)
 + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))`,
-    note: "Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer.",
+    note: "The watchlist lives in mvs_operator_watchlist and is editable in the UI. Each row has a name, aliases (alternate spellings, matched case-insensitively), a default overlap of direct / adjacent / distant, and an is_premium_brand flag. Per-city overlap can be overridden in mvs_city_overlap_overrides. This table is the only brand list in the system — the scrapers no longer carry hard-coded brand arrays.",
   },
   {
     title: "Score 4 — Enrichment Diversity",
-    weight: "13.33%",
+    weight: "33.33%",
     body: `Category Count = distinct eligible categories with ≥1 premium provider (of 19)
 
 Score = normalize( clamp(Category Count, 2, 10), 2, 10 ) × 100
 
 Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.`,
+    note: "Changed in v1.7. Picked up MBI's 20% weight. The old categories/providers ratio was dropped because it quietly punished large healthy markets; breadth alone now drives the score.",
   },
   {
     title: "Score 5 — Market Depth",
     weight: "13.33%",
-    body: `Market Depth Score = normalize(Premium Provider Count, 4–40)`,
+    body: `Market Depth Score = normalize( clamp(Premium Provider Count, 4, 15), 4, 15 )`,
+    note: "Tightened in v1.7 (was 4–40). Depth answers a threshold question, so it saturates quickly. UI bands: 8–14 Moderate · 15–19 Deep · 20+ Very Deep.",
   },
   {
     title: "Score 6 — Market Balance Index",
-    weight: "20%",
-    body: `Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
-Score          = normalize(Coverage Ratio, 50–500)`,
-    note: "Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated.",
+    weight: "NOT SCORED (weight 0) — review flag only",
+    body: `MBI Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+
+Ratio < 200    → "Saturated"  (dense supply vs. affluent demand)
+Ratio > 8,000  → "Unproven"   (near-empty market — validate camp culture first)
+otherwise      → "Healthy"
+No premium providers found → "Unproven", ratio null`,
+    note: "Rebuilt in v1.7. MBI contributes no points — it renders as a badge that triggers human review. The 200 and 8,000 thresholds are placeholders to be calibrated from the live distribution.",
+  },
+  {
+    title: "Tier rules — how a provider becomes \"Premium\"",
+    weight: "Precedence, top wins",
+    body: `1. Community / childcare  → YMCA, JCC, parks & rec, library, municipal, church,
+                            non-profit, daycare / preschool / after-school care.
+                            Tier = community regardless of price. Not a competitor.
+
+2. Price gate (hard override) → if a real listed price exists:
+                            Premium requires price_min ≥ $300 AND price_max ≥ $400
+                            both ends under $200 → budget
+                            anything else        → mid
+
+3. Known premium brand    → no listed price + match in mvs_operator_watchlist
+                            (name or alias) with is_premium_brand = true → premium
+
+4. AI guess               → only where rules 1–3 do not decide.
+                            No price and not a known premium brand → never premium.`,
+    note: "The price gate beats both the brand list and the AI. A priced provider that fails the two gates can never be Premium.",
   },
 ];
 
 const TABLES = [
-  { name: "mvs_providers", status: "Active", fields: "provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url, price_derived_from_brand, price_needs_review, ai_overview_snippet, ai_overview_source_url, matched_query, verified_at, verified_by" },
+  { name: "mvs_providers", status: "Active", fields: "provider_id, provider_name, city, state, price_min, price_max, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url, price_derived_from_brand, price_needs_review, ai_overview_snippet, ai_overview_source_url, matched_query, verified_at, verified_by" },
   { name: "mvs_weeks", status: "Retired", fields: "no new writes; legacy rows retained" },
   { name: "mvs_qa_queue", status: "Retired", fields: "page shows retired notice; activeQaCount filters retired reasons out" },
-  { name: "mvs_operator_watchlist", status: "Active", fields: "operator_name, default_overlap, notes" },
+  { name: "mvs_operator_watchlist", status: "Active", fields: "operator_name, aliases, default_overlap, is_premium_brand, notes — the only brand list in the system" },
   { name: "mvs_city_overlap_overrides", status: "Active", fields: "city, state, operator_name, overlap" },
   { name: "mvs_pipeline_runs", status: "Active", fields: "run_id, city, state, triggered_by, started_at, finished_at, status, error, provider_count, firecrawl_calls, fallback_data_date, fallback_reason, source_counts" },
   { name: "mvs_tier_snapshots", status: "Active", fields: "city, premium_count, mid_count, budget_count, trigger, created_at (used by regression guard)" },
+  { name: "us_cities_scored", status: "Active", fields: "single store for city-level metrics and pillar scores — no duplicate score columns elsewhere" },
+  { name: "apify_breaker_state", status: "Active", fields: "source, failure_count, state (closed / open), opened_at — Apify circuit breaker" },
   { name: "notifications", status: "Active", fields: "user_id, kind, title, message, link, read_at, created_at (header bell)" },
 ];
 

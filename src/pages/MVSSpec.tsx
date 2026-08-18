@@ -32,7 +32,7 @@ Takes a city from the shortlist and produces a **single composite score (MVS, 0�
 Output surfaces:
 
 * MVS number on the city row in the shortlist table.
-* 5 sub-score breakdown in the city detail panel (Result / Evidence / Trust layout, with proof popovers).
+* 4 scored sub-scores plus the Market Balance review flag in the city detail panel (Result / Evidence / Trust layout, with proof popovers).
 * Premium provider table (real names, weekly prices, source chips).
 * Branded PDF Market Brief.
 * Every score traces to a source URL and (where available) a stored listing-page screenshot. Screenshots are of the discovery listing page (Sawyer, Yelp, Google, etc.), shared by all providers found on that page. We do not save per-provider website screenshots or raw HTML.
@@ -89,7 +89,7 @@ One manual run per city (subject to freshness rules). Stages write to Supabase; 
 Stage 1 → Multi-source discovery       → providers from Sawyer, ActivityHero, Google Maps, Yelp, Google Search
 Stage 2 → Premium tier classification  → two-gate price rule (min ≥ $300 AND max ≥ $400), eligible category
 Stage 3 → Census ACS pull              → Market Balance + Operator denominators
-Stage 4 → Score calculation            → 5 sub-scores → MVS composite
+Stage 4 → Score calculation            → 4 scored sub-scores → MVS composite (+ MBI review flag)
 \`\`\`
 
 ### Stage 1 — Discovery (Firecrawl + APIs)
@@ -549,7 +549,7 @@ export default function MVSSpec() {
             <p className="mb-2 font-semibold text-[#07142f]">Output surfaces:</p>
             <ul className="list-disc pl-6 space-y-1 mb-3">
               <li>MVS number on the city row in the shortlist table.</li>
-              <li>5 sub-score breakdown in the city detail panel (Result / Evidence / Trust layout, with proof popovers).</li>
+              <li>4 scored sub-scores plus the Market Balance review flag in the city detail panel (Result / Evidence / Trust layout, with proof popovers).</li>
               <li>Premium provider table (real names, weekly prices, source chips).</li>
               <li>Branded PDF Market Brief.</li>
               <li>Every score traces to a source URL and (where available) a stored listing-page screenshot. Screenshots are of the discovery listing page (Sawyer, Yelp, Google, etc.), shared by all providers on that page. We do <strong>not</strong> save per-provider website screenshots or raw HTML.</li>
@@ -701,7 +701,7 @@ Stage 4 → Score calculation            → 4 scored sub-scores → MVS composi
 
           {/* 5. Sub-score formulas */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.6 reference ranges</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.9 reference ranges</h2>
             <p className="mb-3">Normalization is <strong>min-max against fixed reference ranges</strong> (capped 0–100). Ranges below come from the methodology doc.</p>
             <div className="space-y-4">
               {FORMULAS.map((f) => (
@@ -817,7 +817,7 @@ Stage 4 → Score calculation            → 4 scored sub-scores → MVS composi
 
           {/* 10. Out of scope */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.6 (do not drift)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.9 (do not drift)</h2>
             <ul className="space-y-2">
               {EXCLUDED.map((item) => (
                 <li key={item} className="flex gap-2">

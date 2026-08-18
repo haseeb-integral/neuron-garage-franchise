@@ -218,7 +218,8 @@ const DISCOVER_SOURCES: DiscoverSource[] = [
 
 const MVS_NOTES = [
   "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
-  "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed. The remaining five pillars were re-normalized so weights still sum to 1.0.",
+  "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed.",
+  "Only FOUR pillars are scored: Pricing Acceptance 26.67%, Scaled Operator 26.67%, Enrichment Diversity 33.33%, Market Depth 13.33%. They sum to 1.0. Market Absorption and Market Balance Index both carry zero weight.",
   "Listing-page screenshots are saved for the discovery sources we crawl (Sawyer, Yelp, Google, etc.), stored privately in Supabase Storage with date and source URL. One screenshot is shared by every provider discovered on that listing page — we do NOT save a screenshot of each provider's own website, and we do NOT save the raw HTML.",
   "Per-pillar confidence. Each card on the city deep-dive shows its own Trust block with a Low / Medium / High level and a plain-English reason that uses only that pillar's inputs (e.g. Pricing: \"8 of 12 providers had readable prices\"; Diversity: \"4 of 19 providers had a category tag\"). The old global low-confidence badge (triggered by >20% of providers missing a registration page) is retired.",
   "Card layout is Result → Evidence → Trust → Weight preview → Formula / Sources. Every Evidence row is click-through: open the popover to see the actual providers, categories, or ACS rows behind the number, each with a freshness pill and source label.",
@@ -232,27 +233,37 @@ const MVS_NOTES = [
   "v1.6 — Unpriced Reasons. Camps that end the run with no price now carry a reason chip: Not a camp / Booking wall / No public price / Steps 3–9 exhausted / AI Overview blocked. The city panel shows a per-city breakdown so you know why coverage is what it is instead of a generic \"missing price\".",
   "v1.6 — Stop button + row lock. The active pipeline row shows a red Stop button that cancels the run cleanly. While any row is running, other rows' Run and Force-fresh buttons are locked so two runs can't collide on the Firecrawl budget.",
   "v1.6 — Manual Verify / Reject / Edit with reject-safety. The Provider Evidence Review page uses quiet chips for auto-kept crawler prices and loud action buttons only for rows that need human review (B3 AI Overview and other price_needs_review = true rows). Reject requires a confirmation step so a stray click can't wipe a real price. A collapsible \"How to read this table\" help card explains the chip/button system.",
+  "v1.7 — Scoring rebuild. Market Balance Index left the composite and became a review flag. Market Depth tightened from 4–40 to 4–15. Enrichment Diversity dropped the categories/providers ratio, kept breadth only, and absorbed MBI's 20%.",
+  "v1.8 — Pricing truth. Two-gate Premium rule (price_min ≥ $300 AND price_max ≥ $400). Pricing Acceptance now uses ALL priced providers as the denominator, not premium-only. B3 price extraction moved to Gemini with unit-aware parsing so \"$840 for two weeks\" reads as $420/week.",
+  "v1.8 — Query cleanup. The word \"tuition\" is banned from every discovery and pricing query because it pulled in private-school tuition pages. Google Maps raised to 100 places per search and split into smaller calls to avoid 504 timeouts. Yelp restricted to its \"Summer Camps for Kids\" category filter. Sawyer restricted to the single hisawyer.com/s/summer-camps-for-kids category page.",
+  "v1.9 — One brand list. mvs_operator_watchlist is the single source of truth for both national-brand matching and premium-brand status, with an aliases column and an is_premium_brand flag. The hard-coded brand arrays in the scrapers were deleted.",
+  "v1.9 — One precedence rule for tiers: community/childcare → price gate → known premium brand → AI guess. The price gate is a hard override, so a priced provider that fails it can never be Premium even if the AI or the brand list says otherwise.",
+  "v1.9 — Reliability. Bulk price refresh runs through a database-backed queue with a mvs_resume_stuck_b3_runs() cron so a crashed batch resumes instead of stalling, and Apify calls sit behind a circuit breaker (apify_breaker_state) with a rollout card in the UI.",
+  "v1.9 — One number everywhere. us_cities_scored is the only place city-level metrics are stored; the duplicate score columns were removed. Every surface recomputes from the shared helper, never from a stale stored composite.",
 ];
 
 
 const MVS_SHARED_INFRA = [
-  ["Discovery: Sawyer, ActivityHero, Google Maps, Yelp, Google Search (Firecrawl + APIs)", "Provider discovery — 5 sources", "Live (v1.6)"],
+  ["Discovery: Sawyer, ActivityHero, Google Maps, Yelp, Google Search (Firecrawl + APIs)", "Provider discovery — 5 sources", "Live (v1.9)"],
   ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Live — cap 50 per run, sub-caps 25 / 15 / 15"],
-  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification (parallel waves of 5)", "Live"],
+  ["Gemini (Lovable AI Gateway)", "Structured JSON extraction, unit-aware price parsing, tier classification (parallel waves of 5)", "Live"],
   ["Google AI Overview via Apify (B3 fallback)", "Last-resort price lookup — prices flagged 'Needs human review'", "Live (v1.6)"],
-  ["Supabase Postgres", "Provider data store, pipeline runs, tier snapshots (mvs_tier_snapshots)", "Live"],
+  ["Apify circuit breaker (apify_breaker_state)", "Trips after repeated Apify failures so a broken source can't burn the run budget; rollout card shows breaker state", "Live (v1.9)"],
+  ["DB-backed refresh queue + mvs_resume_stuck_b3_runs() cron", "Bulk price refresh survives a crashed batch instead of stalling", "Live (v1.9)"],
+  ["Supabase Postgres", "Provider data store, pipeline runs, tier snapshots (mvs_tier_snapshots), city metrics (us_cities_scored)", "Live"],
+  ["mvs_operator_watchlist", "The single brand list — names, aliases, default overlap, is_premium_brand", "Live (v1.9)"],
   ["Supabase Storage", "Listing-page screenshot archive (private, audit trail). No raw HTML, no per-provider website screenshots.", "Live"],
-  ["Census ACS", "Demographics for Market Balance + Operator denominator", "Live"],
+  ["Census ACS", "Demographics for the Market Balance flag + Operator denominator", "Live"],
   ["Header notification bell (Regression Guard)", "Fires when premium count drops ≥ 20% vs previous snapshot", "Live (v1.6)"],
   ["Inngest / Trigger.dev (scheduled scrape cadence)", "Was planned for the retired 5-scrape weekly cadence", "Deferred — manual trigger only"],
   ["Internal QA review UI (absorption flow)", "Was the low-confidence week correction queue", "Retired — page shows retired notice"],
 ];
 
 const MVS_PREMIUM_TIERS = [
-  ["Premium", "Price ≥ $400/week AND STEM / maker / robotics / coding / science / art / theater / music / academic enrichment AND not childcare-positioned"],
-  ["Mid", "$250–$399/week, enrichment-positioned"],
-  ["Budget", "< $250/week OR community / parks-and-rec / YMCA-positioned"],
-  ["Community", "Faith-based, scholarship-driven, or municipally subsidized"],
+  ["Community (checked first)", "YMCA, JCC, parks & rec, library, municipal, church, non-profit, or a daycare / preschool / after-school-care name — regardless of price. Excluded from competitor counts."],
+  ["Premium", "Two gates: listed price_min ≥ $300 AND price_max ≥ $400, in an eligible enrichment category. If there is no listed price, Premium only when the brand matches mvs_operator_watchlist with is_premium_brand = true."],
+  ["Mid", "Default. A priced provider that fails either gate, and every unpriced provider that is not a known premium brand."],
+  ["Budget", "Both price ends under $200/week."],
 ];
 
 function generateMVSMarkdown(): string {

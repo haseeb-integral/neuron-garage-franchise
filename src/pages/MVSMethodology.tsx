@@ -37,19 +37,22 @@ const SUB_SCORES: SubScore[] = [
     name: "Pricing Acceptance",
     weight: "26.67%",
     question: "Are families already paying Neuron Garage–level prices?",
-    formula: `Pricing Acceptance Score =
+    formula: `Denominator = ALL priced providers in the city (not premium-only)
+Per-provider price = price_min, falling back to price_max when min is null
+
+Pricing Acceptance Score =
   0.40 × normalize(median weekly price,    range $300–$700)
 + 0.40 × normalize(75th-percentile price,  range $400–$800)
-+ 0.20 × (% of premium providers at ≥ $500/week)`,
++ 0.20 × (% of ALL priced providers at ≥ $500/week)`,
     detail:
-      "Built from the shape of the local premium price distribution, not from demographic income. The 75th percentile is the Neuron Garage positioning anchor.",
+      "Built from the shape of the local price distribution, not from demographic income. The 75th percentile is the Neuron Garage positioning anchor. Changed in v1.8: the denominator used to be premium-only, which self-selected for high prices and badly inflated the \"% ≥ $500/wk\" number (Indianapolis read 50% on 6 premium rows vs ~4% across all 190 priced providers). We use price_min because directory price_max is usually a multi-week or full-season bundle.",
     sources: [
       "Provider websites (weekly camp prices)",
       "Camp registration platforms: Sawyer, ActivityHero, CampBrain, CampMinder",
       "Camp directories and aggregator listings",
       "Discovery via Apify Google Maps actor",
-      "Extraction via Firecrawl → Gemini 2.0 Flash (Lovable AI Gateway) into strict JSON",
-      "Same data pull as Market Absorption — collected once",
+      "Extraction via Firecrawl → Gemini (Lovable AI Gateway) into strict JSON",
+      "B3 fallback prices parsed by Gemini with unit-aware reading — \"$840 for two weeks\" becomes $420/week",
     ],
   },
   {
@@ -89,18 +92,18 @@ Scaled Operator Score =
   0.65 × normalize(Operator Validation, range 0–8)
 + 0.35 × (100 − normalize(Direct Competitor Load, range 0–5 per 10k))`,
     detail:
-      "Two opposing numbers. Validation good, direct competition bad. Each operator is tagged direct / adjacent / distant; tags are editable per city.",
+      "Two opposing numbers. Validation good, direct competition bad. Each operator is tagged direct / adjacent / distant; tags are editable per city. Since v1.9 the operator list lives in one place — the mvs_operator_watchlist table.",
     sources: [
-      "National Operator Watchlist (seed, editable in slider UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer",
+      "National Operator Watchlist — the mvs_operator_watchlist table, editable in the UI. Each row has a name, aliases (alternate spellings, matched case-insensitively), a default overlap, and an is_premium_brand flag. This is the ONLY brand list in the system; the hard-coded brand arrays that used to live in the scrapers were deleted in v1.9.",
       "Apify Google Maps actor (local site counts per operator in the metro)",
-      "Per-operator overlap classification (direct / adjacent / distant) — default stored, editable per city",
+      "Per-operator overlap classification (direct / adjacent / distant) — default stored in the watchlist, overridable per city in mvs_city_overlap_overrides",
       "Census ACS — children ages 5–12 denominator for Direct Competitor Load",
     ],
   },
   {
     n: 4,
     name: "Enrichment Diversity",
-    weight: "13.33%",
+    weight: "33.33%",
     question: "Do families in this market invest across a variety of enrichment categories?",
     formula: `Category Count   = number of distinct enrichment categories with ≥1 premium provider
 
@@ -109,10 +112,10 @@ Enrichment Diversity Score =
 
 Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.`,
     detail:
-      "This score measures enrichment breadth only. Deep-but-narrow markets floor automatically via low category count — we no longer penalise large healthy markets with a category-to-provider ratio. Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
+      "This score measures enrichment breadth only. Deep-but-narrow markets floor automatically via low category count — we no longer penalise large healthy markets with a category-to-provider ratio. It picked up Market Balance's former 20% weight in v1.7, taking it from 13.33% to 33.33%. Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
     sources: [
       "Same premium-provider universe from Apify + Firecrawl",
-      "Category classification by Gemini 2.0 Flash against the eligible category list",
+      "Category classification by Gemini against the eligible category list",
       "No new data source — purely derived from the premium-provider table",
     ],
   },
@@ -123,30 +126,30 @@ Display-only flag: if Premium Provider Count < 4, show "Thin market — low conf
     question: "How large is the premium enrichment ecosystem?",
     formula: `Premium Provider Count = count of distinct premium enrichment providers in market
 
-Market Depth Score = normalize(Premium Provider Count, range 4–40)`,
+Market Depth Score = normalize( clamp(Premium Provider Count, 4, 15), 4, 15 )
+
+UI bands:  8–14 Moderate  ·  15–19 Deep  ·  20+ Very Deep`,
     detail:
-      "Deliberately simple and auditable. A market with 40 premium providers behaves very differently from one with 4. Most of the signal is already captured by the other five scores — hence the modest 10% weight.",
+      "Tightened in v1.7 — the normalization range dropped from 4–40 to 4–15. Depth answers a threshold question (\"is the premium ecosystem big enough to prove camp culture?\"), so it saturates quickly rather than rewarding sheer size. Most of the remaining signal is captured by the other pillars, hence the modest 13.33% weight.",
     sources: [
-      "Apify + Firecrawl + Gemini extraction (shared with Scores 1, 2, 4)",
+      "Apify + Firecrawl + Gemini extraction (shared with Scores 1 and 4)",
       "Premium tier classification applied at ingest (see Premium Provider Definition below)",
     ],
   },
   {
     n: 6,
-    name: "Market Balance",
-    weight: "20%",
+    name: "Market Balance Index — review flag only",
+    weight: "0% (not scored)",
     question: "Is there still room in this market?",
-    formula: `Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
-                 (families = dual-income, HH income ≥ $150k, kids ages 5–12)
+    formula: `MBI Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+            (families = dual-income, HH income ≥ $150k, kids ages 5–12)
 
-Market Balance Index = normalize(Coverage Ratio, range 50–500)
-
-  ≥ 350    → Underserved
-  200–349  → Balanced
-  100–199  → Competitive
-  < 100    → Saturated`,
+  Ratio < 200     → "Saturated"  (dense supply vs. affluent demand)
+  Ratio > 8,000   → "Unproven"   (near-empty market — validate camp culture first)
+  otherwise       → "Healthy"
+  No premium providers found → "Unproven", ratio null`,
     detail:
-      "The supply–demand bridge that doesn't require capacity modeling. Pairs the affluent target-family count from Census ACS against the premium-provider count from the same scrape feeding all other scores.",
+      "Rebuilt in v1.7. MBI contributes NO points to the composite — it renders as a Saturated / Healthy / Unproven badge that triggers human review, which is also what SOW v2.2 asks for (Market Balance sits next to the composite, not inside it). Its former 20% weight moved to Enrichment Diversity. The 200 and 8,000 thresholds are placeholders to be calibrated once we have a live distribution across cities.",
     sources: [
       "Census ACS (already wired in v1.0): dual-income households, HH income ≥ $150k, children ages 5–12",
       "Premium Provider Count from the shared Apify + Firecrawl scrape",
@@ -215,7 +218,8 @@ const DISCOVER_SOURCES: DiscoverSource[] = [
 
 const MVS_NOTES = [
   "Every sub-score is normalized 0–100 across the shortlisted cities, not nationally. The MVS is a comparative score for the cities that survived Feature 1, not a universal market grade.",
-  "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed. The remaining five pillars were re-normalized so weights still sum to 1.0.",
+  "Market Absorption (Score 2) is permanently retired. The weekly sellout/registration-page scrape (mvs-extract-weeks) and its 5-scrape cadence (Jan / Feb / Mar / Apr / May via Inngest / Trigger.dev) have been turned off. Sellout Rate, Time-to-Sellout, and YoY Velocity are no longer computed.",
+  "Only FOUR pillars are scored: Pricing Acceptance 26.67%, Scaled Operator 26.67%, Enrichment Diversity 33.33%, Market Depth 13.33%. They sum to 1.0. Market Absorption and Market Balance Index both carry zero weight.",
   "Listing-page screenshots are saved for the discovery sources we crawl (Sawyer, Yelp, Google, etc.), stored privately in Supabase Storage with date and source URL. One screenshot is shared by every provider discovered on that listing page — we do NOT save a screenshot of each provider's own website, and we do NOT save the raw HTML.",
   "Per-pillar confidence. Each card on the city deep-dive shows its own Trust block with a Low / Medium / High level and a plain-English reason that uses only that pillar's inputs (e.g. Pricing: \"8 of 12 providers had readable prices\"; Diversity: \"4 of 19 providers had a category tag\"). The old global low-confidence badge (triggered by >20% of providers missing a registration page) is retired.",
   "Card layout is Result → Evidence → Trust → Weight preview → Formula / Sources. Every Evidence row is click-through: open the popover to see the actual providers, categories, or ACS rows behind the number, each with a freshness pill and source label.",
@@ -229,27 +233,37 @@ const MVS_NOTES = [
   "v1.6 — Unpriced Reasons. Camps that end the run with no price now carry a reason chip: Not a camp / Booking wall / No public price / Steps 3–9 exhausted / AI Overview blocked. The city panel shows a per-city breakdown so you know why coverage is what it is instead of a generic \"missing price\".",
   "v1.6 — Stop button + row lock. The active pipeline row shows a red Stop button that cancels the run cleanly. While any row is running, other rows' Run and Force-fresh buttons are locked so two runs can't collide on the Firecrawl budget.",
   "v1.6 — Manual Verify / Reject / Edit with reject-safety. The Provider Evidence Review page uses quiet chips for auto-kept crawler prices and loud action buttons only for rows that need human review (B3 AI Overview and other price_needs_review = true rows). Reject requires a confirmation step so a stray click can't wipe a real price. A collapsible \"How to read this table\" help card explains the chip/button system.",
+  "v1.7 — Scoring rebuild. Market Balance Index left the composite and became a review flag. Market Depth tightened from 4–40 to 4–15. Enrichment Diversity dropped the categories/providers ratio, kept breadth only, and absorbed MBI's 20%.",
+  "v1.8 — Pricing truth. Two-gate Premium rule (price_min ≥ $300 AND price_max ≥ $400). Pricing Acceptance now uses ALL priced providers as the denominator, not premium-only. B3 price extraction moved to Gemini with unit-aware parsing so \"$840 for two weeks\" reads as $420/week.",
+  "v1.8 — Query cleanup. The word \"tuition\" is banned from every discovery and pricing query because it pulled in private-school tuition pages. Google Maps raised to 100 places per search and split into smaller calls to avoid 504 timeouts. Yelp restricted to its \"Summer Camps for Kids\" category filter. Sawyer restricted to the single hisawyer.com/s/summer-camps-for-kids category page.",
+  "v1.9 — One brand list. mvs_operator_watchlist is the single source of truth for both national-brand matching and premium-brand status, with an aliases column and an is_premium_brand flag. The hard-coded brand arrays in the scrapers were deleted.",
+  "v1.9 — One precedence rule for tiers: community/childcare → price gate → known premium brand → AI guess. The price gate is a hard override, so a priced provider that fails it can never be Premium even if the AI or the brand list says otherwise.",
+  "v1.9 — Reliability. Bulk price refresh runs through a database-backed queue with a mvs_resume_stuck_b3_runs() cron so a crashed batch resumes instead of stalling, and Apify calls sit behind a circuit breaker (apify_breaker_state) with a rollout card in the UI.",
+  "v1.9 — One number everywhere. us_cities_scored is the only place city-level metrics are stored; the duplicate score columns were removed. Every surface recomputes from the shared helper, never from a stale stored composite.",
 ];
 
 
 const MVS_SHARED_INFRA = [
-  ["Discovery: Sawyer, ActivityHero, Google Maps, Yelp, Google Search (Firecrawl + APIs)", "Provider discovery — 5 sources", "Live (v1.6)"],
+  ["Discovery: Sawyer, ActivityHero, Google Maps, Yelp, Google Search (Firecrawl + APIs)", "Provider discovery — 5 sources", "Live (v1.9)"],
   ["Firecrawl", "Page fetch + listing-page screenshots (JS render)", "Live — cap 50 per run, sub-caps 25 / 15 / 15"],
-  ["Gemini 2.0 Flash (Lovable AI Gateway)", "Structured JSON extraction + tier classification (parallel waves of 5)", "Live"],
+  ["Gemini (Lovable AI Gateway)", "Structured JSON extraction, unit-aware price parsing, tier classification (parallel waves of 5)", "Live"],
   ["Google AI Overview via Apify (B3 fallback)", "Last-resort price lookup — prices flagged 'Needs human review'", "Live (v1.6)"],
-  ["Supabase Postgres", "Provider data store, pipeline runs, tier snapshots (mvs_tier_snapshots)", "Live"],
+  ["Apify circuit breaker (apify_breaker_state)", "Trips after repeated Apify failures so a broken source can't burn the run budget; rollout card shows breaker state", "Live (v1.9)"],
+  ["DB-backed refresh queue + mvs_resume_stuck_b3_runs() cron", "Bulk price refresh survives a crashed batch instead of stalling", "Live (v1.9)"],
+  ["Supabase Postgres", "Provider data store, pipeline runs, tier snapshots (mvs_tier_snapshots), city metrics (us_cities_scored)", "Live"],
+  ["mvs_operator_watchlist", "The single brand list — names, aliases, default overlap, is_premium_brand", "Live (v1.9)"],
   ["Supabase Storage", "Listing-page screenshot archive (private, audit trail). No raw HTML, no per-provider website screenshots.", "Live"],
-  ["Census ACS", "Demographics for Market Balance + Operator denominator", "Live"],
+  ["Census ACS", "Demographics for the Market Balance flag + Operator denominator", "Live"],
   ["Header notification bell (Regression Guard)", "Fires when premium count drops ≥ 20% vs previous snapshot", "Live (v1.6)"],
   ["Inngest / Trigger.dev (scheduled scrape cadence)", "Was planned for the retired 5-scrape weekly cadence", "Deferred — manual trigger only"],
   ["Internal QA review UI (absorption flow)", "Was the low-confidence week correction queue", "Retired — page shows retired notice"],
 ];
 
 const MVS_PREMIUM_TIERS = [
-  ["Premium", "Price ≥ $400/week AND STEM / maker / robotics / coding / science / art / theater / music / academic enrichment AND not childcare-positioned"],
-  ["Mid", "$250–$399/week, enrichment-positioned"],
-  ["Budget", "< $250/week OR community / parks-and-rec / YMCA-positioned"],
-  ["Community", "Faith-based, scholarship-driven, or municipally subsidized"],
+  ["Community (checked first)", "YMCA, JCC, parks & rec, library, municipal, church, non-profit, or a daycare / preschool / after-school-care name — regardless of price. Excluded from competitor counts."],
+  ["Premium", "Two gates: listed price_min ≥ $300 AND price_max ≥ $400, in an eligible enrichment category. If there is no listed price, Premium only when the brand matches mvs_operator_watchlist with is_premium_brand = true."],
+  ["Mid", "Default. A priced provider that fails either gate, and every unpriced provider that is not a known premium brand."],
+  ["Budget", "Both price ends under $200/week."],
 ];
 
 function generateMVSMarkdown(): string {
@@ -293,15 +307,14 @@ function generateMVSMarkdown(): string {
   lines.push("```");
   lines.push(`MVS = 0.2667 × Pricing Acceptance Score`);
   lines.push(`    + 0.2667 × Scaled Operator Score`);
-  lines.push(`    + 0.1333 × Enrichment Diversity Score`);
+  lines.push(`    + 0.3333 × Enrichment Diversity Score`);
   lines.push(`    + 0.1333 × Market Depth Score`);
-  lines.push(`    + 0.2000 × Market Balance Index`);
   lines.push("```");
   lines.push("");
-  lines.push(`Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the v1.0 doctrine. **Market Absorption was removed from the composite in v1.1** (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.`);
+  lines.push(`Every sub-score is normalized 0–100, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers. **Two pillars carry zero weight:** Market Absorption (removed in v1.1 — sellout scraping was unreliable) and **Market Balance Index** (rebuilt in v1.7 as a review flag, not a score). MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four contributing weights sum to 1.0.`);
   lines.push("");
 
-  lines.push(`## Section 4: The Six Sub-Scores`);
+  lines.push(`## Section 4: The Four Scored Pillars (plus two zero-weight pillars)`);
   lines.push("");
   SUB_SCORES.forEach((s) => {
     lines.push(`### Score ${s.n}: ${s.name} (Weight ${s.weight})`);
@@ -322,7 +335,7 @@ function generateMVSMarkdown(): string {
 
   lines.push(`## Section 5: Premium Provider Definition`);
   lines.push("");
-  lines.push(`Rather than excluding non-premium camps from data collection, the engine collects the **full** camp universe in each shortlisted city and tier-classifies each provider at ingest. Only providers tagged **Premium** flow into the six sub-scores.`);
+  lines.push(`Rather than excluding non-premium camps from data collection, the engine collects the **full** camp universe in each shortlisted city and tier-classifies each provider at ingest using one precedence rule: community/childcare → price gate → known premium brand → AI guess. The price gate is a hard override — a provider with a real listed price that fails the gate can never be Premium. Only providers tagged **Premium** drive Enrichment Diversity, Market Depth and the Market Balance flag; **Pricing Acceptance uses all priced providers**.`);
   lines.push("");
   lines.push(`| Tier | Definition |`);
   lines.push(`| --- | --- |`);
@@ -356,7 +369,7 @@ export default function MVSMethodology() {
       eyebrow="Methodology"
       eyebrowIcon={BarChart3}
       title={<>How the MVS (Market Validation Score) is Calculated</>}
-      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.6 (updated 2026-07-07)"
+      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.9 (updated 2026-08-18)"
       action={
         <DownloadMDButton
           content={generateMVSMarkdown()}
@@ -441,21 +454,24 @@ export default function MVSMethodology() {
             <SectionTitle n={3}>The Composite Formula</SectionTitle>
             <FormulaBlock>{`MVS = 0.2667 × Pricing Acceptance Score
     + 0.2667 × Scaled Operator Score
-    + 0.1333 × Enrichment Diversity Score
+    + 0.3333 × Enrichment Diversity Score
     + 0.1333 × Market Depth Score
-    + 0.2000 × Market Balance Index`}</FormulaBlock>
+
+(Market Absorption retired, weight 0.)
+(Market Balance Index not scored, weight 0 — review flag only.)`}</FormulaBlock>
             <p className="mt-3 text-[13px] leading-relaxed text-[#1a2540]">
-              Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into
-              the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the
-              v1.0 doctrine. <strong>Market Absorption was removed from the composite in v1.1</strong>{" "}
-              (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars
-              were proportionally re-normalized so the weights still sum to 1.0.
+              Every sub-score is normalized 0–100, then weight-blended into the composite. Weights are
+              exposed as sliders in the UI with "Show Formula" drawers. <strong>Two pillars carry zero
+              weight:</strong> Market Absorption (removed in v1.1 — sellout scraping was unreliable) and{" "}
+              <strong>Market Balance Index</strong> (rebuilt in v1.7 as a review flag, not a score).
+              MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four
+              contributing weights sum to 1.0.
             </p>
           </section>
 
           {/* Section 3 — Sub-scores */}
           <section className="mb-10">
-            <SectionTitle n={4}>The Six Sub-Scores</SectionTitle>
+            <SectionTitle n={4}>The Four Scored Pillars (plus two zero-weight pillars)</SectionTitle>
             <div className="space-y-6">
               {SUB_SCORES.map((s) => (
                 <div key={s.n} className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
@@ -498,7 +514,12 @@ export default function MVSMethodology() {
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Rather than excluding non-premium camps from data collection, the engine collects the{" "}
               <strong>full</strong> camp universe in each shortlisted city and tier-classifies each provider
-              at ingest. Only providers tagged <strong>Premium</strong> flow into the six sub-scores.
+              at ingest using one precedence rule: <strong>community/childcare → price gate → known
+              premium brand → AI guess</strong>. The price gate is a hard override — a provider with a
+              real listed price that fails the gate can never be Premium, even if the AI or the brand
+              list says Premium. Only <strong>Premium</strong> providers drive Enrichment Diversity,
+              Market Depth and the Market Balance flag; <strong>Pricing Acceptance uses all priced
+              providers</strong>.
             </p>
             <div className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
               <table className="w-full text-[13px]">
@@ -561,7 +582,7 @@ export default function MVSMethodology() {
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2"><strong>3.</strong> Strict rule: the dollar sign and number <em>must</em> appear directly in the markdown of that page. If not → save price = null and stop.</td>
-                    <td className="px-4 py-2"><strong>3. NEW —</strong> Catch-up Google search in plain English (e.g. <em>"Steve &amp; Kate's Camp Austin summer camp tuition price per week 2026"</em>).</td>
+                    <td className="px-4 py-2"><strong>3. NEW —</strong> Catch-up Google search in plain English (e.g. <em>"Steve &amp; Kate's Camp Austin summer camp cost per week 2026"</em>).</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
@@ -573,7 +594,7 @@ export default function MVSMethodology() {
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
-                    <td className="px-4 py-2"><strong>6. NEW —</strong> Price-rules guard: must be between <strong>$50 and $5,000</strong>, must be weekly tuition (not a deposit, membership, or t-shirt fee).</td>
+                    <td className="px-4 py-2"><strong>6. NEW —</strong> Price-rules guard: must be between <strong>$100 and $2,500</strong>, must be a weekly price (not a deposit, membership, or t-shirt fee). The word "tuition" is never used in a query — it pulled in private-school tuition pages.</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
@@ -581,11 +602,11 @@ export default function MVSMethodology() {
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
-                    <td className="px-4 py-2"><strong>8.</strong> Tier-classify the provider (Premium / Mid / Budget / Community) using the rules in Section 4.</td>
+                    <td className="px-4 py-2"><strong>8.</strong> Tier-classify the provider (Premium / Mid / Budget / Community) using the two-gate rule in Section 5.</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
-                    <td className="px-4 py-2"><strong>9. NEW (Phase B3) —</strong> Last-resort Google <strong>AI Overview</strong> answer box read via Apify. Runs only when steps 3–7 fail. Any price found is saved as <em>"Needs human review"</em> (amber chip) so a person must click Verify before it counts in the score.</td>
+                    <td className="px-4 py-2"><strong>9. NEW (Phase B3) —</strong> Last-resort Google <strong>AI Overview</strong> answer box read via Apify, then parsed by a <strong>unit-aware Gemini</strong> safety net so "$840 for two weeks" is read as $420/week, not $840/week. Runs only when steps 3–7 fail. Any price found is saved as <em>"Needs human review"</em> (amber chip) so a person must click Verify before it counts in the score.</td>
                   </tr>
                 </tbody>
               </table>

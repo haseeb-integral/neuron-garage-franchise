@@ -41,7 +41,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **2. v1.6 scope (current)**
+## **2. v1.9 scope (current)**
 
 | Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |

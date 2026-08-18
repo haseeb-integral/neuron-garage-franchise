@@ -297,38 +297,45 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks \
 
 ---
 
-## **10. Out of scope for v1.6 (do not drift)**
+## **10. Out of scope for v1.9 (do not drift)**
 
-* Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.
 * Time-to-Sellout and YoY Velocity (need multi-scrape history).
 * Scaled Operator "Years in City" signal.
-* Moving Market Balance outside the composite (open question for Sam).
+* Putting Market Balance back inside the composite.
 * Across-shortlist normalization (need ≥20 live cities first).
 * Reviving Market Absorption / registration-page scraping.
+* Any second brand list outside \`mvs_operator_watchlist\`.
 `;
 
 const LOCKED_IN = [
   "MVS (Market Validation Score) — single per-city composite",
-  "5 active sub-scores, normalized 0–100 against fixed reference ranges (Market Absorption retired)",
-  "Market Balance INSIDE the composite at 20%",
-  "5 discovery sources: Sawyer, ActivityHero, Google Maps, Yelp, Google Search",
-  "Pricing crawler: 9 steps (was 3) — catch-up Google search, marketplace reads, relaxed trusted-source rule, brand propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit",
+  "4 scored pillars: Pricing Acceptance 26.67%, Scaled Operator 26.67%, Enrichment Diversity 33.33%, Market Depth 13.33%",
+  "Market Balance Index OUTSIDE the composite — review flag only (Saturated / Healthy / Unproven)",
+  "Two-gate Premium rule: price_min ≥ $300 AND price_max ≥ $400 — a hard override over brand and AI",
+  "One brand list: mvs_operator_watchlist with aliases + is_premium_brand. No hard-coded brand arrays",
+  "Tier precedence: community/childcare → price gate → known premium brand → AI guess",
+  "Pricing Acceptance uses ALL priced providers as the denominator, not premium-only",
+  "Market Depth normalized 4–15; UI bands 8–14 Moderate, 15–19 Deep, 20+ Very Deep",
+  "5 discovery sources: Sawyer (summer-camps category page only), ActivityHero, Google Maps, Yelp (Summer Camps category filter), Google Search",
+  "The word \"tuition\" never appears in a discovery or pricing query",
+  "Pricing crawler: 9 steps, with B3 Google AI Overview parsed by Gemini with unit-aware pricing",
   "Manual trigger only — manager-only Run Pipeline button, with freshness pre-check",
   "Freshness rules: 0–90 skip, 91–120 prompt, >120 fresh, Force fresh override — enforced in both UI and backend",
   "Soft-fail fallback: failed fresh crawl with ≤120d saved data → status done_stale, score stays visible",
   "Firecrawl cap: 50 calls/run total + sub-caps (discover 25, classify 15, extract 15)",
-  "Cards: Result → Evidence → Trust → Weight preview, with proof popovers and per-pillar confidence",
+  "Apify circuit breaker + DB-backed refresh queue with resume-stuck cron",
+  "us_cities_scored is the single store for city-level metrics",
 ];
 
 const EXCLUDED = [
-  "Apify Google Maps actor (separate add)",
   "Inngest / Trigger.dev scheduling",
   "Time-to-Sellout and YoY Velocity as scored inputs",
   "Scaled Operator \"Years in City\" sub-component",
-  "Moving Market Balance outside the composite",
+  "Putting Market Balance back inside the composite",
   "Across-shortlist normalization changes",
   "Reviving Market Absorption / registration-page scraping",
+  "Any second brand list outside mvs_operator_watchlist",
 ];
 
 // ----- Rendered content (kept in sync with SPEC_MD above) -----

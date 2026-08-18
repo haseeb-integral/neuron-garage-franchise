@@ -8,13 +8,20 @@ const SPEC_MD = `# Feature 1A Market Validation Spec doc by Lovable
 
 # **Feature 1A — Market Validation Engine**
 
-## **v1.6 Spec (Lovable internal — updated 2026-07-01)**
+## **v1.9 Spec (Lovable internal — updated 2026-08-18)**
 
 **Status:** Shipped, evolving. **Source of truth:** This chat + MVS Methodology doc. **Naming:** MVS (Market Validation Score). Do not surface PEES anywhere in the app or PDF.
 
 > **What changed since the original v1.0 spec:** discovery expanded from Sawyer-only to 5 sources; Market Absorption pillar retired; registration-page scraping (Stage 3) retired; per-pillar confidence replaced the global low-confidence badge; Firecrawl cap raised to 50 with per-step sub-caps; freshness rules (0–90 skip / 91–120 prompt / >120 fresh) and soft-fail fallback (\`done_stale\`) added; cards redesigned to Result → Evidence → Trust; **pricing crawler expanded from 3 steps to 9 steps** (catch-up Google search, marketplace listing reads, relaxed "trusted source" price rule, brand price propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit for uncertain prices).
 >
-> **What changed since v1.2 (this v1.6 pass, 2026-07-01):** added the **Crawler Telemetry card** (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the **Regression Guard** with the new \`mvs_tier_snapshots\` table and header-bell notification when premium count drops ≥20%; added **Tier re-classify after Catch-Up** so newly priced camps get their correct tier (fixes the Johns Creek "stuck mid-tier" bug); added **Unpriced Reasons** chips (Not a camp / Booking wall / No public price / etc.) with a per-city breakdown; added \`price_derived_from_brand\`, \`price_needs_review\`, \`ai_overview_snippet\`, \`ai_overview_source_url\`, \`matched_query\`, \`verified_at\`, \`verified_by\` columns on \`mvs_providers\`; added **Reject-safety confirmation** and the collapsible **"How to read this table"** help card on the Provider Evidence Review page; added the red **Stop** button on active pipeline rows and locked other rows' Run / Force-fresh while one is running.
+> **What changed in v1.6 (2026-07-01):** added the **Crawler Telemetry card** (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the **Regression Guard** with the \`mvs_tier_snapshots\` table and header-bell notification when premium count drops ≥20%; added **Tier re-classify after Catch-Up**; added **Unpriced Reasons** chips; added \`price_derived_from_brand\`, \`price_needs_review\`, \`ai_overview_snippet\`, \`ai_overview_source_url\`, \`matched_query\`, \`verified_at\`, \`verified_by\` columns on \`mvs_providers\`; added **Reject-safety confirmation** and the collapsible **"How to read this table"** help card; added the red **Stop** button on active pipeline rows.
+>
+> **What changed in v1.7 (2026-07-14) — scoring rebuild:** **Market Balance Index (MBI) is no longer scored.** It became a two-sided review flag ("Saturated" / "Healthy" / "Unproven") and its former 20% weight moved to Enrichment Diversity. **Market Depth was tightened** — the normalization range dropped from 4–40 to 4–15, with UI bands 8–14 Moderate, 15–19 Deep, 20+ Very Deep. Enrichment Diversity dropped the categories/providers ratio and now scores category breadth only, with a display-only "Thin market" pill under 4 premium providers.
+>
+> **What changed in v1.8 (2026-07-26) — pricing truth:** **Two-gate Premium rule** — a provider with a real listed price is Premium only if \`price_min ≥ $300\` **AND** \`price_max ≥ $400\`. Unpriced providers default to Mid unless the brand is a known national premium brand. **Pricing Acceptance denominator changed** from premium-only to **all priced providers** (the premium-only pool self-selected for high prices and inflated the "% ≥ $500/wk" number). **B3 price extraction moved to Gemini** with unit-aware parsing so "$840 for two weeks" is read as $420/week, not $840/week. Discovery cleaned up: the word "tuition" is banned from every query, Google Maps raised to 100 places per search and split to avoid 504s, Yelp restricted to its "Summer Camps for Kids" category filter, Sawyer restricted to the single \`hisawyer.com/s/summer-camps-for-kids\` category page.
+>
+> **What changed in v1.9 (2026-08-18) — one brand list + hard price gates:** \`mvs_operator_watchlist\` is now the **single source of truth** for both national-brand matching and premium-brand status. It carries an \`aliases\` column (alternate spellings) and an \`is_premium_brand\` flag; the hard-coded brand arrays in the scrapers were deleted. Tier classification follows one **precedence rule: community/childcare → price gate → brand → AI guess.** The price gate is a hard override — a provider with a real price that fails the gate cannot be Premium even if the AI or the brand list says Premium. Reliability: refresh work moved to a **DB-backed queue** with a resume-stuck cron, and Apify calls sit behind a **circuit breaker** (\`apify_breaker_state\`) with a rollout card in the UI. \`us_cities_scored\` is the only place city-level metrics are stored.
+
 
 ---
 
@@ -25,7 +32,7 @@ Takes a city from the shortlist and produces a **single composite score (MVS, 0�
 Output surfaces:
 
 * MVS number on the city row in the shortlist table.
-* 5 sub-score breakdown in the city detail panel (Result / Evidence / Trust layout, with proof popovers).
+* 4 scored sub-scores plus the Market Balance review flag in the city detail panel (Result / Evidence / Trust layout, with proof popovers).
 * Premium provider table (real names, weekly prices, source chips).
 * Branded PDF Market Brief.
 * Every score traces to a source URL and (where available) a stored listing-page screenshot. Screenshots are of the discovery listing page (Sawyer, Yelp, Google, etc.), shared by all providers found on that page. We do not save per-provider website screenshots or raw HTML.
@@ -34,7 +41,7 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 
 ---
 
-## **2. v1.6 scope (current)**
+## **2. v1.9 scope (current)**
 
 | Decision | Current behavior | Deferred |
 | :---- | :---- | :---- |
@@ -45,26 +52,32 @@ Not in scope: predicting any individual Neuron Garage location's success. Site-l
 | Freshness rules | **0–90 days: auto-skip (use saved). 91–120: prompt user. >120: fresh crawl. "Force fresh" always overrides.** Backend hard-guard enforces this even if UI is bypassed. | — |
 | Soft-fail fallback | If a fresh crawl fails but saved data ≤120 days exists → status \`done_stale\`, score stays visible, amber banner shown | — |
 | Market Absorption | **Removed from composite (weight 0)** | Not planned |
+| Market Balance Index (MBI) | **Not scored (weight 0).** Two-sided review flag only: Saturated / Healthy / Unproven | Calibrate the ratio thresholds from live data |
+| Premium tier rule | **Two gates:** listed \`price_min ≥ $300\` AND \`price_max ≥ $400\`. Hard override — a priced provider that fails the gate can never be Premium | — |
+| National / premium brand list | **One list:** \`mvs_operator_watchlist\` with \`aliases\` + \`is_premium_brand\`. No hard-coded brand arrays anywhere | — |
 | Registration-page scraping (old Stage 3) | **Retired.** \`mvs-extract-weeks\` is a no-op shell. No week rows are written. | Not planned |
 | Normalization | **Fixed reference ranges** (see §5) | Across-shortlist normalization once ≥20 cities have live data |
 | QA queue | **Retired** for the absorption flow. Page shows a retired notice. Per-pillar confidence chips replace the old global QA gate. | — |
 | Firecrawl cost cap | **50 calls per run total**, sub-caps: discover ≤25, classify ≤15, extract ≤15 | — |
+| Apify reliability | **Circuit breaker** (\`apify_breaker_state\`) trips after repeated failures; rollout card in the UI shows breaker state | — |
+| Bulk price refresh | **DB-backed queue** + \`mvs_resume_stuck_b3_runs()\` cron so a crashed batch resumes instead of stalling | — |
 
 ---
 
-## **3. MVS composite — v1.6**
+## **3. MVS composite — v1.9**
 
 \`\`\`
 MVS = 0.2667 × Pricing Acceptance
     + 0.2667 × Scaled Operator
-    + 0.1333 × Enrichment Diversity
+    + 0.3333 × Enrichment Diversity
     + 0.1333 × Market Depth
-    + 0.2000 × Market Balance Index
 \`\`\`
 
-Rounded to one decimal place. All sub-scores 0–100. Weights exposed as preview sliders per card. Market Absorption removed (weight 0); the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.
+Rounded to one decimal place. All sub-scores 0–100. Weights exposed as preview sliders per card.
 
-**SOW divergence flag (open question for Sam):** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. We keep it inside at 20% because the demo UI renders it that way.
+**Zero-weight pillars:** Market Absorption (retired 2026-06-24, sellout scraping unreliable) and Market Balance Index (rebuilt 2026-07-14 as a review flag). MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four contributing weights sum to 1.0.
+
+**SOW alignment:** SOW v2.2 says Market Balance sits *next to* the composite, not inside it. As of v1.7 the code matches the SOW — MBI is outside the composite.
 
 ---
 
@@ -74,9 +87,9 @@ One manual run per city (subject to freshness rules). Stages write to Supabase; 
 
 \`\`\`
 Stage 1 → Multi-source discovery       → providers from Sawyer, ActivityHero, Google Maps, Yelp, Google Search
-Stage 2 → Premium tier classification  → filter to Premium (≥$400/wk, eligible category)
+Stage 2 → Premium tier classification  → two-gate price rule (min ≥ $300 AND max ≥ $400), eligible category
 Stage 3 → Census ACS pull              → Market Balance + Operator denominators
-Stage 4 → Score calculation            → 5 sub-scores → MVS composite
+Stage 4 → Score calculation            → 4 scored sub-scores → MVS composite (+ MBI review flag)
 \`\`\`
 
 ### Stage 1 — Discovery (Firecrawl + APIs)
@@ -92,7 +105,7 @@ For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. 
 
 1. **Google Maps lookup** — get name, website, address.
 2. **Read the camp's own website** with Firecrawl.
-3. **Catch-up Google search** in plain English (e.g. *"Steve & Kate's Camp Austin summer camp tuition price per week 2026"*). *NEW.*
+3. **Catch-up Google search** in plain English (e.g. *"Steve & Kate's Camp Austin summer camp cost per week 2026"*). The word "tuition" is never used — it pulled in private-school tuition pages. *NEW.*
 4. **Read marketplace listings** returned by that search — Sawyer, ActivityHero, Yelp, news pages, camp PDFs. *NEW.*
 5. **Relaxed price rule** — a dollar number on any trusted source that ties to this camp by name is accepted. The old strict "$ must be in the camp's own markdown" rule is retired. *NEW.*
 6. **Guards** — price must be $50–$5,000 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip. *NEW.*
@@ -131,21 +144,26 @@ See §5. All math lives in one helper. No stored composite scores — always rec
 
 ---
 
-## **5. Sub-score formulas + v1.6 reference ranges**
+## **5. Sub-score formulas + v1.9 reference ranges**
 
-Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below come from the methodology doc.
+Normalization is **min-max against fixed reference ranges** (capped 0–100). Ranges below mirror \`src/lib/mvs/computeMvs.ts\` exactly.
 
 ### Score 1 — Pricing Acceptance (26.67%)
 
 \`\`\`
-0.40 × normalize(median weekly price,       range $300–$700)
-0.40 × normalize(75th-percentile price,     range $400–$800)
-0.20 × (% Premium providers at ≥ $500/week,  0–100)
+Denominator = ALL priced providers in the city (not premium-only).
+Per-provider price = price_min, falling back to price_max when min is null.
+
+0.40 × normalize(median weekly price,        range $300–$700)
+0.40 × normalize(75th-percentile price,      range $400–$800)
+0.20 × (% of ALL priced providers ≥ $500/week, 0–100)
 \`\`\`
+
+> **Changed in v1.8.** The denominator used to be premium-only, which self-selected for high prices (Indianapolis showed 50% ≥ $500 on 6 premium rows vs ~4% across all 190 priced providers). \`price_min\` is used because directory \`price_max\` is usually a multi-week or full-season bundle.
 
 ### Score 2 — Market Absorption — RETIRED (weight 0)
 
-> **Deprecated in v1.6.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
+> **Deprecated in v1.1.** Removed because sellout-rate scraping was unreliable. Formula preserved below for audit only.
 
 \`\`\`
 Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
@@ -164,9 +182,9 @@ Scaled Operator Score =
 + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))
 \`\`\`
 
-Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer.
+Operator watchlist lives in \`mvs_operator_watchlist\` (editable in the UI). Each row carries a name, \`aliases\` (alternate spellings matched case-insensitively), a default overlap of **direct / adjacent / distant**, and \`is_premium_brand\`. Per-city overlap can be overridden in \`mvs_city_overlap_overrides\`. **This table is the only brand list in the system** — the scrapers no longer carry hard-coded brand arrays.
 
-### Score 4 — Enrichment Diversity (13.33%)
+### Score 4 — Enrichment Diversity (33.33%)
 
 \`\`\`
 Category Count = distinct eligible categories with ≥1 premium provider (of 19)
@@ -176,20 +194,37 @@ Score = normalize( clamp(Category Count, 2, 10), 2, 10 ) × 100
 Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.
 \`\`\`
 
+> **Changed in v1.7.** Picked up MBI's 20% weight. The old categories/providers ratio was dropped because it quietly punished large healthy markets; breadth alone now drives the score.
+
 ### Score 5 — Market Depth (13.33%)
 
 \`\`\`
-Market Depth Score = normalize(Premium Provider Count, 4–40)
+Market Depth Score = normalize( clamp(Premium Provider Count, 4, 15), 4, 15 )
 \`\`\`
 
-### Score 6 — Market Balance Index (20%)
+> **Tightened in v1.7** (was 4–40). Depth answers a threshold question — "is the premium ecosystem big enough to prove camp culture?" — so it saturates quickly. UI bands: **8–14 Moderate · 15–19 Deep · 20+ Very Deep.**
+
+### Score 6 — Market Balance Index — REVIEW FLAG ONLY (weight 0)
 
 \`\`\`
-Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
-Score          = normalize(Coverage Ratio, 50–500)
+MBI Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+
+Ratio < 200    → "Saturated"  (dense supply vs. affluent demand)
+Ratio > 8,000  → "Unproven"   (near-empty market — validate camp culture first)
+otherwise      → "Healthy"
+No premium providers found → "Unproven", ratio null
 \`\`\`
 
-Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated.
+> **Rebuilt in v1.7.** MBI contributes **no points**. It renders as a Saturated / Healthy / Unproven badge that triggers human review. The 200 and 8,000 thresholds are placeholders to be calibrated from the live distribution.
+
+### Tier rules (how a provider becomes "Premium")
+
+Precedence, top wins:
+
+1. **Community / childcare** — YMCA, JCC, parks-and-rec, library, municipal, church, non-profit, or a daycare/preschool/after-school-care name → \`community\`, regardless of price. Excluded from competitor counts.
+2. **Price gate (hard override)** — if the provider has a real listed price: Premium requires **\`price_min ≥ $300\` AND \`price_max ≥ $400\`**. Under $200 on both ends → \`budget\`. Anything else → \`mid\`. A priced provider that fails the gate **cannot** be Premium, even if the AI or the brand list says otherwise.
+3. **Known premium brand** — no listed price + a match in \`mvs_operator_watchlist\` where \`is_premium_brand = true\` (name or alias) → \`premium\`.
+4. **AI guess** — used only where the rules above do not decide. No price and not a known premium brand → never Premium (falls back to \`mid\`).
 
 ---
 
@@ -200,7 +235,8 @@ Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive �
 | mvs_providers | Active | provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url |
 | mvs_weeks | Retired | (no new writes; legacy rows retained) |
 | mvs_qa_queue | Retired | (page shows retired notice; \`activeQaCount\` filters retired reasons out) |
-| mvs_operator_watchlist | Active | operator_name, default_overlap, notes |
+| mvs_operator_watchlist | Active | operator_name, aliases, default_overlap, is_premium_brand, notes — **the only brand list in the system** |
+| apify_breaker_state | Active | source, failure_count, state (closed / open), opened_at — Apify circuit breaker |
 | mvs_city_overlap_overrides | Active | city, state, operator_name, overlap |
 | mvs_pipeline_runs | Active | run_id, city, state, triggered_by, started_at, finished_at, status, error, provider_count, firecrawl_calls, **fallback_data_date** |
 
@@ -261,66 +297,78 @@ Client never holds Firecrawl or Lovable AI Gateway keys. Every function checks \
 
 ---
 
-## **10. Out of scope for v1.6 (do not drift)**
+## **10. Out of scope for v1.9 (do not drift)**
 
-* Apify Google Maps actor as a separate discovery source.
 * Inngest/Trigger.dev scheduling.
 * Time-to-Sellout and YoY Velocity (need multi-scrape history).
 * Scaled Operator "Years in City" signal.
-* Moving Market Balance outside the composite (open question for Sam).
+* Putting Market Balance back inside the composite.
 * Across-shortlist normalization (need ≥20 live cities first).
 * Reviving Market Absorption / registration-page scraping.
+* Any second brand list outside \`mvs_operator_watchlist\`.
 `;
 
 const LOCKED_IN = [
   "MVS (Market Validation Score) — single per-city composite",
-  "5 active sub-scores, normalized 0–100 against fixed reference ranges (Market Absorption retired)",
-  "Market Balance INSIDE the composite at 20%",
-  "5 discovery sources: Sawyer, ActivityHero, Google Maps, Yelp, Google Search",
-  "Pricing crawler: 9 steps (was 3) — catch-up Google search, marketplace reads, relaxed trusted-source rule, brand propagation, directory-first queries, Google AI Overview fallback, manual Verify/Reject/Edit",
+  "4 scored pillars: Pricing Acceptance 26.67%, Scaled Operator 26.67%, Enrichment Diversity 33.33%, Market Depth 13.33%",
+  "Market Balance Index OUTSIDE the composite — review flag only (Saturated / Healthy / Unproven)",
+  "Two-gate Premium rule: price_min ≥ $300 AND price_max ≥ $400 — a hard override over brand and AI",
+  "One brand list: mvs_operator_watchlist with aliases + is_premium_brand. No hard-coded brand arrays",
+  "Tier precedence: community/childcare → price gate → known premium brand → AI guess",
+  "Pricing Acceptance uses ALL priced providers as the denominator, not premium-only",
+  "Market Depth normalized 4–15; UI bands 8–14 Moderate, 15–19 Deep, 20+ Very Deep",
+  "5 discovery sources: Sawyer (summer-camps category page only), ActivityHero, Google Maps, Yelp (Summer Camps category filter), Google Search",
+  "The word \"tuition\" never appears in a discovery or pricing query",
+  "Pricing crawler: 9 steps, with B3 Google AI Overview parsed by Gemini with unit-aware pricing",
   "Manual trigger only — manager-only Run Pipeline button, with freshness pre-check",
   "Freshness rules: 0–90 skip, 91–120 prompt, >120 fresh, Force fresh override — enforced in both UI and backend",
   "Soft-fail fallback: failed fresh crawl with ≤120d saved data → status done_stale, score stays visible",
   "Firecrawl cap: 50 calls/run total + sub-caps (discover 25, classify 15, extract 15)",
-  "Cards: Result → Evidence → Trust → Weight preview, with proof popovers and per-pillar confidence",
+  "Apify circuit breaker + DB-backed refresh queue with resume-stuck cron",
+  "us_cities_scored is the single store for city-level metrics",
 ];
 
 const EXCLUDED = [
-  "Apify Google Maps actor (separate add)",
   "Inngest / Trigger.dev scheduling",
   "Time-to-Sellout and YoY Velocity as scored inputs",
   "Scaled Operator \"Years in City\" sub-component",
-  "Moving Market Balance outside the composite",
+  "Putting Market Balance back inside the composite",
   "Across-shortlist normalization changes",
   "Reviving Market Absorption / registration-page scraping",
+  "Any second brand list outside mvs_operator_watchlist",
 ];
 
 // ----- Rendered content (kept in sync with SPEC_MD above) -----
 
 const SCOPE_ROWS: Array<{ decision: string; current: string; deferred: string }> = [
-  { decision: "Discovery sources", current: "Sawyer + ActivityHero + Google Maps + Yelp + Google Search (5 sources)", deferred: "More platforms case-by-case" },
+  { decision: "Discovery sources", current: "Sawyer (summer-camps-for-kids category page only) + ActivityHero + Google Maps (100 places/search) + Yelp (Summer Camps for Kids category filter) + Google Search. The word \"tuition\" is banned from every query.", deferred: "More platforms case-by-case" },
   { decision: "Scheduling", current: 'Manual trigger ("Run Pipeline" button per city)', deferred: "Inngest / Trigger.dev post-client-meeting" },
   { decision: "Cities in scope", current: "Any city can be added; freshness rules apply uniformly", deferred: "—" },
   { decision: "Scrape cadence", current: "1 run per click, gated by freshness rules", deferred: "Multi-scrape history once cadence is automated" },
   { decision: "Freshness rules", current: "0–90 days auto-skip (use saved). 91–120 prompt user. >120 fresh crawl. Force fresh always overrides. Backend hard-guard enforces this even if UI is bypassed.", deferred: "—" },
   { decision: "Soft-fail fallback", current: "If a fresh crawl fails but saved data ≤120 days exists → status done_stale, score stays visible, amber banner shown", deferred: "—" },
   { decision: "Market Absorption", current: "Removed from composite (weight 0)", deferred: "Not planned" },
+  { decision: "Market Balance Index (MBI)", current: "Not scored (weight 0). Two-sided review flag only: Saturated / Healthy / Unproven.", deferred: "Calibrate the ratio thresholds from live data" },
+  { decision: "Premium tier rule", current: "Two gates — listed price_min ≥ $300 AND price_max ≥ $400. Hard override: a priced provider that fails the gate can never be Premium.", deferred: "—" },
+  { decision: "National / premium brand list", current: "One list — mvs_operator_watchlist with aliases + is_premium_brand. No hard-coded brand arrays anywhere.", deferred: "—" },
   { decision: "Registration-page scraping (old Stage 3)", current: "Retired. mvs-extract-weeks is a no-op shell. No week rows written.", deferred: "Not planned" },
   { decision: "Normalization", current: "Fixed reference ranges (see §5)", deferred: "Across-shortlist normalization once ≥20 cities have live data" },
   { decision: "QA queue", current: "Retired for the absorption flow. Page shows a retired notice. Per-pillar confidence chips replace the old global QA gate.", deferred: "—" },
   { decision: "Firecrawl cost cap", current: "50 calls per run total, sub-caps: discover ≤25, classify ≤15, extract ≤15", deferred: "—" },
+  { decision: "Apify reliability", current: "Circuit breaker (apify_breaker_state) trips after repeated failures; rollout card in the UI shows breaker state.", deferred: "—" },
+  { decision: "Bulk price refresh", current: "DB-backed queue + mvs_resume_stuck_b3_runs() cron so a crashed batch resumes instead of stalling.", deferred: "—" },
 ];
 
 const PRICING_STEPS: Array<{ step: string; detail: string; isNew: boolean }> = [
   { step: "1. Google Maps lookup", detail: "Get name, website, and address for the provider.", isNew: false },
   { step: "2. Read the camp's own website", detail: "Firecrawl fetches and renders the camp's site.", isNew: false },
-  { step: "3. Catch-up Google search", detail: 'Plain English query, e.g. "Steve & Kate\'s Camp Austin summer camp tuition price per week 2026".', isNew: true },
+  { step: "3. Catch-up Google search", detail: 'Plain English query, e.g. "Steve & Kate\'s Camp Austin summer camp cost per week 2026". The word "tuition" is never used — it pulled in private-school tuition pages.', isNew: true },
   { step: "4. Read marketplace listings", detail: "Sawyer, ActivityHero, Yelp, news pages, camp PDFs returned by that search.", isNew: true },
   { step: "5. Relaxed price rule", detail: "A dollar number on any trusted source that ties to this camp by name is accepted. The old strict '$ must be in the camp's own markdown' rule is retired.", isNew: true },
-  { step: "6. Guards", detail: "Price must be $50–$5,000 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip.", isNew: true },
+  { step: "6. Guards", detail: "Price must be $100–$2,500 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip.", isNew: true },
   { step: "7. Save with proof", detail: "Clickable source URL, matched query, confidence score.", isNew: true },
-  { step: "8. Tier classify", detail: "Premium / Mid / Budget / Community.", isNew: true },
-  { step: "9. Google AI Overview fallback (Phase B3)", detail: "Last resort. Reads the Google AI answer box via Apify. Prices flagged 'Needs human review' — must be Verified before counting.", isNew: true },
+  { step: "8. Tier classify", detail: "Premium / Mid / Budget / Community, using the two-gate price rule (min ≥ $300 AND max ≥ $400).", isNew: true },
+  { step: "9. Google AI Overview fallback (Phase B3)", detail: "Last resort. Reads the Google AI answer box via Apify, then parses it with a Gemini safety net that is unit-aware — \"$840 for two weeks\" becomes $420/week. Prices flagged 'Needs human review' — must be Verified before counting.", isNew: true },
 ];
 
 const FALLBACKS: Array<{ label: string; detail: string }> = [
@@ -333,16 +381,20 @@ const FORMULAS: Array<{ title: string; weight: string; body: string; note?: stri
   {
     title: "Score 1 — Pricing Acceptance",
     weight: "26.67%",
-    body: `0.40 × normalize(median weekly price,     range $300–$700)
-0.40 × normalize(75th-percentile price,   range $400–$800)
-0.20 × (% Premium providers at ≥ $500/week, 0–100)`,
+    body: `Denominator = ALL priced providers (not premium-only)
+Per-provider price = price_min, falling back to price_max
+
+0.40 × normalize(median weekly price,       range $300–$700)
+0.40 × normalize(75th-percentile price,     range $400–$800)
+0.20 × (% of ALL priced providers ≥ $500/week, 0–100)`,
+    note: "Changed in v1.8. The old premium-only denominator self-selected for high prices and inflated the \"% ≥ $500/wk\" number. price_min is used because directory price_max is usually a multi-week or full-season bundle.",
   },
   {
     title: "Score 2 — Market Absorption",
     weight: "RETIRED (weight 0)",
     body: `Sellout Rate            = (sold_out weeks + waitlist weeks) ÷ total weeks scraped
 Market Absorption Score = normalize(Sellout Rate, range 0%–80%)`,
-    note: "Deprecated in v1.6. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
+    note: "Deprecated in v1.1. Removed because sellout-rate scraping was unreliable. Formula preserved for audit only.",
   },
   {
     title: "Score 3 — Scaled Operator",
@@ -354,39 +406,66 @@ Direct Competitor Load = Σ site counts for operators tagged 'direct'
 Scaled Operator Score =
   0.65 × normalize(Operator Validation, 0–8)
 + 0.35 × (100 − normalize(Direct Competitor Load, 0–5 per 10k))`,
-    note: "Operator watchlist (seed, editable in UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer.",
+    note: "The watchlist lives in mvs_operator_watchlist and is editable in the UI. Each row has a name, aliases (alternate spellings, matched case-insensitively), a default overlap of direct / adjacent / distant, and an is_premium_brand flag. Per-city overlap can be overridden in mvs_city_overlap_overrides. This table is the only brand list in the system — the scrapers no longer carry hard-coded brand arrays.",
   },
   {
     title: "Score 4 — Enrichment Diversity",
-    weight: "13.33%",
+    weight: "33.33%",
     body: `Category Count = distinct eligible categories with ≥1 premium provider (of 19)
 
 Score = normalize( clamp(Category Count, 2, 10), 2, 10 ) × 100
 
 Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.`,
+    note: "Changed in v1.7. Picked up MBI's 20% weight. The old categories/providers ratio was dropped because it quietly punished large healthy markets; breadth alone now drives the score.",
   },
   {
     title: "Score 5 — Market Depth",
     weight: "13.33%",
-    body: `Market Depth Score = normalize(Premium Provider Count, 4–40)`,
+    body: `Market Depth Score = normalize( clamp(Premium Provider Count, 4, 15), 4, 15 )`,
+    note: "Tightened in v1.7 (was 4–40). Depth answers a threshold question, so it saturates quickly. UI bands: 8–14 Moderate · 15–19 Deep · 20+ Very Deep.",
   },
   {
     title: "Score 6 — Market Balance Index",
-    weight: "20%",
-    body: `Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
-Score          = normalize(Coverage Ratio, 50–500)`,
-    note: "Tier labels: ≥350 Underserved · 200–349 Balanced · 100–199 Competitive · <100 Saturated.",
+    weight: "NOT SCORED (weight 0) — review flag only",
+    body: `MBI Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+
+Ratio < 200    → "Saturated"  (dense supply vs. affluent demand)
+Ratio > 8,000  → "Unproven"   (near-empty market — validate camp culture first)
+otherwise      → "Healthy"
+No premium providers found → "Unproven", ratio null`,
+    note: "Rebuilt in v1.7. MBI contributes no points — it renders as a badge that triggers human review. The 200 and 8,000 thresholds are placeholders to be calibrated from the live distribution.",
+  },
+  {
+    title: "Tier rules — how a provider becomes \"Premium\"",
+    weight: "Precedence, top wins",
+    body: `1. Community / childcare  → YMCA, JCC, parks & rec, library, municipal, church,
+                            non-profit, daycare / preschool / after-school care.
+                            Tier = community regardless of price. Not a competitor.
+
+2. Price gate (hard override) → if a real listed price exists:
+                            Premium requires price_min ≥ $300 AND price_max ≥ $400
+                            both ends under $200 → budget
+                            anything else        → mid
+
+3. Known premium brand    → no listed price + match in mvs_operator_watchlist
+                            (name or alias) with is_premium_brand = true → premium
+
+4. AI guess               → only where rules 1–3 do not decide.
+                            No price and not a known premium brand → never premium.`,
+    note: "The price gate beats both the brand list and the AI. A priced provider that fails the two gates can never be Premium.",
   },
 ];
 
 const TABLES = [
-  { name: "mvs_providers", status: "Active", fields: "provider_id, provider_name, city, state, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url, price_derived_from_brand, price_needs_review, ai_overview_snippet, ai_overview_source_url, matched_query, verified_at, verified_by" },
+  { name: "mvs_providers", status: "Active", fields: "provider_id, provider_name, city, state, price_min, price_max, weekly_price, category_raw, category_classified, tier, listing_url, site_count, platform, scraped_at, screenshot_url, price_derived_from_brand, price_needs_review, ai_overview_snippet, ai_overview_source_url, matched_query, verified_at, verified_by" },
   { name: "mvs_weeks", status: "Retired", fields: "no new writes; legacy rows retained" },
   { name: "mvs_qa_queue", status: "Retired", fields: "page shows retired notice; activeQaCount filters retired reasons out" },
-  { name: "mvs_operator_watchlist", status: "Active", fields: "operator_name, default_overlap, notes" },
+  { name: "mvs_operator_watchlist", status: "Active", fields: "operator_name, aliases, default_overlap, is_premium_brand, notes — the only brand list in the system" },
   { name: "mvs_city_overlap_overrides", status: "Active", fields: "city, state, operator_name, overlap" },
   { name: "mvs_pipeline_runs", status: "Active", fields: "run_id, city, state, triggered_by, started_at, finished_at, status, error, provider_count, firecrawl_calls, fallback_data_date, fallback_reason, source_counts" },
   { name: "mvs_tier_snapshots", status: "Active", fields: "city, premium_count, mid_count, budget_count, trigger, created_at (used by regression guard)" },
+  { name: "us_cities_scored", status: "Active", fields: "single store for city-level metrics and pillar scores — no duplicate score columns elsewhere" },
+  { name: "apify_breaker_state", status: "Active", fields: "source, failure_count, state (closed / open), opened_at — Apify circuit breaker" },
   { name: "notifications", status: "Active", fields: "user_id, kind, title, message, link, read_at, created_at (header bell)" },
 ];
 
@@ -426,9 +505,9 @@ const UI_BEHAVIOR = [
 export default function MVSSpec() {
   return (
     <DocShell
-      eyebrow="Feature 1A · v1.6 Spec"
+      eyebrow="Feature 1A · v1.9 Spec"
       eyebrowIcon={ShieldCheck}
-      title="Market Validation Engine — v1.6 Full Spec"
+      title="Market Validation Engine — v1.9 Full Spec"
       subtitle="Every detail of how MVS works and what is shipped. Source of truth: this page + MVS Methodology + this chat. Re-read before starting any new turn."
       action={<DownloadMDButton content={SPEC_MD} filename="feature-1a-mvs-v1-spec.md" />}
     >
@@ -448,7 +527,16 @@ export default function MVSSpec() {
               <strong>What changed since v1.2 (v1.5 pass):</strong> added the <strong>Crawler Telemetry card</strong> (Direct vs B1 Brand vs B2 Directory vs B3 AI Overview counts per city); added the <strong>Regression Guard</strong> with the new <code className="bg-white px-1 rounded text-[12px]">mvs_tier_snapshots</code> table and header-bell notification when premium count drops ≥20%; added <strong>Tier re-classify after Catch-Up</strong> so newly priced camps get their correct tier (fixes the Johns Creek "stuck mid-tier" bug); added <strong>Unpriced Reasons</strong> chips with a per-city breakdown; added <code className="bg-white px-1 rounded text-[12px]">price_derived_from_brand</code>, <code className="bg-white px-1 rounded text-[12px]">price_needs_review</code>, <code className="bg-white px-1 rounded text-[12px]">ai_overview_snippet</code>, <code className="bg-white px-1 rounded text-[12px]">ai_overview_source_url</code>, <code className="bg-white px-1 rounded text-[12px]">matched_query</code>, <code className="bg-white px-1 rounded text-[12px]">verified_at</code>, <code className="bg-white px-1 rounded text-[12px]">verified_by</code> columns on <code className="bg-white px-1 rounded text-[12px]">mvs_providers</code>; added <strong>Reject-safety confirmation</strong> and the collapsible <strong>"How to read this table"</strong> help card on the Provider Evidence Review page; added the red <strong>Stop</strong> button on active pipeline rows and locked other rows' Run / Force-fresh while one is running.
             </p>
             <p className="mt-2 text-[13px]">
-              <strong>What changed since v1.5 (this v1.6 pass, 2026-07-01):</strong> added the <strong>"Import from Manus CSV"</strong> button on the Market Validation page for bulk-adding cities to the shortlist. Client-side CSV parse using <code className="bg-white px-1 rounded text-[12px]">papaparse</code>, preview dialog with per-row status chips (Will add / Already in shortlist / Unknown city / Below CSI / Invalid), state-name normalization (e.g. "Texas" → "TX"), CSI-score threshold slider, dedupe on <strong>city + state</strong>, and unknown-city warnings matched against <code className="bg-white px-1 rounded text-[12px]">us_cities_scored</code>. Added two nullable reference-only columns on <code className="bg-white px-1 rounded text-[12px]">mvs_shortlist_cities</code>: <code className="bg-white px-1 rounded text-[12px]">manus_csi_score</code> (numeric) and <code className="bg-white px-1 rounded text-[12px]">manus_imported_at</code> (timestamptz). <strong>Never triggers the pipeline</strong> — imported cities land with the same "Not yet run" state as manual adds. Scoring formula, 9-step crawler, freshness rules, and Firecrawl cap are unchanged.
+              <strong>What changed in v1.6 (2026-07-01):</strong> added the <strong>"Import from Manus CSV"</strong> button on the Market Validation page for bulk-adding cities to the shortlist, with a preview dialog, state-name normalization, a CSI threshold slider, and dedupe on city + state. <strong>Never triggers the pipeline.</strong>
+            </p>
+            <p className="mt-2 text-[13px]">
+              <strong>What changed in v1.7 (2026-07-14) — scoring rebuild:</strong> <strong>Market Balance Index is no longer scored.</strong> It became a two-sided review flag (Saturated / Healthy / Unproven) and its former 20% weight moved to Enrichment Diversity (now 33.33%). <strong>Market Depth was tightened</strong> from 4–40 to 4–15, with UI bands 8–14 Moderate, 15–19 Deep, 20+ Very Deep. Enrichment Diversity dropped the categories/providers ratio and now scores category breadth only, with a display-only "Thin market" pill under 4 premium providers.
+            </p>
+            <p className="mt-2 text-[13px]">
+              <strong>What changed in v1.8 (2026-07-26) — pricing truth:</strong> the <strong>two-gate Premium rule</strong> (<code className="bg-white px-1 rounded text-[12px]">price_min ≥ $300</code> AND <code className="bg-white px-1 rounded text-[12px]">price_max ≥ $400</code>); unpriced providers default to Mid unless the brand is a known national premium brand; <strong>Pricing Acceptance denominator changed</strong> from premium-only to <strong>all priced providers</strong>; <strong>B3 price extraction moved to Gemini</strong> with unit-aware parsing so "$840 for two weeks" reads as $420/week. Discovery cleanup: the word "tuition" is banned from every query, Google Maps raised to 100 places per search and split to avoid 504s, Yelp restricted to its "Summer Camps for Kids" category filter, Sawyer restricted to the single <code className="bg-white px-1 rounded text-[12px]">hisawyer.com/s/summer-camps-for-kids</code> category page.
+            </p>
+            <p className="mt-2 text-[13px]">
+              <strong>What changed in v1.9 (2026-08-18) — one brand list + hard price gates:</strong> <code className="bg-white px-1 rounded text-[12px]">mvs_operator_watchlist</code> is now the <strong>single source of truth</strong> for both national-brand matching and premium-brand status. It carries an <code className="bg-white px-1 rounded text-[12px]">aliases</code> column and an <code className="bg-white px-1 rounded text-[12px]">is_premium_brand</code> flag; the hard-coded brand arrays in the scrapers were deleted. Tier classification follows one <strong>precedence rule: community/childcare → price gate → brand → AI guess</strong>, where the price gate is a hard override. Reliability: refresh work moved to a <strong>DB-backed queue</strong> with a resume-stuck cron, and Apify calls sit behind a <strong>circuit breaker</strong> (<code className="bg-white px-1 rounded text-[12px]">apify_breaker_state</code>). <code className="bg-white px-1 rounded text-[12px]">us_cities_scored</code> is the only place city-level metrics are stored.
             </p>
           </section>
 
@@ -461,7 +549,7 @@ export default function MVSSpec() {
             <p className="mb-2 font-semibold text-[#07142f]">Output surfaces:</p>
             <ul className="list-disc pl-6 space-y-1 mb-3">
               <li>MVS number on the city row in the shortlist table.</li>
-              <li>5 sub-score breakdown in the city detail panel (Result / Evidence / Trust layout, with proof popovers).</li>
+              <li>4 scored sub-scores plus the Market Balance review flag in the city detail panel (Result / Evidence / Trust layout, with proof popovers).</li>
               <li>Premium provider table (real names, weekly prices, source chips).</li>
               <li>Branded PDF Market Brief.</li>
               <li>Every score traces to a source URL and (where available) a stored listing-page screenshot. Screenshots are of the discovery listing page (Sawyer, Yelp, Google, etc.), shared by all providers on that page. We do <strong>not</strong> save per-provider website screenshots or raw HTML.</li>
@@ -473,7 +561,7 @@ export default function MVSSpec() {
 
           {/* 2. Scope table */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.6 scope (current)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.9 scope (current)</h2>
             <div className="overflow-hidden rounded-md border border-[#cfdcff]">
               <table className="w-full text-[13px]">
                 <thead className="bg-[#f4f8ff] text-[#174be8]">
@@ -498,27 +586,30 @@ export default function MVSSpec() {
 
           {/* 3. Composite */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">3. MVS composite formula</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">3. MVS composite formula — v1.9</h2>
             <pre className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3 text-[13px] font-mono text-[#07142f] whitespace-pre-wrap">
 {`MVS = 0.2667 × Pricing Acceptance
     + 0.2667 × Scaled Operator
-    + 0.1333 × Enrichment Diversity
+    + 0.3333 × Enrichment Diversity
     + 0.1333 × Market Depth
-    + 0.2000 × Market Balance Index
 
-(Market Absorption retired, weight 0.)`}
+(Market Absorption retired, weight 0.)
+(Market Balance Index not scored, weight 0 — review flag only.)`}
             </pre>
             <p className="mt-3 text-[13px]">
-              Rounded to one decimal. All sub-scores 0–100. Weights exposed as preview sliders per card. Market Absorption removed (weight 0); the remaining five pillars were proportionally re-normalized so weights still sum to 1.0.
+              Rounded to one decimal. All sub-scores 0–100. Weights exposed as preview sliders per card. Two pillars carry zero weight: Market Absorption (retired 2026-06-24, sellout scraping unreliable) and Market Balance Index (rebuilt 2026-07-14 as a review flag). MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four contributing weights sum to 1.0.
             </p>
-            <p className="mt-2 text-[13px] text-[#b45309]">
-              <strong>SOW divergence flag (open question for Sam):</strong> SOW v2.2 says Market Balance sits <em>next to</em> the composite, not inside it. We keep it inside at 20% because the demo UI renders it that way.
+            <p className="mt-2 text-[13px] text-[#0f766e]">
+              <strong>SOW alignment:</strong> SOW v2.2 says Market Balance sits <em>next to</em> the composite, not inside it. As of v1.7 the code matches the SOW — MBI is outside the composite.
             </p>
           </section>
 
           {/* Premium tier definition */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">Premium Provider Definition</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">Premium Provider Definition — two-gate rule</h2>
+            <p className="mb-3 text-[13px]">
+              Tier is decided by one <strong>precedence rule, top wins</strong>: community/childcare → price gate → known premium brand → AI guess. The price gate is a <strong>hard override</strong> — a provider with a real listed price that fails the gate can never be Premium, even if the AI or the brand list says Premium.
+            </p>
             <div className="overflow-hidden rounded-md border border-[#cfdcff]">
               <table className="w-full text-[13px]">
                 <thead className="bg-[#f4f8ff] text-[#174be8]">
@@ -528,14 +619,14 @@ export default function MVSSpec() {
                   </tr>
                 </thead>
                 <tbody className="bg-white">
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Premium</td><td className="px-4 py-3">Price ≥ $400/week AND one of 19 eligible enrichment categories AND not childcare-positioned</td></tr>
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Mid</td><td className="px-4 py-3">$250–$399/week, enrichment-positioned</td></tr>
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Budget</td><td className="px-4 py-3">&lt; $250/week OR community/parks-and-rec/YMCA-positioned</td></tr>
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Community</td><td className="px-4 py-3">Faith-based, scholarship-driven, or municipally subsidized</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Community</td><td className="px-4 py-3">Checked first, beats everything. YMCA, JCC, parks &amp; rec, library, municipal, church, non-profit, or a daycare / preschool / after-school-care name — regardless of price. Excluded from competitor counts.</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Premium</td><td className="px-4 py-3"><strong>Two gates:</strong> listed <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">price_min ≥ $300</code> AND <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">price_max ≥ $400</code>, in one of 19 eligible enrichment categories. If there is no listed price, Premium only when the brand matches <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs_operator_watchlist</code> with <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">is_premium_brand = true</code>.</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Mid</td><td className="px-4 py-3">Default. A priced provider that fails either gate, and every unpriced provider that is not a known premium brand.</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Budget</td><td className="px-4 py-3">Both price ends under $200/week.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 text-[13px]">Only <strong>Premium</strong>-tier providers flow into the five active sub-scores. Mid / Budget / Community are retained for audit and pricing-ladder context.</p>
+            <p className="mt-3 text-[13px]">Only <strong>Premium</strong>-tier providers drive Enrichment Diversity, Market Depth and MBI. <strong>Pricing Acceptance uses all priced providers</strong> (changed in v1.8). Mid / Budget / Community rows are retained for audit and pricing-ladder context.</p>
           </section>
 
           {/* 4. Pipeline */}
@@ -546,9 +637,9 @@ export default function MVSSpec() {
             </p>
             <pre className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3 text-[13px] font-mono text-[#07142f] whitespace-pre-wrap mb-4">
 {`Stage 1 → Multi-source discovery       → providers from Sawyer, ActivityHero, Google Maps, Yelp, Google Search
-Stage 2 → Premium tier classification  → filter to Premium (≥$400/wk, eligible category)
+Stage 2 → Premium tier classification  → two-gate price rule (min ≥ $300 AND max ≥ $400), eligible category
 Stage 3 → Census ACS pull              → Market Balance + Operator denominators
-Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
+Stage 4 → Score calculation            → 4 scored sub-scores → MVS composite (+ MBI review flag)`}
             </pre>
 
             <h3 className="text-[15px] font-bold text-[#07142f] mt-4 mb-2">Stage 1 — Discovery (Firecrawl + APIs)</h3>
@@ -610,7 +701,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
           {/* 5. Sub-score formulas */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.6 reference ranges</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">5. Sub-score formulas + v1.9 reference ranges</h2>
             <p className="mb-3">Normalization is <strong>min-max against fixed reference ranges</strong> (capped 0–100). Ranges below come from the methodology doc.</p>
             <div className="space-y-4">
               {FORMULAS.map((f) => (
@@ -726,7 +817,7 @@ Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
 
           {/* 10. Out of scope */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.6 (do not drift)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">10. Out of scope for v1.9 (do not drift)</h2>
             <ul className="space-y-2">
               {EXCLUDED.map((item) => (
                 <li key={item} className="flex gap-2">

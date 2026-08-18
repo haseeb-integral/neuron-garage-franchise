@@ -114,10 +114,21 @@ export default function TeamMembers() {
     });
     setSubmitting(false);
     if (error || (data && (data as any).error)) {
-      const msg = (data as any)?.error || error?.message || "Failed to create user";
+      let msg = (data as any)?.error || error?.message || "Failed to create user";
+      // functions.invoke hides the response body on non-2xx — read it if present
+      const ctx = (error as any)?.context;
+      if (ctx && typeof ctx.json === "function") {
+        try {
+          const body = await ctx.json();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* ignore */
+        }
+      }
       toast.error(msg);
       return;
     }
+
     const result = data as {
       email: string;
       full_name: string | null;

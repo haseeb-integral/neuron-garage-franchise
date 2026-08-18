@@ -307,15 +307,14 @@ function generateMVSMarkdown(): string {
   lines.push("```");
   lines.push(`MVS = 0.2667 × Pricing Acceptance Score`);
   lines.push(`    + 0.2667 × Scaled Operator Score`);
-  lines.push(`    + 0.1333 × Enrichment Diversity Score`);
+  lines.push(`    + 0.3333 × Enrichment Diversity Score`);
   lines.push(`    + 0.1333 × Market Depth Score`);
-  lines.push(`    + 0.2000 × Market Balance Index`);
   lines.push("```");
   lines.push("");
-  lines.push(`Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the v1.0 doctrine. **Market Absorption was removed from the composite in v1.1** (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars were proportionally re-normalized so the weights still sum to 1.0.`);
+  lines.push(`Every sub-score is normalized 0–100, then weight-blended into the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers. **Two pillars carry zero weight:** Market Absorption (removed in v1.1 — sellout scraping was unreliable) and **Market Balance Index** (rebuilt in v1.7 as a review flag, not a score). MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four contributing weights sum to 1.0.`);
   lines.push("");
 
-  lines.push(`## Section 4: The Six Sub-Scores`);
+  lines.push(`## Section 4: The Four Scored Pillars (plus two zero-weight pillars)`);
   lines.push("");
   SUB_SCORES.forEach((s) => {
     lines.push(`### Score ${s.n}: ${s.name} (Weight ${s.weight})`);
@@ -336,7 +335,7 @@ function generateMVSMarkdown(): string {
 
   lines.push(`## Section 5: Premium Provider Definition`);
   lines.push("");
-  lines.push(`Rather than excluding non-premium camps from data collection, the engine collects the **full** camp universe in each shortlisted city and tier-classifies each provider at ingest. Only providers tagged **Premium** flow into the six sub-scores.`);
+  lines.push(`Rather than excluding non-premium camps from data collection, the engine collects the **full** camp universe in each shortlisted city and tier-classifies each provider at ingest using one precedence rule: community/childcare → price gate → known premium brand → AI guess. The price gate is a hard override — a provider with a real listed price that fails the gate can never be Premium. Only providers tagged **Premium** drive Enrichment Diversity, Market Depth and the Market Balance flag; **Pricing Acceptance uses all priced providers**.`);
   lines.push("");
   lines.push(`| Tier | Definition |`);
   lines.push(`| --- | --- |`);
@@ -370,7 +369,7 @@ export default function MVSMethodology() {
       eyebrow="Methodology"
       eyebrowIcon={BarChart3}
       title={<>How the MVS (Market Validation Score) is Calculated</>}
-      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.6 (updated 2026-07-07)"
+      subtitle="Methodology & Data Documentation — Feature 1A · Market Validation Engine · v1.9 (updated 2026-08-18)"
       action={
         <DownloadMDButton
           content={generateMVSMarkdown()}
@@ -455,21 +454,24 @@ export default function MVSMethodology() {
             <SectionTitle n={3}>The Composite Formula</SectionTitle>
             <FormulaBlock>{`MVS = 0.2667 × Pricing Acceptance Score
     + 0.2667 × Scaled Operator Score
-    + 0.1333 × Enrichment Diversity Score
+    + 0.3333 × Enrichment Diversity Score
     + 0.1333 × Market Depth Score
-    + 0.2000 × Market Balance Index`}</FormulaBlock>
+
+(Market Absorption retired, weight 0.)
+(Market Balance Index not scored, weight 0 — review flag only.)`}</FormulaBlock>
             <p className="mt-3 text-[13px] leading-relaxed text-[#1a2540]">
-              Every sub-score is normalized 0–100 across the shortlisted cities, then weight-blended into
-              the composite. Weights are exposed as sliders in the UI with "Show Formula" drawers per the
-              v1.0 doctrine. <strong>Market Absorption was removed from the composite in v1.1</strong>{" "}
-              (weight set to 0) because sellout-rate scraping was unreliable; the remaining five pillars
-              were proportionally re-normalized so the weights still sum to 1.0.
+              Every sub-score is normalized 0–100, then weight-blended into the composite. Weights are
+              exposed as sliders in the UI with "Show Formula" drawers. <strong>Two pillars carry zero
+              weight:</strong> Market Absorption (removed in v1.1 — sellout scraping was unreliable) and{" "}
+              <strong>Market Balance Index</strong> (rebuilt in v1.7 as a review flag, not a score).
+              MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four
+              contributing weights sum to 1.0.
             </p>
           </section>
 
           {/* Section 3 — Sub-scores */}
           <section className="mb-10">
-            <SectionTitle n={4}>The Six Sub-Scores</SectionTitle>
+            <SectionTitle n={4}>The Four Scored Pillars (plus two zero-weight pillars)</SectionTitle>
             <div className="space-y-6">
               {SUB_SCORES.map((s) => (
                 <div key={s.n} className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
@@ -512,7 +514,12 @@ export default function MVSMethodology() {
             <p className="text-[13px] leading-relaxed text-[#1a2540] mb-3">
               Rather than excluding non-premium camps from data collection, the engine collects the{" "}
               <strong>full</strong> camp universe in each shortlisted city and tier-classifies each provider
-              at ingest. Only providers tagged <strong>Premium</strong> flow into the six sub-scores.
+              at ingest using one precedence rule: <strong>community/childcare → price gate → known
+              premium brand → AI guess</strong>. The price gate is a hard override — a provider with a
+              real listed price that fails the gate can never be Premium, even if the AI or the brand
+              list says Premium. Only <strong>Premium</strong> providers drive Enrichment Diversity,
+              Market Depth and the Market Balance flag; <strong>Pricing Acceptance uses all priced
+              providers</strong>.
             </p>
             <div className="rounded-md border border-[#eef2f7] bg-white overflow-hidden">
               <table className="w-full text-[13px]">
@@ -575,7 +582,7 @@ export default function MVSMethodology() {
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2"><strong>3.</strong> Strict rule: the dollar sign and number <em>must</em> appear directly in the markdown of that page. If not → save price = null and stop.</td>
-                    <td className="px-4 py-2"><strong>3. NEW —</strong> Catch-up Google search in plain English (e.g. <em>"Steve &amp; Kate's Camp Austin summer camp tuition price per week 2026"</em>).</td>
+                    <td className="px-4 py-2"><strong>3. NEW —</strong> Catch-up Google search in plain English (e.g. <em>"Steve &amp; Kate's Camp Austin summer camp cost per week 2026"</em>).</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
@@ -587,7 +594,7 @@ export default function MVSMethodology() {
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
-                    <td className="px-4 py-2"><strong>6. NEW —</strong> Price-rules guard: must be between <strong>$50 and $5,000</strong>, must be weekly tuition (not a deposit, membership, or t-shirt fee).</td>
+                    <td className="px-4 py-2"><strong>6. NEW —</strong> Price-rules guard: must be between <strong>$100 and $2,500</strong>, must be a weekly price (not a deposit, membership, or t-shirt fee). The word "tuition" is never used in a query — it pulled in private-school tuition pages.</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
@@ -595,11 +602,11 @@ export default function MVSMethodology() {
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
-                    <td className="px-4 py-2"><strong>8.</strong> Tier-classify the provider (Premium / Mid / Budget / Community) using the rules in Section 4.</td>
+                    <td className="px-4 py-2"><strong>8.</strong> Tier-classify the provider (Premium / Mid / Budget / Community) using the two-gate rule in Section 5.</td>
                   </tr>
                   <tr className="border-t border-[#eef2f7]">
                     <td className="px-4 py-2 text-[#526078] italic">—</td>
-                    <td className="px-4 py-2"><strong>9. NEW (Phase B3) —</strong> Last-resort Google <strong>AI Overview</strong> answer box read via Apify. Runs only when steps 3–7 fail. Any price found is saved as <em>"Needs human review"</em> (amber chip) so a person must click Verify before it counts in the score.</td>
+                    <td className="px-4 py-2"><strong>9. NEW (Phase B3) —</strong> Last-resort Google <strong>AI Overview</strong> answer box read via Apify, then parsed by a <strong>unit-aware Gemini</strong> safety net so "$840 for two weeks" is read as $420/week, not $840/week. Runs only when steps 3–7 fail. Any price found is saved as <em>"Needs human review"</em> (amber chip) so a person must click Verify before it counts in the score.</td>
                   </tr>
                 </tbody>
               </table>

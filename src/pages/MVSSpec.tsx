@@ -505,9 +505,9 @@ const UI_BEHAVIOR = [
 export default function MVSSpec() {
   return (
     <DocShell
-      eyebrow="Feature 1A · v1.6 Spec"
+      eyebrow="Feature 1A · v1.9 Spec"
       eyebrowIcon={ShieldCheck}
-      title="Market Validation Engine — v1.6 Full Spec"
+      title="Market Validation Engine — v1.9 Full Spec"
       subtitle="Every detail of how MVS works and what is shipped. Source of truth: this page + MVS Methodology + this chat. Re-read before starting any new turn."
       action={<DownloadMDButton content={SPEC_MD} filename="feature-1a-mvs-v1-spec.md" />}
     >

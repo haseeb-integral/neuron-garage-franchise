@@ -561,7 +561,7 @@ export default function MVSSpec() {
 
           {/* 2. Scope table */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.6 scope (current)</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">2. v1.9 scope (current)</h2>
             <div className="overflow-hidden rounded-md border border-[#cfdcff]">
               <table className="w-full text-[13px]">
                 <thead className="bg-[#f4f8ff] text-[#174be8]">

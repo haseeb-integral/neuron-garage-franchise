@@ -1,56 +1,68 @@
-# Franchise Application Landing Page — Plan
+# Refresh the methodology and spec docs
 
-## Decision: build it inside this app (Option A)
+Goal: bring the Market Validation, City Search, and Site Analysis documentation back in line with what the app actually does today. Docs only — no engine, scoring, or UI code changes.
 
-A new **public** route `/apply` (no login, no sidebar, dedicated layout) plus a public Edge Function that writes straight into the `candidates` table. Applicants appear in the pipeline instantly, tagged "Web Application." No separate marketing site, no syncing, one codebase. The same Edge Function could later be pointed at a static marketing site if SEO needs change — that's a small move, not a rewrite.
+## Why
 
-## What we're building
+The docs have fallen behind the code:
 
-1. **Public `/apply` page** (`src/pages/Apply.tsx`) — a marketing landing page with a short application form.
-   - Outside `ProtectedRoute` and `AppLayout`, exactly like the existing `/unsubscribe` page.
-   - Dedicated lightweight layout: clean brand design, no ops sidebar, no dark ops theme. Hero section, a few value bullets, and the form.
-   - Uses the `usePageTitle` hook for SEO title.
-2. **Short form** (~7 fields, one screen):
-   - First name, Last name
-   - Email, Phone
-   - City of interest, State of interest (dropdown of US states — reuse `src/lib/usStates.ts`)
-   - Liquid capital available to invest (select: `<$100k`, `$100k–$250k`, `$250k–$500k`, `$500k+`, `Prefer not to say`)
-   - "Why are you interested in Neuron Garage?" (textarea, max 500 chars)
-   - Hidden honeypot field for spam (if filled, silently accept + discard).
-3. **New public Edge Function** `supabase/functions/submit-application/index.ts`:
-   - `verify_jwt = false` (public), CORS headers from the SDK.
-   - Validate all input with Zod (length limits, email format, state in allowed list).
-   - **Dedup:** if a candidate with the same email already exists, return a friendly "We already have your application" message — do not insert a duplicate.
-   - **Insert** into `public.candidates`:
-     - `first_name`, `last_name`, `email`, `phone`, `city`, `state`
-     - `current_stage = 'new_lead'`, `status = 'active'`, `fit_tag = 'New Lead'`
-     - `source_type = 'Website'`, `source_name = 'Franchise Application'`, `source_campaign = 'Web Apply'`
-     - `email_source = 'manual'`, `assigned_to = NULL` (unassigned — a recruiter claims it)
-     - `why_interested` goes into a new optional text column `source_notes` (already exists on the table) — no schema change needed.
-   - **Rate limit:** reject if the same email submitted within the last 10 minutes (prevents spam/accidental double submits). Light check via a SELECT on `candidates` by email/created_at.
-   - **Notify staff:** insert one row into `public.notifications` for every manager/admin (query `user_roles` for `manager`/`admin`), kind `candidate_assigned` (or a new `web_application` kind), title "New franchise application", with the applicant's name and a link to the candidate.
-4. **Thank-you state:** on success, the form swaps to a "Thanks — we'll be in touch" confirmation panel (no separate route needed).
-5. **Source option seed:** add a `candidate_source_options` row for `source_type='Website'`, `source_name='Franchise Application'` so it shows correctly in the pipeline source dropdowns.
-6. **Routing:** add `<Route path="/apply" element={<Apply />} />` **outside** the `ProtectedRoute` block in `App.tsx` (next to `/auth`, `/unsubscribe`).
-7. **`index.html` / SEO:** set a real `<title>` and meta description for the apply page via the page (usePageTitle). The site-wide title in index.html stays as-is.
-
-## What is NOT changing
-- No new database table, no migration, no RLS changes — `candidates` and `notifications` already have policies that allow the service_role (used by the Edge Function) to insert. The Edge Function uses the service role key, so it bypasses RLS safely.
-- No auth account is created for the applicant — they are a prospect, not a logged-in user.
-- No changes to the existing pipeline UI; candidates just appear in the New Lead column.
-- Email notification to a specific address is a fast-follow (the email queue exists), not in v1 — v1 uses the in-app bell only.
+- Market Validation spec still says **v1.6** and methodology says **v1.6 (updated 2026-07-07)**, but we have shipped through **v1.9** since then.
+- City Search methodology still describes the watch list as per-user; it is now a shared team list.
+- Site Analysis methodology does not mention the tooltips, "Show formula" drawers, or the updated grade-alignment weights.
 
 ## Files touched
-- `src/pages/Apply.tsx` (new) — landing page + form
-- `src/App.tsx` — add public `/apply` route
-- `supabase/functions/submit-application/index.ts` (new) — public Edge Function
-- One SQL insert into `candidate_source_options` (via migration tool)
 
-## Phases (each one turn)
-- **Phase 1:** Create the `submit-application` Edge Function + deploy + seed the source option. (backend)
-- **Phase 2:** Build `Apply.tsx` landing page + wire the route. (frontend)
+| Doc | File |
+| --- | --- |
+| Market Validation spec | `src/pages/MVSSpec.tsx` |
+| Market Validation methodology | `src/pages/MVSMethodology.tsx` |
+| City Search spec | `src/pages/CitySearchSpec.tsx` |
+| City Search methodology | `src/data/citySearchMethodology.md` |
+| Site Analysis methodology | `src/pages/SASMethodology.tsx` |
 
-## Risks / testing
-- Spam: honeypot + email rate-limit handle the basics. Add a captcha later if abuse appears.
-- Dedup by email means a repeat applicant gets a polite "already have it" message rather than a second row.
-- Test: submit a real test application, confirm a new candidate appears in New Lead with the right source tags, and that the in-app bell fires for managers/admins.
+Each page has both a printable/markdown export block and the on-screen JSX. Both halves get the same edits so the download can never drift from the screen.
+
+## What gets written in
+
+**Market Validation → v1.9**
+
+- Pricing Acceptance formula: share of **all priced providers** at **≥ $500 per week** (replaces the old shortlist-only wording).
+- Premium tier two-gate rule: min ≥ $300 **and** max ≥ $400.
+- Tier precedence order: community/childcare → price gate → known premium brand → AI guess.
+- One brand list: `mvs_operator_watchlist` with `aliases` and `is_premium_brand` as the only source of national-brand and premium-brand truth.
+- Market Balance Index is a **zero-weight review flag**, not a scored pillar.
+- Market Depth bands: 8–14 Moderate, 15–19 Deep, 20+ Very Deep, plus the Saturated and Unproven badges.
+- Pricing crawler: B3 now uses Gemini unit-aware extraction (per-week vs multi-week), so "$840 for two weeks" is no longer read as $840/wk.
+- Discovery changes: Google Maps run split to avoid timeouts, tighter Yelp categories, Sawyer limited to the single summer-camps URL, "tuition" banned from all queries.
+- Reliability: DB-backed refresh queue, resume-stuck cron, Apify circuit breaker and its rollout card.
+- `us_cities_scored` named as the single source of truth for city metrics.
+
+**City Search**
+
+- Watch list is **shared across the whole team**, not per user.
+- Confirm the "one calibrated number everywhere" wording still matches `recomputedPillars.ts`.
+- Refresh the deferred/out-of-scope list so finished items are not still listed as pending.
+
+**Site Analysis**
+
+- Per-sub-score tooltips and the "Show formula" drawer.
+- Updated `school_type` grade-alignment weights from `sas-math.ts`.
+- Note that the ACS cache write runs with elevated rights so caching works under the row-level rules.
+
+## Method
+
+For each item above I read the live code first (`computeMvs.ts`, `metricFetchers.ts`, `mvs-discover-providers`, `sas-math.ts`, `recomputedPillars.ts`, watch list table) and only write what the code actually says. Nothing invented.
+
+## Phases
+
+1. **Market Validation spec + methodology → v1.9.** Biggest chunk. ~2 turns.
+2. **City Search spec + methodology.** ~1 turn.
+3. **Site Analysis methodology.** ~1 turn.
+
+## Risk
+
+Low. These are documentation pages. The only care needed is keeping the markdown export string and the JSX in sync inside each page, and not breaking the download buttons.
+
+## What to test
+
+Open `/mvs-spec`, `/mvs-methodology`, `/city-search-spec`, `/city-search-methodology`, `/sas-methodology`. Check the pages render, the version headers read correctly, and the download button still produces a file.

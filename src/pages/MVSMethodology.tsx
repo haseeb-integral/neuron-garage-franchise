@@ -37,19 +37,22 @@ const SUB_SCORES: SubScore[] = [
     name: "Pricing Acceptance",
     weight: "26.67%",
     question: "Are families already paying Neuron Garage–level prices?",
-    formula: `Pricing Acceptance Score =
+    formula: `Denominator = ALL priced providers in the city (not premium-only)
+Per-provider price = price_min, falling back to price_max when min is null
+
+Pricing Acceptance Score =
   0.40 × normalize(median weekly price,    range $300–$700)
 + 0.40 × normalize(75th-percentile price,  range $400–$800)
-+ 0.20 × (% of premium providers at ≥ $500/week)`,
++ 0.20 × (% of ALL priced providers at ≥ $500/week)`,
     detail:
-      "Built from the shape of the local premium price distribution, not from demographic income. The 75th percentile is the Neuron Garage positioning anchor.",
+      "Built from the shape of the local price distribution, not from demographic income. The 75th percentile is the Neuron Garage positioning anchor. Changed in v1.8: the denominator used to be premium-only, which self-selected for high prices and badly inflated the \"% ≥ $500/wk\" number (Indianapolis read 50% on 6 premium rows vs ~4% across all 190 priced providers). We use price_min because directory price_max is usually a multi-week or full-season bundle.",
     sources: [
       "Provider websites (weekly camp prices)",
       "Camp registration platforms: Sawyer, ActivityHero, CampBrain, CampMinder",
       "Camp directories and aggregator listings",
       "Discovery via Apify Google Maps actor",
-      "Extraction via Firecrawl → Gemini 2.0 Flash (Lovable AI Gateway) into strict JSON",
-      "Same data pull as Market Absorption — collected once",
+      "Extraction via Firecrawl → Gemini (Lovable AI Gateway) into strict JSON",
+      "B3 fallback prices parsed by Gemini with unit-aware reading — \"$840 for two weeks\" becomes $420/week",
     ],
   },
   {

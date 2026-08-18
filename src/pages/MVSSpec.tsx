@@ -105,7 +105,7 @@ For each provider found in Stage 1, the pricing sub-crawler runs up to 9 steps. 
 
 1. **Google Maps lookup** — get name, website, address.
 2. **Read the camp's own website** with Firecrawl.
-3. **Catch-up Google search** in plain English (e.g. *"Steve & Kate's Camp Austin summer camp tuition price per week 2026"*). *NEW.*
+3. **Catch-up Google search** in plain English (e.g. *"Steve & Kate's Camp Austin summer camp cost per week 2026"*). The word "tuition" is never used — it pulled in private-school tuition pages. *NEW.*
 4. **Read marketplace listings** returned by that search — Sawyer, ActivityHero, Yelp, news pages, camp PDFs. *NEW.*
 5. **Relaxed price rule** — a dollar number on any trusted source that ties to this camp by name is accepted. The old strict "$ must be in the camp's own markdown" rule is retired. *NEW.*
 6. **Guards** — price must be $50–$5,000 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip. *NEW.*

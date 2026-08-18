@@ -3,7 +3,7 @@
 // run executes in the background, so this function returns within a few
 // seconds with a summary of which cities were kicked off vs. skipped.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -6,7 +6,7 @@
 // Body: { city: string, limit?: number }   // limit defaults to 50
 // Auth: caller must be authenticated and have manager or admin role.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -8,7 +8,7 @@
 //     any YMCA / parks-and-rec must not be Premium.
 //   - No UI surface in this turn. Invoked via `supabase functions invoke`.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

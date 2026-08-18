@@ -2,7 +2,7 @@
 // The token is restricted by URL referrer in the Mapbox console, so it is safe
 // to expose to authenticated clients. We still gate this endpoint to logged-in
 // users so anonymous traffic can't burn through our request quota.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

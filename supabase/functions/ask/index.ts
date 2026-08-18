@@ -7,7 +7,7 @@
 //  - "Show the math": every answer must return the tool calls used (toolCalls[]).
 //  - Cheap default model: google/gemini-2.5-flash via Lovable AI Gateway.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -586,27 +586,30 @@ export default function MVSSpec() {
 
           {/* 3. Composite */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">3. MVS composite formula</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">3. MVS composite formula — v1.9</h2>
             <pre className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3 text-[13px] font-mono text-[#07142f] whitespace-pre-wrap">
 {`MVS = 0.2667 × Pricing Acceptance
     + 0.2667 × Scaled Operator
-    + 0.1333 × Enrichment Diversity
+    + 0.3333 × Enrichment Diversity
     + 0.1333 × Market Depth
-    + 0.2000 × Market Balance Index
 
-(Market Absorption retired, weight 0.)`}
+(Market Absorption retired, weight 0.)
+(Market Balance Index not scored, weight 0 — review flag only.)`}
             </pre>
             <p className="mt-3 text-[13px]">
-              Rounded to one decimal. All sub-scores 0–100. Weights exposed as preview sliders per card. Market Absorption removed (weight 0); the remaining five pillars were proportionally re-normalized so weights still sum to 1.0.
+              Rounded to one decimal. All sub-scores 0–100. Weights exposed as preview sliders per card. Two pillars carry zero weight: Market Absorption (retired 2026-06-24, sellout scraping unreliable) and Market Balance Index (rebuilt 2026-07-14 as a review flag). MBI's former 20% moved to Enrichment Diversity (0.1333 + 0.20 = 0.3333). The four contributing weights sum to 1.0.
             </p>
-            <p className="mt-2 text-[13px] text-[#b45309]">
-              <strong>SOW divergence flag (open question for Sam):</strong> SOW v2.2 says Market Balance sits <em>next to</em> the composite, not inside it. We keep it inside at 20% because the demo UI renders it that way.
+            <p className="mt-2 text-[13px] text-[#0f766e]">
+              <strong>SOW alignment:</strong> SOW v2.2 says Market Balance sits <em>next to</em> the composite, not inside it. As of v1.7 the code matches the SOW — MBI is outside the composite.
             </p>
           </section>
 
           {/* Premium tier definition */}
           <section>
-            <h2 className="text-lg font-bold text-[#07142f] mb-3">Premium Provider Definition</h2>
+            <h2 className="text-lg font-bold text-[#07142f] mb-3">Premium Provider Definition — two-gate rule</h2>
+            <p className="mb-3 text-[13px]">
+              Tier is decided by one <strong>precedence rule, top wins</strong>: community/childcare → price gate → known premium brand → AI guess. The price gate is a <strong>hard override</strong> — a provider with a real listed price that fails the gate can never be Premium, even if the AI or the brand list says Premium.
+            </p>
             <div className="overflow-hidden rounded-md border border-[#cfdcff]">
               <table className="w-full text-[13px]">
                 <thead className="bg-[#f4f8ff] text-[#174be8]">
@@ -616,14 +619,14 @@ export default function MVSSpec() {
                   </tr>
                 </thead>
                 <tbody className="bg-white">
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Premium</td><td className="px-4 py-3">Price ≥ $400/week AND one of 19 eligible enrichment categories AND not childcare-positioned</td></tr>
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Mid</td><td className="px-4 py-3">$250–$399/week, enrichment-positioned</td></tr>
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Budget</td><td className="px-4 py-3">&lt; $250/week OR community/parks-and-rec/YMCA-positioned</td></tr>
-                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Community</td><td className="px-4 py-3">Faith-based, scholarship-driven, or municipally subsidized</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Community</td><td className="px-4 py-3">Checked first, beats everything. YMCA, JCC, parks &amp; rec, library, municipal, church, non-profit, or a daycare / preschool / after-school-care name — regardless of price. Excluded from competitor counts.</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Premium</td><td className="px-4 py-3"><strong>Two gates:</strong> listed <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">price_min ≥ $300</code> AND <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">price_max ≥ $400</code>, in one of 19 eligible enrichment categories. If there is no listed price, Premium only when the brand matches <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">mvs_operator_watchlist</code> with <code className="bg-[#f4f8ff] px-1 rounded text-[12px]">is_premium_brand = true</code>.</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Mid</td><td className="px-4 py-3">Default. A priced provider that fails either gate, and every unpriced provider that is not a known premium brand.</td></tr>
+                  <tr className="border-t border-[#eef2f7]"><td className="px-4 py-3 font-bold text-[#07142f]">Budget</td><td className="px-4 py-3">Both price ends under $200/week.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 text-[13px]">Only <strong>Premium</strong>-tier providers flow into the five active sub-scores. Mid / Budget / Community are retained for audit and pricing-ladder context.</p>
+            <p className="mt-3 text-[13px]">Only <strong>Premium</strong>-tier providers drive Enrichment Diversity, Market Depth and MBI. <strong>Pricing Acceptance uses all priced providers</strong> (changed in v1.8). Mid / Budget / Community rows are retained for audit and pricing-ladder context.</p>
           </section>
 
           {/* 4. Pipeline */}
@@ -634,9 +637,9 @@ export default function MVSSpec() {
             </p>
             <pre className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3 text-[13px] font-mono text-[#07142f] whitespace-pre-wrap mb-4">
 {`Stage 1 → Multi-source discovery       → providers from Sawyer, ActivityHero, Google Maps, Yelp, Google Search
-Stage 2 → Premium tier classification  → filter to Premium (≥$400/wk, eligible category)
+Stage 2 → Premium tier classification  → two-gate price rule (min ≥ $300 AND max ≥ $400), eligible category
 Stage 3 → Census ACS pull              → Market Balance + Operator denominators
-Stage 4 → Score calculation            → 5 sub-scores → MVS composite`}
+Stage 4 → Score calculation            → 4 scored sub-scores → MVS composite (+ MBI review flag)`}
             </pre>
 
             <h3 className="text-[15px] font-bold text-[#07142f] mt-4 mb-2">Stage 1 — Discovery (Firecrawl + APIs)</h3>

@@ -92,18 +92,18 @@ Scaled Operator Score =
   0.65 × normalize(Operator Validation, range 0–8)
 + 0.35 × (100 − normalize(Direct Competitor Load, range 0–5 per 10k))`,
     detail:
-      "Two opposing numbers. Validation good, direct competition bad. Each operator is tagged direct / adjacent / distant; tags are editable per city.",
+      "Two opposing numbers. Validation good, direct competition bad. Each operator is tagged direct / adjacent / distant; tags are editable per city. Since v1.9 the operator list lives in one place — the mvs_operator_watchlist table.",
     sources: [
-      "National Operator Watchlist (seed, editable in slider UI): Galileo, Steve & Kate's, Camp Invention, Snapology, Code Ninjas, iD Tech, Mad Science, Engineering For Kids, Bricks 4 Kidz, Kids Inventor Lab, Maker Kids, theCoderSchool, Wiz Kidz, Sylvan summer, Mathnasium summer",
+      "National Operator Watchlist — the mvs_operator_watchlist table, editable in the UI. Each row has a name, aliases (alternate spellings, matched case-insensitively), a default overlap, and an is_premium_brand flag. This is the ONLY brand list in the system; the hard-coded brand arrays that used to live in the scrapers were deleted in v1.9.",
       "Apify Google Maps actor (local site counts per operator in the metro)",
-      "Per-operator overlap classification (direct / adjacent / distant) — default stored, editable per city",
+      "Per-operator overlap classification (direct / adjacent / distant) — default stored in the watchlist, overridable per city in mvs_city_overlap_overrides",
       "Census ACS — children ages 5–12 denominator for Direct Competitor Load",
     ],
   },
   {
     n: 4,
     name: "Enrichment Diversity",
-    weight: "13.33%",
+    weight: "33.33%",
     question: "Do families in this market invest across a variety of enrichment categories?",
     formula: `Category Count   = number of distinct enrichment categories with ≥1 premium provider
 
@@ -112,10 +112,10 @@ Enrichment Diversity Score =
 
 Display-only flag: if Premium Provider Count < 4, show "Thin market — low confidence" next to the score.`,
     detail:
-      "This score measures enrichment breadth only. Deep-but-narrow markets floor automatically via low category count — we no longer penalise large healthy markets with a category-to-provider ratio. Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
+      "This score measures enrichment breadth only. Deep-but-narrow markets floor automatically via low category count — we no longer penalise large healthy markets with a category-to-provider ratio. It picked up Market Balance's former 20% weight in v1.7, taking it from 13.33% to 33.33%. Eligible categories (19 in the live classifier): STEM, Robotics, Coding, Science, Maker, Art, Theater, Music, Academic Enrichment, Debate, Chess, Entrepreneurship, Dance, Language, Sports, Swim, Gymnastics, Cooking, Outdoor.",
     sources: [
       "Same premium-provider universe from Apify + Firecrawl",
-      "Category classification by Gemini 2.0 Flash against the eligible category list",
+      "Category classification by Gemini against the eligible category list",
       "No new data source — purely derived from the premium-provider table",
     ],
   },
@@ -126,30 +126,30 @@ Display-only flag: if Premium Provider Count < 4, show "Thin market — low conf
     question: "How large is the premium enrichment ecosystem?",
     formula: `Premium Provider Count = count of distinct premium enrichment providers in market
 
-Market Depth Score = normalize(Premium Provider Count, range 4–40)`,
+Market Depth Score = normalize( clamp(Premium Provider Count, 4, 15), 4, 15 )
+
+UI bands:  8–14 Moderate  ·  15–19 Deep  ·  20+ Very Deep`,
     detail:
-      "Deliberately simple and auditable. A market with 40 premium providers behaves very differently from one with 4. Most of the signal is already captured by the other five scores — hence the modest 10% weight.",
+      "Tightened in v1.7 — the normalization range dropped from 4–40 to 4–15. Depth answers a threshold question (\"is the premium ecosystem big enough to prove camp culture?\"), so it saturates quickly rather than rewarding sheer size. Most of the remaining signal is captured by the other pillars, hence the modest 13.33% weight.",
     sources: [
-      "Apify + Firecrawl + Gemini extraction (shared with Scores 1, 2, 4)",
+      "Apify + Firecrawl + Gemini extraction (shared with Scores 1 and 4)",
       "Premium tier classification applied at ingest (see Premium Provider Definition below)",
     ],
   },
   {
     n: 6,
-    name: "Market Balance",
-    weight: "20%",
+    name: "Market Balance Index — review flag only",
+    weight: "0% (not scored)",
     question: "Is there still room in this market?",
-    formula: `Coverage Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
-                 (families = dual-income, HH income ≥ $150k, kids ages 5–12)
+    formula: `MBI Ratio = Affluent Dual-Income Family Count ÷ Premium Provider Count
+            (families = dual-income, HH income ≥ $150k, kids ages 5–12)
 
-Market Balance Index = normalize(Coverage Ratio, range 50–500)
-
-  ≥ 350    → Underserved
-  200–349  → Balanced
-  100–199  → Competitive
-  < 100    → Saturated`,
+  Ratio < 200     → "Saturated"  (dense supply vs. affluent demand)
+  Ratio > 8,000   → "Unproven"   (near-empty market — validate camp culture first)
+  otherwise       → "Healthy"
+  No premium providers found → "Unproven", ratio null`,
     detail:
-      "The supply–demand bridge that doesn't require capacity modeling. Pairs the affluent target-family count from Census ACS against the premium-provider count from the same scrape feeding all other scores.",
+      "Rebuilt in v1.7. MBI contributes NO points to the composite — it renders as a Saturated / Healthy / Unproven badge that triggers human review, which is also what SOW v2.2 asks for (Market Balance sits next to the composite, not inside it). Its former 20% weight moved to Enrichment Diversity. The 200 and 8,000 thresholds are placeholders to be calibrated once we have a live distribution across cities.",
     sources: [
       "Census ACS (already wired in v1.0): dual-income households, HH income ≥ $150k, children ages 5–12",
       "Premium Provider Count from the shared Apify + Firecrawl scrape",

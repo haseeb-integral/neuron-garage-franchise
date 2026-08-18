@@ -362,13 +362,13 @@ const SCOPE_ROWS: Array<{ decision: string; current: string; deferred: string }>
 const PRICING_STEPS: Array<{ step: string; detail: string; isNew: boolean }> = [
   { step: "1. Google Maps lookup", detail: "Get name, website, and address for the provider.", isNew: false },
   { step: "2. Read the camp's own website", detail: "Firecrawl fetches and renders the camp's site.", isNew: false },
-  { step: "3. Catch-up Google search", detail: 'Plain English query, e.g. "Steve & Kate\'s Camp Austin summer camp tuition price per week 2026".', isNew: true },
+  { step: "3. Catch-up Google search", detail: 'Plain English query, e.g. "Steve & Kate\'s Camp Austin summer camp cost per week 2026". The word "tuition" is never used — it pulled in private-school tuition pages.', isNew: true },
   { step: "4. Read marketplace listings", detail: "Sawyer, ActivityHero, Yelp, news pages, camp PDFs returned by that search.", isNew: true },
   { step: "5. Relaxed price rule", detail: "A dollar number on any trusted source that ties to this camp by name is accepted. The old strict '$ must be in the camp's own markdown' rule is retired.", isNew: true },
-  { step: "6. Guards", detail: "Price must be $50–$5,000 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip.", isNew: true },
+  { step: "6. Guards", detail: "Price must be $100–$2,500 per week, weekly cadence, tied to the camp name. Bad prices are dropped with a reason chip.", isNew: true },
   { step: "7. Save with proof", detail: "Clickable source URL, matched query, confidence score.", isNew: true },
-  { step: "8. Tier classify", detail: "Premium / Mid / Budget / Community.", isNew: true },
-  { step: "9. Google AI Overview fallback (Phase B3)", detail: "Last resort. Reads the Google AI answer box via Apify. Prices flagged 'Needs human review' — must be Verified before counting.", isNew: true },
+  { step: "8. Tier classify", detail: "Premium / Mid / Budget / Community, using the two-gate price rule (min ≥ $300 AND max ≥ $400).", isNew: true },
+  { step: "9. Google AI Overview fallback (Phase B3)", detail: "Last resort. Reads the Google AI answer box via Apify, then parses it with a Gemini safety net that is unit-aware — \"$840 for two weeks\" becomes $420/week. Prices flagged 'Needs human review' — must be Verified before counting.", isNew: true },
 ];
 
 const FALLBACKS: Array<{ label: string; detail: string }> = [

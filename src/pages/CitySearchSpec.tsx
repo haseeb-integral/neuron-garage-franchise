@@ -156,7 +156,7 @@ Natural-language input at the top of the page (e.g. *"show me Tier A cities in T
 
 ---
 
-## 13. Saved searches (per-user)
+## 13. Saved searches (shared team list)
 
 - Table: \`public.saved_searches\` (RLS: shared team list — any staff user can view, add, remove).
 - Stores filters + master weights + preset name.
@@ -284,9 +284,9 @@ function Formula({ children }: { children: React.ReactNode }) {
 export default function CitySearchSpec() {
   return (
     <DocShell
-      eyebrow="Feature 1 · v1.0 Spec"
+      eyebrow="Feature 1 · v1.1 Spec"
       eyebrowIcon={ShieldCheck}
-      title="City Search — v1.0 Full Spec"
+      title="City Search — v1.1 Full Spec"
       subtitle="How the 817-city ranked list, presets, weights, tiers, filters, and exports work. Source of truth: this page + CityScoring.tsx + this chat. Updated 2026-07-07."
       action={<DownloadMDButton content={SPEC_MD} filename="city-search-spec.md" />}
     >
@@ -297,7 +297,7 @@ export default function CitySearchSpec() {
           <section className="rounded-md border border-[#cfdcff] bg-[#f4f8ff] p-4">
             <div className="text-[12px] font-bold uppercase tracking-wide text-[#174be8] mb-1">Status</div>
             <p className="text-[#07142f]">
-              <strong>Shipped, evolving.</strong> Version <strong>v1.0</strong>. City Search is the first feature in the franchise-development funnel. It ranks the 817-city US universe by a weighted composite, lets you filter, re-weight, save, compare, and export — and hands a curated shortlist to Feature 1A (Market Validation).
+              <strong>Shipped, evolving.</strong> Version <strong>v1.1</strong> (updated 2026-08-19). City Search is the first feature in the franchise-development funnel. It ranks the 817-city US universe by a weighted composite, lets you filter, re-weight, save, compare, and export — and hands a curated shortlist to Feature 1A (Market Validation).
             </p>
           </section>
 
@@ -476,7 +476,7 @@ export default function CitySearchSpec() {
             </ul>
           </Section>
 
-          <Section title="11. Deferred / out of scope for v1.0">
+          <Section title="11. Deferred / out of scope">
             <ul className="list-disc pl-6 space-y-1">
               {DEFERRED.map((d) => <li key={d}>{d}</li>)}
             </ul>

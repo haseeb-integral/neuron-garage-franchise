@@ -6,7 +6,7 @@ import { DownloadMDButton } from "@/components/DownloadMDButton";
 // the same content as the live doc. If you edit the JSX, edit SPEC_MD too.
 const SPEC_MD = `# Feature 1 — City Search (Spec)
 
-**Status:** Shipped, evolving. **Version:** v1.0 (updated 2026-07-07). **Source of truth:** this page + \`src/pages/CityScoring.tsx\` + this chat.
+**Status:** Shipped, evolving. **Version:** v1.1 (updated 2026-08-19). **Source of truth:** this page + \`src/pages/CityScoring.tsx\` + this chat.
 
 City Search is the first feature in the franchise-development funnel. It ranks the 817-city US universe by a weighted composite score, lets the user filter, re-weight, save, compare, and export — and hands a curated shortlist to Feature 1A (Market Validation).
 
@@ -23,7 +23,7 @@ Output surfaces on \`/city-scoring\`:
 - **Compare modal** (2–4 cities side-by-side).
 - **CSV export** and **PDF market report**.
 - **Ask AI bar** — natural-language changes to filters + weights.
-- **Saved searches** and **Watchlist** per user.
+- **Saved searches** and **Watchlist** — shared team lists (any staff user sees and edits the same list).
 
 Not in scope: live scraping, provider counts (that's Feature 1A), site-level analysis (Feature 1B).
 
@@ -101,7 +101,7 @@ Each pillar has a "⚙" button that opens a right-side drawer:
 - **Minimum score**.
 - **Tier** filter (A / B / C / D).
 - **Non-registration-states only** (blocks franchise-registration states).
-- **Watchlist only** (per-user, persisted).
+- **Watchlist only** (shared team list, persisted).
 - **City search** (free-text — narrows the visible list).
 
 Every filter is state in \`useCityScoringStore\` and reflected in the URL where appropriate so the view is shareable.
@@ -165,9 +165,10 @@ Natural-language input at the top of the page (e.g. *"show me Tier A cities in T
 
 ---
 
-## 14. Watchlist (per-user)
+## 14. Watchlist (shared team list)
 
 - Table: \`public.watchlist_items\` (RLS: shared team list — any staff user can view, add, remove).
+- Shared across the whole team: a city starred by one user is starred for everyone.
 - Star icon on any row toggles membership.
 - "Watchlist only" filter narrows the list to starred cities.
 
@@ -197,11 +198,11 @@ Full signal-level details live in **Demographics Method** and **Scoring Method**
 - Tier cutoffs are absolute display-score (A ≥ 90, B ≥ 80, C ≥ 70, D < 70).
 - Every rendered composite reads through \`buildMarketView()\` — no raw stored composite reads outside the data-shaping layer.
 - Presets clear sub-weight overrides on click.
-- Saved searches and watchlist are per-user with RLS.
+- Saved searches and watchlist are shared team lists — any signed-in staff user can view, add, and remove. Not per-user.
 
 ---
 
-## 18. Deferred / out of scope for v1.0
+## 18. Deferred / out of scope
 
 - Live provider counts on the row (that's Feature 1A / MVS).
 - Site-level analysis (that's Feature 1B).
@@ -230,8 +231,8 @@ const SURFACES = [
   { label: "Selected Market panel", detail: "Header, executive summary narrative, pillar cards (Demand + Operator & Venue Supply), Key Market Signals, actions (Compare, Watchlist, Open PDF)." },
   { label: "Compare modal", detail: "Up to 4 cities side-by-side. Rows for composite, tier, each pillar, each key signal. CSV export." },
   { label: "Ask AI bar", detail: "Natural language → filter + weight changes via ai-city-query edge function. Shows before/after weights diff." },
-  { label: "Saved searches", detail: "Per-user (RLS). Stores filters + master weights + preset name. Load restores the full view." },
-  { label: "Watchlist", detail: "Per-user (RLS). Star any row to add. 'Watchlist only' filter narrows the list." },
+  { label: "Saved searches", detail: "Shared team list (RLS: any staff user). Stores filters + master weights + preset name. Load restores the full view." },
+  { label: "Watchlist", detail: "Shared team list (RLS: any staff user). Star any row to add. 'Watchlist only' filter narrows the list." },
   { label: "CSV export", detail: "The full ranked list under current filters and weights (downloadRankedMarketsCsv)." },
   { label: "PDF Market Report", detail: "Per-city summary with pillar scores, signals, sources. Uses jsPDF — lazy-loaded when the report modal opens." },
   { label: "Header notifications bell", detail: "Fires city_scoring_finished when batch actions complete. 60s polling, RLS per user, capped '9+' badge." },
@@ -252,7 +253,7 @@ const LOCKED_IN = [
   "Tier cutoffs are absolute display-score (A ≥ 90, B ≥ 80, C ≥ 70, D < 70).",
   "Every rendered composite reads through buildMarketView() — no raw stored composite reads outside the data-shaping layer.",
   "Presets clear sub-weight overrides on click.",
-  "Saved searches and watchlist are per-user with RLS.",
+  "Saved searches and watchlist are shared team lists — any signed-in staff user can view, add, and remove.",
 ];
 
 const DEFERRED = [
@@ -311,7 +312,7 @@ export default function CitySearchSpec() {
               <li>Compare modal (2–4 cities side-by-side).</li>
               <li>CSV export and PDF market report.</li>
               <li>Ask AI bar — natural-language changes to filters + weights.</li>
-              <li>Saved searches and Watchlist per user.</li>
+              <li>Saved searches and Watchlist — shared team lists, visible and editable by every staff user.</li>
             </ul>
             <p className="text-[13px] text-[#526078]">
               Not in scope: live scraping, provider counts (Feature 1A), site-level analysis (Feature 1B).

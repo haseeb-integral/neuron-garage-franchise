@@ -89,8 +89,15 @@ export function MarketCompareModal({ open, onClose, markets, appliedSubWeights, 
         const seeded = buildSeededFallbackSignalsFromScored(m.scoredRow);
         sigMap[m.cityId] = {};
         seeded.forEach((r) => {
-          const valStr = formatMetric(r.value, r.signal_key);
+          // Some signals carry a human-readable raw value (e.g. "42 schools",
+          // "1,830 FTE") while `value` holds the 0-100 percentile used for
+          // scoring. The detail panel/drawer shows display_value, so Compare
+          // must too — otherwise the same city shows different numbers.
+          const rd = r.raw_data as Record<string, unknown> | undefined;
+          const override = rd && typeof rd.display_value === "string" ? (rd.display_value as string) : null;
+          const valStr = override ?? formatMetric(r.value, r.signal_key);
           sigMap[m.cityId][r.signal_key] = { value: valStr, delta: null, label: r.label };
+
           if (!seen.has(r.signal_key)) seen.set(r.signal_key, r.label || r.signal_key);
         });
       });

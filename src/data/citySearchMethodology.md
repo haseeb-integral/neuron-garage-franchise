@@ -145,7 +145,20 @@ Operator & Venue Supply ("Franchisee Supply") measures the size and squeeze of t
 
 
 
-## 9. Related Docs
+## 9. Watch List & Saved Searches (Shared, 2026-08-19)
+
+Both the **Watch List** and **Saved Searches** are **shared team lists**, not personal ones.
+
+- A city starred by Brett is starred for Haseeb and Sam too.
+- Any signed-in staff user can add or remove items.
+- Tables: `public.watchlist_items` and `public.saved_searches`. Row-level rules allow every staff user to read and write; nothing is scoped to a single user id.
+- The **"Watchlist only"** filter on `/city-scoring` narrows the ranked list to the shared starred cities.
+
+Why shared: the team works one pipeline together, so a "markets we are watching" list only makes sense if everyone sees the same rows.
+
+---
+
+## 10. Related Docs
 
 - [City Search Spec](/city-search-spec) — full engineering specification
 - [City Search Guide](/city-search-guide) — end-user walkthrough
@@ -156,4 +169,4 @@ Operator & Venue Supply ("Franchisee Supply") measures the size and squeeze of t
 
 ---
 
-*Last reviewed: July 2026. Owner: Brett / Sam / Haseeb (any approver).*
+*Last reviewed: 19 August 2026. Owner: Brett / Sam / Haseeb (any approver).*

@@ -156,6 +156,8 @@ access_factor curves (driving-time based):
 const SAS_NOTES = [
   "SAS is normalized against the candidate set for a given market, not nationally. It is a comparative score for the host-school candidates inside a validated city, not a universal site grade.",
   "Weights are exposed as sliders in the Site Analysis UI with \"Show Formula\" drawers per the v1.0 doctrine — every number on screen is traceable to the formula above.",
+  "Every sub-score on the Site Analysis screen carries a hover tooltip explaining what it measures, plus a \"Show formula\" drawer that prints the exact math and inputs used for that site — the screen and this page read the same factor table (src/lib/sas/config.ts).",
+  "Census ACS ring values are cached in site_analysis_acs_cache. The cache write runs inside the compute-sas engine with elevated server rights, so caching still works under the row-level rules that block direct client writes.",
   "MVS and SAS are sequential, not redundant. MVS answers \"should we open in this city?\" SAS answers \"given we're opening here, which building?\" A high SAS in a low-MVS city is not a green light, and a low SAS in a high-MVS city is not a reason to doubt the market — only the building.",
   "If isochrone generation fails for a candidate (rare — typically rural or cross-border addresses), the site is flagged in the QA queue and rendered with a low-confidence badge until a manual radius fallback is applied.",
 ];
@@ -269,7 +271,7 @@ function generateSASMarkdown(): string {
   lines.push(`| --- | --- | --- |`);
   SAS_CALIBRATION.forEach(([pillar, t, l]) => lines.push(`| ${pillar} | ${t} | ${l} |`));
   lines.push("");
-  lines.push(`LeafSpring's School Profile of 30 comes directly from \`school_type_factor = ${SCHOOL_PROFILE_FACTORS.schoolType[5].factor}\` (Other / daycare positioning), grade-alignment 50 (Other), and a 220 enrollment that normalizes to ~11. Affluence and Family Density are depressed because the 10-min ring around the building captures the wrong population — the customer base lived further south. Five independent pillars failing in concert is exactly what a calibrated model should look like on a known-bad anchor.`);
+  lines.push(`LeafSpring's School Profile of 30 comes directly from \`school_type_factor = ${SCHOOL_PROFILE_FACTORS.schoolType[5].factor}\` (Other / daycare positioning), a grade-alignment factor in the Other band, and a 220 enrollment that normalizes to ~11. Note: the Other grade band was tightened from 50 to 20 after this anchor was recorded, so the same site would score even lower today — the verdict does not change. Affluence and Family Density are depressed because the 10-min ring around the building captures the wrong population — the customer base lived further south. Five independent pillars failing in concert is exactly what a calibrated model should look like on a known-bad anchor.`);
   lines.push("");
 
   lines.push(`## Section 7: Important Notes`);
@@ -518,8 +520,9 @@ export default function SASMethodology() {
             <p className="mt-3 text-[13px] leading-relaxed text-[#1a2540]">
               LeafSpring's School Profile of 30 comes directly from{" "}
               <code className="rounded bg-[#f4f8ff] px-1 py-0.5 text-[12px]">school_type_factor = {SCHOOL_PROFILE_FACTORS.schoolType[5].factor}</code>{" "}
-              (Other / daycare positioning), grade-alignment 50 (Other), and a 220 enrollment that
-              normalizes to ~11. Affluence and Family Density are depressed because the 10-min ring
+              (Other / daycare positioning), a grade-alignment factor in the Other band, and a 220
+              enrollment that normalizes to ~11. Note: the Other grade band was later tightened from
+              50 to 20, so the same site would score even lower today — the verdict does not change. Affluence and Family Density are depressed because the 10-min ring
               around the building captures the wrong population — the customer base lived further
               south. Five independent pillars failing in concert is exactly what a calibrated model
               should look like on a known-bad anchor.
@@ -543,6 +546,24 @@ export default function SASMethodology() {
                 <p className="text-[13px] leading-relaxed text-[#1a2540]">
                   Weights are exposed as sliders in the Site Analysis UI with "Show Formula" drawers
                   per the v1.0 doctrine — every number on screen is traceable to the formula above.
+                </p>
+              </div>
+              <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">
+                <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
+                <p className="text-[13px] leading-relaxed text-[#1a2540]">
+                  Every sub-score on the Site Analysis screen carries a hover tooltip explaining what
+                  it measures, plus a <strong>"Show formula"</strong> drawer that prints the exact
+                  math and inputs used for that site. The screen and this page read the same factor
+                  table (<code className="rounded bg-[#f4f8ff] px-1 py-0.5 text-[12px]">src/lib/sas/config.ts</code>).
+                </p>
+              </div>
+              <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">
+                <Info size={16} className="text-[#174be8] flex-shrink-0 mt-0.5" />
+                <p className="text-[13px] leading-relaxed text-[#1a2540]">
+                  Census ACS ring values are cached in{" "}
+                  <code className="rounded bg-[#f4f8ff] px-1 py-0.5 text-[12px]">site_analysis_acs_cache</code>.
+                  The cache write runs inside the compute-sas engine with elevated server rights, so
+                  caching still works under the row-level rules that block direct client writes.
                 </p>
               </div>
               <div className="flex gap-3 rounded-md border border-[#cfdcff] bg-[#f4f8ff] px-4 py-3">

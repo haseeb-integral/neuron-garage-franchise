@@ -597,7 +597,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, evidence_saved: evidenceSaved, import_mode: importMode, conflict_mode: conflictMode } })
         .eq("id", batch.id);
 
-      setImportResult({ inserted, enriched, skipped: finalSkipped, batch_id: batch.id });
+      setImportResult({ inserted, enriched, skipped: finalSkipped, evidence: evidenceSaved, batch_id: batch.id });
       toast.success(`Imported ${inserted.toLocaleString()} new${enriched ? `, enriched ${enriched.toLocaleString()}` : ""}${finalSkipped ? `, skipped ${finalSkipped.toLocaleString()}` : ""}`, { id: tId });
 
 

@@ -1,57 +1,70 @@
-# Fix Teacher CSV Column Mapping
+# Fix the Stuck Master Teacher Import
 
-## What I found
+## What is happening
 
-The attached file is `ng-teachers-TX-2026-08-21.csv`.
+The latest batch has **20,907 source rows** and is still marked **Importing**. The database already received **2,645 teachers**, so it is not fully frozen.
 
-It has 27 columns. It does **not** include a column for `experience_years` or `teacher_type`. Those two fields cannot be imported from this file because the values are not present.
+The slowdown starts when a 500-row group contains one duplicate. The app then sends that whole group again **one teacher at a time**. This can create hundreds or thousands of slow browser requests. The progress message does not update until that work finishes, so it looks stuck.
 
-The current mapper also has a bug. It starts with safe built-in matches, but the AI result can replace them with a less accurate match.
+The database is healthy. Memory, connections, and disk use are normal. This is an import-code problem, not a Cloud capacity problem.
 
-## Phase 1 — Make mapping reliable
-
-**Estimate: 1 Lovable turn**
-
-- Expand the built-in header list for common Experience and Teacher Type names, such as:
-  - Experience, Years Experience, Years of Experience, Teaching Experience
-  - Teacher Type, Educator Type, Role Type, Employment Type
-- Keep built-in exact and alias matches locked. AI may fill missing matches only. It may not replace a match already found.
-- Prevent one CSV column from being assigned to more than one app field.
-- Normalize hidden characters, extra spaces, dashes, and capitalization in headers.
-
-## Phase 2 — Make missing columns clear
+## Phase 1 — Stop and safely recover this batch
 
 **Estimate: 1 Lovable turn**
 
-- Split the mapping screen into:
-  - Matched fields
-  - App fields not found in this CSV
-  - Extra CSV columns not used
-- Clearly show that Experience and Teacher Type are absent from this exact file, rather than making them look like failed matches.
-- Keep manual dropdown mapping available.
-- Add a mapped-field count before import.
+- Mark the abandoned batch as failed so it no longer looks active.
+- Keep the 2,645 teachers already saved. Do not delete them.
+- Make the next import skip those saved teachers through the normal duplicate check.
+- Confirm no existing teacher details are overwritten by this recovery step.
 
-## Phase 3 — Test the real file
+## Phase 2 — Replace slow one-at-a-time fallback
 
 **Estimate: 1 Lovable turn**
 
-- Test the attached Texas CSV against all 27 headers.
-- Confirm fields such as full name, work email, grade level, phone, signals, sources, and dedupe key map correctly.
-- Confirm blank count fields still save as `0`.
-- Confirm Experience and Teacher Type remain blank because the file has no source values for them.
-- Test a small sample import in Add + Enrich mode so existing teacher rows receive new values.
+- Remove the one-request-per-teacher duplicate fallback.
+- When a 500-row group has a conflict, split it into smaller groups to isolate bad rows quickly.
+- Keep good rows moving in bulk.
+- Update progress after every completed group, including saved, enriched, and skipped totals.
+- Add a clear failure message if a request times out or the browser loses the connection.
+
+## Phase 3 — Make large enrich runs fast
+
+**Estimate: 1 Lovable turn**
+
+- Stop sending one update request for every matched teacher.
+- Process enrichment in safe bulk groups while keeping the current **Fill blanks** or **Overwrite** rule.
+- Save evidence links in groups as it does today.
+- Keep counts accurate if part of an import fails.
+
+## Phase 4 — Test the real 20,907-row flow
+
+**Estimate: 1 Lovable turn**
+
+- Test the attached file in Add + Enrich mode.
+- Confirm the re-run skips the 2,645 rows already saved.
+- Confirm all 36 groups advance without sitting on one group.
+- Confirm the final batch counts equal saved + enriched + skipped.
+- Confirm blank signal counts save as zero and evidence links remain separate.
 
 ## Areas affected
 
-- Import to Master Teacher Pool mapping screen
-- CSV field preparation
-- Add new and enrichment imports
-- Import review and count display
+- Import to Master Teacher Pool progress and retry behavior
+- New teacher inserts
+- Existing teacher enrichment
+- Import batch status and totals
+- Evidence saving after the teacher rows finish
 
-No Teacher Search filters, scoring, SmartLead flow, or existing teacher records will be changed.
+Teacher Search display, filters, SmartLead, candidate records, and existing teacher values will not be changed.
 
 ## Risks and safeguards
 
-- A loose alias could map the wrong column. Aliases will use exact normalized header matches only.
-- Existing records could be overwritten. The current Fill Blanks and Overwrite choices will remain unchanged.
-- The import must not invent Experience or Teacher Type values. Missing source values will stay blank.
+- **Duplicate teachers:** keep the current dedupe rules and test a second run.
+- **Partial import:** preserve completed rows and record exact progress before showing failure.
+- **Accidental overwrite:** keep Fill blanks as the active rule unless the user selected Overwrite.
+- **Browser closing:** clearly mark an interrupted batch instead of leaving it as Importing.
+
+## Aesthetics
+
+- Keep the current three-step import layout.
+- Show live saved, enriched, and skipped counts instead of a spinner that appears frozen.
+- Use plain status text such as “Saving group 4 of 36” and show a clear failed or completed state.

@@ -227,7 +227,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       outreach_status_source: get("outreach_status"),
       record_added_at: addedAt && !Number.isNaN(Date.parse(addedAt)) ? new Date(addedAt).toISOString() : null,
       verified_enrichment_fact_count: num("verified_enrichment_fact_count") ?? 0,
-      verified_enrichment_signal_types: pipeList(get("verified_enrichment_signal_types")),
+      verified_enrichment_signal_types: pipeList(get("verified_enrichment_signal_types")).length
+        ? pipeList(get("verified_enrichment_signal_types"))
+        : null,
       verified_creator_signal_count: num("verified_creator_signal_count") ?? 0,
       secondary_signal_count: num("secondary_signal_count") ?? 0,
       secondary_signal_confidence: get("secondary_signal_confidence"),

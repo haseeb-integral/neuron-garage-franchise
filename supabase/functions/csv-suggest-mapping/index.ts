@@ -15,7 +15,13 @@ const TARGET_FIELDS = [
   "first_name", "last_name", "name", "email", "school", "district",
   "city", "state", "grade", "subject", "teacher_type", "experience_years",
   "linkedin_url", "phone",
+  "dedupe_key", "record_added_at", "outreach_status", "notes",
+  "verified_enrichment_fact_count", "verified_enrichment_signal_types",
+  "verified_creator_signal_count", "verified_creator_summary", "verified_creator_source_urls",
+  "secondary_signal_count", "secondary_signal_sources", "secondary_signal_details",
+  "secondary_signal_source_urls", "secondary_signal_confidence", "secondary_signal_match_basis",
 ] as const;
+
 
 const FieldEnum = z.enum(TARGET_FIELDS);
 

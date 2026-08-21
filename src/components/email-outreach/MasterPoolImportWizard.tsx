@@ -311,15 +311,20 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         for (const row of csvRows) {
           const match = map.get(dedupeKeyForRow(row));
           if (!match) continue;
+          const p = buildRow(row);
+          if (!p) continue;
           for (const f of ENRICHABLE) {
-            const col = mapping[f];
-            if (!col) continue;
-            const v = (row[col] ?? "").trim();
-            if (!v) continue;
+            const v = p.values[f];
+            if (v === null || v === undefined || v === "") continue;
             if (conflictMode === "overwrite" || match.empty_fields.includes(f)) fieldsToFill++;
+          }
+          for (const f of ALWAYS_WRITE) {
+            const v = p.values[f];
+            if (v !== null && v !== undefined && v !== "") fieldsToFill++;
           }
         }
       }
+
 
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });

@@ -177,18 +177,24 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             body: { headers, sample_rows: res.data.slice(0, 5) },
           });
           if (!error && data?.mapping) {
-            // AI result never loses a field the alias map already resolved.
+            // AI may only FILL gaps — it can never replace a match we already found,
+            // and it can never reuse a CSV column that is already assigned.
             const aiMap = data.mapping as Mapping;
             const merged: Mapping = { ...naive };
+            const taken = new Set(Object.values(naive).filter(Boolean) as string[]);
             for (const f of TARGET_FIELDS) {
+              if (merged[f]) continue;
               const col = aiMap[f];
-              if (col && headers.includes(col)) merged[f] = col;
+              if (col && headers.includes(col) && !taken.has(col)) {
+                merged[f] = col;
+                taken.add(col);
+              }
             }
-            const used = Object.values(merged).filter(Boolean) as string[];
             setMapping(merged);
-            setUnmapped(headers.filter((h) => !used.includes(h)));
+            setUnmapped(headers.filter((h) => !taken.has(h)));
             setAiReasoning(data.reasoning ?? "");
           }
+
         } catch (e) {
           console.warn("AI mapping failed, keeping naive mapping", e);
         } finally {

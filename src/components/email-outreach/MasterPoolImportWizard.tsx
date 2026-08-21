@@ -61,6 +61,34 @@ interface SLCampaign { id: string; name: string; status?: string }
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
+/** Known Manus / common CSV header names for each target field. */
+const HEADER_ALIASES: Partial<Record<TargetField, string[]>> = {
+  email: ["work_email", "email_address", "teacher_email", "personal_email"],
+  name: ["full_name", "teacher_name"],
+  first_name: ["firstname", "given_name"],
+  last_name: ["lastname", "surname", "family_name"],
+  grade: ["grade_level", "grades", "grade_band"],
+  phone: ["phone_number", "mobile", "cell", "telephone"],
+  school: ["school_name", "campus"],
+  district: ["district_name", "school_district"],
+  linkedin_url: ["linkedin", "linkedin_profile"],
+  subject: ["subjects", "subject_area"],
+  notes: ["note", "comments"],
+  dedupe_key: ["manus_dedupe_key"],
+  outreach_status: ["status"],
+};
+
+/** Build a header mapping from exact names + known aliases. */
+const aliasMap = (headers: string[]): Mapping => {
+  const out: Mapping = {};
+  for (const f of TARGET_FIELDS) {
+    const candidates = [f, f.replace(/_/g, ""), ...(HEADER_ALIASES[f] ?? [])].map(norm);
+    const m = headers.find((h) => candidates.includes(norm(h)));
+    if (m) out[f] = m;
+  }
+  return out;
+};
+
 export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: boolean; onClose: () => void; onComplete?: () => void }) {
   const [step, setStep] = useState<Step>(1);
   // Step 1

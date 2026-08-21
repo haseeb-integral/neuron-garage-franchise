@@ -121,6 +121,7 @@ export function TeacherTable({
               )}
               <th className={`${headerCls} min-w-[180px]`}>Email</th>
               <th className={`${headerCls} w-12 text-center`}>In</th>
+              <th className={`${headerCls} min-w-[150px]`}>Signals</th>
               <th className={`${headerCls} min-w-[170px]`}>Source</th>
               <th className={`${headerCls} sticky right-0 z-20 w-16 bg-[#f8fafc] text-right`}>Action</th>
             </tr>

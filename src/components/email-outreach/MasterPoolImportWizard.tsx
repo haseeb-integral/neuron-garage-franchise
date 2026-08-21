@@ -22,8 +22,31 @@ const TARGET_FIELDS = [
   "first_name", "last_name", "name", "email", "school", "district",
   "city", "state", "grade", "subject", "teacher_type", "experience_years",
   "linkedin_url", "phone",
+  // Manus City / Metro export — roster extras
+  "dedupe_key", "record_added_at", "outreach_status", "notes",
+  // Manus City / Metro export — verified enrichment
+  "verified_enrichment_fact_count", "verified_enrichment_signal_types",
+  "verified_creator_signal_count", "verified_creator_summary", "verified_creator_source_urls",
+  // Manus City / Metro export — secondary (lower confidence) signals
+  "secondary_signal_count", "secondary_signal_sources", "secondary_signal_details",
+  "secondary_signal_source_urls", "secondary_signal_confidence", "secondary_signal_match_basis",
 ] as const;
 type TargetField = (typeof TARGET_FIELDS)[number];
+
+/** Split a Manus pipe-delimited cell into trimmed parts. */
+const pipeList = (v: string | null | undefined): string[] =>
+  (v ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+
+type EvidenceRow = {
+  evidence_class: "verified_creator" | "secondary";
+  signal_type: string | null;
+  summary: string | null;
+  source_url: string | null;
+  source_label: string | null;
+  confidence: string | null;
+  match_basis: string | null;
+};
+
 
 const REQUIRED: TargetField[] = ["state", "city"]; // teacher_prospects requires city+state NOT NULL
 

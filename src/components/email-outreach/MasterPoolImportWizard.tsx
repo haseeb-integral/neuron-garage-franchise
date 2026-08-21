@@ -61,6 +61,34 @@ interface SLCampaign { id: string; name: string; status?: string }
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
+/** Known Manus / common CSV header names for each target field. */
+const HEADER_ALIASES: Partial<Record<TargetField, string[]>> = {
+  email: ["work_email", "email_address", "teacher_email", "personal_email"],
+  name: ["full_name", "teacher_name"],
+  first_name: ["firstname", "given_name"],
+  last_name: ["lastname", "surname", "family_name"],
+  grade: ["grade_level", "grades", "grade_band"],
+  phone: ["phone_number", "mobile", "cell", "telephone"],
+  school: ["school_name", "campus"],
+  district: ["district_name", "school_district"],
+  linkedin_url: ["linkedin", "linkedin_profile"],
+  subject: ["subjects", "subject_area"],
+  notes: ["note", "comments"],
+  dedupe_key: ["manus_dedupe_key"],
+  outreach_status: ["status"],
+};
+
+/** Build a header mapping from exact names + known aliases. */
+const aliasMap = (headers: string[]): Mapping => {
+  const out: Mapping = {};
+  for (const f of TARGET_FIELDS) {
+    const candidates = [f, f.replace(/_/g, ""), ...(HEADER_ALIASES[f] ?? [])].map(norm);
+    const m = headers.find((h) => candidates.includes(norm(h)));
+    if (m) out[f] = m;
+  }
+  return out;
+};
+
 export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: boolean; onClose: () => void; onComplete?: () => void }) {
   const [step, setStep] = useState<Step>(1);
   // Step 1
@@ -119,12 +147,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         const headers = res.meta.fields ?? [];
         setCsvHeaders(headers);
         setCsvRows(res.data);
-        // Naive auto-map first so user sees something instantly
-        const naive: Mapping = {};
-        for (const f of TARGET_FIELDS) {
-          const m = headers.find((h) => norm(h) === norm(f) || norm(h) === norm(f.replace(/_/g, "")));
-          if (m) naive[f] = m;
-        }
+        // Deterministic alias auto-map first (works offline, no AI needed)
+        const naive = aliasMap(headers);
         setMapping(naive);
         setUnmapped(headers.filter((h) => !Object.values(naive).includes(h)));
         // Then ask Lovable AI for a better mapping in the background
@@ -134,8 +158,16 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             body: { headers, sample_rows: res.data.slice(0, 5) },
           });
           if (!error && data?.mapping) {
-            setMapping(data.mapping as Mapping);
-            setUnmapped(data.unmapped ?? []);
+            // AI result never loses a field the alias map already resolved.
+            const aiMap = data.mapping as Mapping;
+            const merged: Mapping = { ...naive };
+            for (const f of TARGET_FIELDS) {
+              const col = aiMap[f];
+              if (col && headers.includes(col)) merged[f] = col;
+            }
+            const used = Object.values(merged).filter(Boolean) as string[];
+            setMapping(merged);
+            setUnmapped(headers.filter((h) => !used.includes(h)));
             setAiReasoning(data.reasoning ?? "");
           }
         } catch (e) {

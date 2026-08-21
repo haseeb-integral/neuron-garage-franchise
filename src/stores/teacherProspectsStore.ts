@@ -2,11 +2,16 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { SourceFilter } from "@/lib/teacherSourceLabels";
 
+/** Manus enrichment signal filter. */
+export type SignalFilter = "all" | "creator" | "secondary" | "has_phone";
+
 interface TeacherProspectsState {
   search: string;
   /** Empty array = "All cities". Length ≥ 1 = active multi-select. */
   cityFilters: string[];
   sourceFilter: SourceFilter;
+  /** Manus signal filter: all | creator | secondary | has_phone */
+  signalFilter: SignalFilter;
   hideInOutreach: boolean;
   page: number;
   pageSize: number;
@@ -17,6 +22,7 @@ interface TeacherProspectsState {
   removeCityFilter: (v: string) => void;
   clearCityFilters: () => void;
   setSourceFilter: (v: SourceFilter) => void;
+  setSignalFilter: (v: SignalFilter) => void;
   setHideInOutreach: (v: boolean) => void;
   setPage: (n: number) => void;
   setPageSize: (n: number) => void;
@@ -28,6 +34,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
       search: "",
       cityFilters: [],
       sourceFilter: "all",
+      signalFilter: "all",
       hideInOutreach: false,
       page: 1,
       pageSize: 25,
@@ -39,6 +46,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
         set((s) => ({ cityFilters: s.cityFilters.filter((c) => c !== v), page: 1 })),
       clearCityFilters: () => set({ cityFilters: [], page: 1 }),
       setSourceFilter: (v) => set({ sourceFilter: v, page: 1 }),
+      setSignalFilter: (v) => set({ signalFilter: v, page: 1 }),
       setHideInOutreach: (v) => set({ hideInOutreach: v, page: 1 }),
       setPage: (n) => set({ page: n }),
       setPageSize: (n) => set({ pageSize: n, page: 1 }),
@@ -66,6 +74,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
         search: s.search,
         // cityFilters intentionally NOT persisted — Teacher Search should start with no city scope.
         sourceFilter: s.sourceFilter,
+        signalFilter: s.signalFilter,
         hideInOutreach: s.hideInOutreach,
         pageSize: s.pageSize,
       }),

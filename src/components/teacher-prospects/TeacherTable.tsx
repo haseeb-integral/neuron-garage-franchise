@@ -202,6 +202,20 @@ export function TeacherTable({
                     )}
                   </td>
                   <td className={cellCls}>
+                    {(() => {
+                      const chips: React.ReactNode[] = [];
+                      if ((p.verifiedFactCount ?? 0) > 0)
+                        chips.push(<span key="v" title={`${p.verifiedFactCount} verified enrichment facts${p.verifiedSignalTypes?.length ? `: ${p.verifiedSignalTypes.join(", ")}` : ""}`} className="inline-flex items-center gap-1 rounded-full bg-[#dcfce7] px-1.5 py-0.5 text-[10px] font-bold text-[#0a8f5a]"><BadgeCheck size={10} />{p.verifiedFactCount}</span>);
+                      if ((p.creatorSignalCount ?? 0) > 0)
+                        chips.push(<span key="c" title={`${p.creatorSignalCount} verified creator signals`} className="inline-flex items-center gap-1 rounded-full bg-[#eef4ff] px-1.5 py-0.5 text-[10px] font-bold text-[#174be8]"><Sparkles size={10} />{p.creatorSignalCount}</span>);
+                      if ((p.secondarySignalCount ?? 0) > 0)
+                        chips.push(<span key="s" title={`${p.secondarySignalCount} side-business signals${p.secondarySignalConfidence ? ` (confidence: ${p.secondarySignalConfidence})` : ""}`} className="inline-flex items-center gap-1 rounded-full bg-[#fef3c7] px-1.5 py-0.5 text-[10px] font-bold text-[#92400e]"><Store size={10} />{p.secondarySignalCount}</span>);
+                      if (p.phone)
+                        chips.push(<span key="p" title={p.phone} className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#34445f]"><Phone size={10} /></span>);
+                      return chips.length ? <div className="flex flex-wrap items-center gap-1">{chips}</div> : <span className="text-[#cdd5e0]">—</span>;
+                    })()}
+                  </td>
+                  <td className={cellCls}>
                     <div className="flex items-center gap-1.5">
                       <SourceBadge badge={badge} />
                       {isPromoted && (() => {

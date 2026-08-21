@@ -305,7 +305,7 @@ export function TeacherTable({
               );
             })}
             {prospects.length === 0 && !loading && (
-              <tr><td colSpan={9} className="py-10 text-center text-[#8794ab]">No prospects match your filters.</td></tr>
+              <tr><td colSpan={10} className="py-10 text-center text-[#8794ab]">No prospects match your filters.</td></tr>
             )}
           </tbody>
         </table>

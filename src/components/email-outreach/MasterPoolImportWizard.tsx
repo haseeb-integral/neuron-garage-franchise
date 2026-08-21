@@ -58,36 +58,55 @@ type Mapping = Partial<Record<TargetField, string | null>>;
 
 interface SLCampaign { id: string; name: string; status?: string }
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const norm = (s: string) =>
+  s.replace(/^\uFEFF/, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
 /** Known Manus / common CSV header names for each target field. */
 const HEADER_ALIASES: Partial<Record<TargetField, string[]>> = {
-  email: ["work_email", "email_address", "teacher_email", "personal_email"],
-  name: ["full_name", "teacher_name"],
-  first_name: ["firstname", "given_name"],
-  last_name: ["lastname", "surname", "family_name"],
-  grade: ["grade_level", "grades", "grade_band"],
-  phone: ["phone_number", "mobile", "cell", "telephone"],
-  school: ["school_name", "campus"],
+  email: ["work_email", "email_address", "teacher_email", "personal_email", "e_mail"],
+  name: ["full_name", "teacher_name", "display_name"],
+  first_name: ["firstname", "given_name", "fname"],
+  last_name: ["lastname", "surname", "family_name", "lname"],
+  grade: ["grade_level", "grades", "grade_band", "grade_taught"],
+  phone: ["phone_number", "mobile", "cell", "telephone", "phone1"],
+  school: ["school_name", "campus", "company_name"],
   district: ["district_name", "school_district"],
-  linkedin_url: ["linkedin", "linkedin_profile"],
-  subject: ["subjects", "subject_area"],
-  notes: ["note", "comments"],
-  dedupe_key: ["manus_dedupe_key"],
-  outreach_status: ["status"],
+  linkedin_url: ["linkedin", "linkedin_profile", "linkedin_profile_url"],
+  subject: ["subjects", "subject_area", "subject_taught"],
+  notes: ["note", "comments", "comment"],
+  dedupe_key: ["manus_dedupe_key", "dedupekey", "unique_key", "row_key"],
+  outreach_status: ["status", "outreach_state", "contact_status"],
+  record_added_at: ["added_at", "date_added", "created_at", "record_date"],
+  teacher_type: [
+    "teacher_type", "teachertype", "educator_type", "role_type", "role",
+    "employment_type", "position_type", "type",
+  ],
+  experience_years: [
+    "experience", "experience_years", "years_experience", "years_of_experience",
+    "teaching_experience", "yrs_experience", "years_teaching", "tenure_years",
+  ],
 };
 
-/** Build a header mapping from exact names + known aliases. */
+/** Build a header mapping from exact names + known aliases (no double-use). */
 const aliasMap = (headers: string[]): Mapping => {
   const out: Mapping = {};
+  const taken = new Set<string>();
+  // Pass 1: exact header-name match wins.
   for (const f of TARGET_FIELDS) {
-    const candidates = [f, f.replace(/_/g, ""), ...(HEADER_ALIASES[f] ?? [])].map(norm);
-    const m = headers.find((h) => candidates.includes(norm(h)));
-    if (m) out[f] = m;
+    const m = headers.find((h) => !taken.has(h) && norm(h) === norm(f));
+    if (m) { out[f] = m; taken.add(m); }
+  }
+  // Pass 2: alias match on whatever is left.
+  for (const f of TARGET_FIELDS) {
+    if (out[f]) continue;
+    const candidates = [f.replace(/_/g, ""), ...(HEADER_ALIASES[f] ?? [])].map(norm);
+    const m = headers.find((h) => !taken.has(h) && candidates.includes(norm(h)));
+    if (m) { out[f] = m; taken.add(m); }
   }
   return out;
 };
+
 
 export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: boolean; onClose: () => void; onComplete?: () => void }) {
   const [step, setStep] = useState<Step>(1);

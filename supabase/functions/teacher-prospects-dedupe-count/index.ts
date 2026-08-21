@@ -23,7 +23,14 @@ const ENRICHABLE_COLUMNS = [
   "teacher_type",
   "experience_years",
   "linkedin_url",
+  "phone",
+  "notes",
+  "outreach_status_source",
+  "record_added_at",
 ] as const;
+
+const SELECT_COLUMNS = `id, dedupe_key, manus_dedupe_key, ${ENRICHABLE_COLUMNS.join(", ")}`;
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

@@ -34,7 +34,11 @@ const TARGET_FIELDS = [
 type TargetField = (typeof TARGET_FIELDS)[number];
 
 /** Split a Manus pipe-delimited cell into trimmed parts. */
+/** Keep select strings out of the type-level parser (build speed). */
+const sel = (s: string): string => s;
+
 const pipeList = (v: string | null | undefined): string[] =>
+
   (v ?? "").split("|").map((s) => s.trim()).filter(Boolean);
 
 type EvidenceRow = {

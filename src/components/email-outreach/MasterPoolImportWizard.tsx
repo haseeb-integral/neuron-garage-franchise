@@ -145,12 +145,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   };
 
   /* ---------- Shared helpers ---------- */
-  // Mirrors the generated `dedupe_key` column on teacher_prospects.
+  // Match key. Manus's own dedupe_key wins, then email, then name+city+state
+  // (which mirrors the generated `dedupe_key` column on teacher_prospects).
   const dedupeKeyForRow = (row: Record<string, string>): string => {
     const get = (f: TargetField) => {
       const col = mapping[f];
       return col ? (row[col] ?? "").trim() : "";
     };
+    const manus = get("dedupe_key");
+    if (manus) return `manus:${manus}`;
     const email = get("email").toLowerCase();
     if (email) return `email:${email}`;
     const cityV = (mapping.city ? get("city") : defaultCity).trim().toLowerCase();
@@ -158,11 +161,23 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     return `name:${get("first_name").toLowerCase()}|${get("last_name").toLowerCase()}||${stateV}|${cityV}`;
   };
 
-  // Fields we can write onto an existing record (phone has no column today).
-  const ENRICHABLE: TargetField[] = [
+  // DB columns we can write onto an existing record, honouring the conflict mode.
+  const ENRICHABLE: string[] = [
     "name", "first_name", "last_name", "email", "school", "district",
-    "city", "state", "grade", "subject", "teacher_type", "experience_years", "linkedin_url",
+    "city", "state", "grade", "subject", "teacher_type", "experience_years",
+    "linkedin_url", "phone", "notes", "outreach_status_source", "record_added_at",
   ];
+
+  // Manus-authoritative columns: always refreshed from the file when present,
+  // because they are counts/labels owned by the exporter, not hand-edited data.
+  const ALWAYS_WRITE: string[] = [
+    "manus_dedupe_key",
+    "verified_enrichment_fact_count", "verified_enrichment_signal_types",
+    "verified_creator_signal_count", "secondary_signal_count",
+    "secondary_signal_confidence", "secondary_signal_match_basis",
+  ];
+
+
 
   /* ---------- Step 3: QA preview ---------- */
   const computeQa = async () => {

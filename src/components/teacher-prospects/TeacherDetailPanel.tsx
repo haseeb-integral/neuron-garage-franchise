@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TeacherProspect } from "@/data/teacherData";
 import { FitScoreBadge } from "./FitScoreBadge";
+import { TeacherEvidenceSection } from "./TeacherEvidenceSection";
 import { Link2 as Linkedin, Mail, Phone, GraduationCap, Calendar, X, Plus, Sparkles, MapPin, MailPlus, UserX, Check, Loader2 } from "lucide-react";
 
 interface Props {
@@ -126,6 +127,8 @@ export function TeacherDetailPanel({ prospect, onClose, onUpdate, onPromote, onM
               {prospect.district && <div className="text-xs text-[#526078]"><span className="font-semibold text-[#07142f]">District:</span> {prospect.district}</div>}
             </div>
           </section>
+
+          <TeacherEvidenceSection prospect={prospect} />
 
           <section className="rounded-xl border border-[#e7edf5] bg-white p-4">
             <div className="mb-2 flex items-center justify-between">

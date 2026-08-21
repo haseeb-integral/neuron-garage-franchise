@@ -3,15 +3,24 @@ import { sourceKeyFor, sourceLabelFor } from "@/lib/teacherSourceLabels";
 
 const CSV_HEADERS = [
   "Name", "Title", "School", "School URL", "District", "Grade", "City", "State",
-  "Email", "LinkedIn", "Source", "Verification", "Needs Email Enrichment", "Tags", "Notes",
+  "Email", "Phone", "LinkedIn", "Source", "Verification", "Needs Email Enrichment",
+  "Verified Fact Count", "Verified Signal Types", "Creator Signal Count",
+  "Secondary Signal Count", "Secondary Confidence", "Secondary Match Basis",
+  "Tags", "Notes",
 ];
 
 const rowToCsvCells = (p: TeacherProspect) => [
   p.name, p.title ?? "", p.school, p.schoolUrl ?? "", p.district ?? "", p.gradeRaw ?? "",
-  p.city, p.state, p.email, p.linkedinUrl ?? "",
+  p.city, p.state, p.email, p.phone ?? "", p.linkedinUrl ?? "",
   sourceLabelFor(sourceKeyFor(p.enrichmentSource)),
   p.verificationStatus ?? "",
   p.needsEmailEnrichment ? "Yes" : "No",
+  p.verifiedFactCount ?? 0,
+  (p.verifiedSignalTypes ?? []).join("; "),
+  p.creatorSignalCount ?? 0,
+  p.secondarySignalCount ?? 0,
+  p.secondarySignalConfidence ?? "",
+  p.secondarySignalMatchBasis ?? "",
   (p.tags ?? []).join("; "),
   p.notes ?? "",
 ];

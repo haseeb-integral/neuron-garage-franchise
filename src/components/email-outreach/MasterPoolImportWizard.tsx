@@ -356,41 +356,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       }).select("id").single();
       if (bErr || !batch) throw new Error(bErr?.message ?? "batch insert failed");
 
-      type Prepared = {
-        key: string;
-        values: Record<string, unknown>;   // only fields present in the CSV
-        rawUnmapped: Record<string, string>;
-        email: string | null;
-      };
+      const prepared = csvRows.map(buildRow).filter(Boolean) as Prepared[];
 
-      const prepared = csvRows.map((r): Prepared | null => {
-        const get = (f: TargetField): string | null => {
-          const col = mapping[f]; if (!col) return null;
-          const v = (r[col] ?? "").trim(); return v === "" ? null : v;
-        };
-        const rawUnmapped: Record<string, string> = {};
-        for (const col of unmapped) if (r[col]) rawUnmapped[col] = r[col];
-        const email = (get("email") ?? "").toLowerCase() || null;
-        const city = get("city") ?? (defaultCity || null);
-        const state = get("state") ?? (defaultState || null);
-        if (!city || !state) return null;
-        const exp = get("experience_years");
-        const values: Record<string, unknown> = {
-          first_name: get("first_name"),
-          last_name: get("last_name"),
-          name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
-          email,
-          school: get("school"),
-          district: get("district"),
-          city, state,
-          grade: get("grade"),
-          subject: get("subject"),
-          teacher_type: get("teacher_type"),
-          experience_years: exp && /^\d+$/.test(exp) ? parseInt(exp, 10) : null,
-          linkedin_url: get("linkedin_url"),
-        };
-        return { key: dedupeKeyForRow(r), values, rawUnmapped, email };
-      }).filter(Boolean) as Prepared[];
 
       // ---- Split: rows that match an existing teacher vs brand new rows ----
       const enrichEnabled = importMode !== "add_only";

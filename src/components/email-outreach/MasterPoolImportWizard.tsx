@@ -226,10 +226,12 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       manus_dedupe_key: get("dedupe_key"),
       outreach_status_source: get("outreach_status"),
       record_added_at: addedAt && !Number.isNaN(Date.parse(addedAt)) ? new Date(addedAt).toISOString() : null,
-      verified_enrichment_fact_count: num("verified_enrichment_fact_count"),
-      verified_enrichment_signal_types: get("verified_enrichment_signal_types"),
-      verified_creator_signal_count: num("verified_creator_signal_count"),
-      secondary_signal_count: num("secondary_signal_count"),
+      verified_enrichment_fact_count: num("verified_enrichment_fact_count") ?? 0,
+      verified_enrichment_signal_types: pipeList(get("verified_enrichment_signal_types")).length
+        ? pipeList(get("verified_enrichment_signal_types"))
+        : null,
+      verified_creator_signal_count: num("verified_creator_signal_count") ?? 0,
+      secondary_signal_count: num("secondary_signal_count") ?? 0,
       secondary_signal_confidence: get("secondary_signal_confidence"),
       secondary_signal_match_basis: get("secondary_signal_match_basis"),
     };

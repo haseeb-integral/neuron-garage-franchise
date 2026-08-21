@@ -64,36 +64,65 @@ Deno.serve(async (req) => {
 
     sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { prepare: false });
 
+    // Keys prefixed with "manus:" match the exporter's own dedupe_key, which we
+    // store in manus_dedupe_key (teacher_prospects.dedupe_key is generated).
+    const manusKeys = dedupeKeys.filter((k) => k.startsWith("manus:")).map((k) => k.slice(6));
+    const plainKeys = dedupeKeys.filter((k) => !k.startsWith("manus:"));
+
     if (!withMatches) {
-      const arrayLiteral = `{${dedupeKeys.map(escapePgArrayValue).join(",")}}`;
-      const result = await sql`
-        select count(*)::int as existing_count
-        from public.teacher_prospects
-        where dedupe_key = any(${arrayLiteral}::text[])
-      `;
-      return json({ existing_count: result[0]?.existing_count ?? 0, matches: [] });
+      let count = 0;
+      if (plainKeys.length) {
+        const lit = `{${plainKeys.map(escapePgArrayValue).join(",")}}`;
+        const r = await sql`
+          select count(*)::int as c from public.teacher_prospects
+          where dedupe_key = any(${lit}::text[])
+        `;
+        count += r[0]?.c ?? 0;
+      }
+      if (manusKeys.length) {
+        const lit = `{${manusKeys.map(escapePgArrayValue).join(",")}}`;
+        const r = await sql`
+          select count(*)::int as c from public.teacher_prospects
+          where manus_dedupe_key = any(${lit}::text[])
+        `;
+        count += r[0]?.c ?? 0;
+      }
+      return json({ existing_count: count, matches: [] });
     }
 
     // Chunk so a very large CSV doesn't build one giant array literal.
     const CHUNK = 5000;
     const matches: Array<{ dedupe_key: string; id: string; empty_fields: string[] }> = [];
-    for (let i = 0; i < dedupeKeys.length; i += CHUNK) {
-      const slice = dedupeKeys.slice(i, i + CHUNK);
-      const arrayLiteral = `{${slice.map(escapePgArrayValue).join(",")}}`;
-      const rows = await sql`
-        select id, dedupe_key, name, first_name, last_name, email, school, district,
-               city, state, grade, subject, teacher_type, experience_years, linkedin_url
-        from public.teacher_prospects
-        where dedupe_key = any(${arrayLiteral}::text[])
-      `;
+
+    const collect = (rows: readonly Record<string, unknown>[], useManus: boolean) => {
       for (const row of rows) {
         const empty: string[] = [];
         for (const col of ENRICHABLE_COLUMNS) {
-          const v = (row as Record<string, unknown>)[col];
+          const v = row[col];
           if (v === null || v === undefined || (typeof v === "string" && v.trim() === "")) empty.push(col);
         }
-        matches.push({ dedupe_key: String(row.dedupe_key), id: String(row.id), empty_fields: empty });
+        const key = useManus ? `manus:${String(row.manus_dedupe_key)}` : String(row.dedupe_key);
+        matches.push({ dedupe_key: key, id: String(row.id), empty_fields: empty });
       }
+    };
+
+    for (let i = 0; i < plainKeys.length; i += CHUNK) {
+      const lit = `{${plainKeys.slice(i, i + CHUNK).map(escapePgArrayValue).join(",")}}`;
+      const rows = await sql`
+        select ${sql.unsafe(SELECT_COLUMNS)}
+        from public.teacher_prospects
+        where dedupe_key = any(${lit}::text[])
+      `;
+      collect(rows as unknown as Record<string, unknown>[], false);
+    }
+    for (let i = 0; i < manusKeys.length; i += CHUNK) {
+      const lit = `{${manusKeys.slice(i, i + CHUNK).map(escapePgArrayValue).join(",")}}`;
+      const rows = await sql`
+        select ${sql.unsafe(SELECT_COLUMNS)}
+        from public.teacher_prospects
+        where manus_dedupe_key = any(${lit}::text[])
+      `;
+      collect(rows as unknown as Record<string, unknown>[], true);
     }
 
     return json({ existing_count: matches.length, matches });
@@ -102,6 +131,7 @@ Deno.serve(async (req) => {
   } finally {
     await sql?.end({ timeout: 1 }).catch(() => undefined);
   }
+
 });
 
 function escapePgArrayValue(value: string) {

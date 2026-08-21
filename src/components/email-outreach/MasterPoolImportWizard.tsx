@@ -841,6 +841,10 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                     {importResult.enriched > 0 && (
                       <div className="text-sm font-bold text-[#15803d]">Enriched {importResult.enriched.toLocaleString()} existing {importResult.enriched === 1 ? "teacher" : "teachers"}</div>
                     )}
+                    {importResult.evidence > 0 && (
+                      <div className="text-xs text-[#0d3aa8]">Saved {importResult.evidence.toLocaleString()} evidence link{importResult.evidence === 1 ? "" : "s"} (verified creator + secondary signals).</div>
+                    )}
+
                     {importResult.skipped > 0 && (
                       <div className="text-xs text-[#526078]">Skipped {importResult.skipped.toLocaleString()} duplicate {importResult.skipped === 1 ? "row" : "rows"} (already in Master Pool or repeated in the file).</div>
                     )}

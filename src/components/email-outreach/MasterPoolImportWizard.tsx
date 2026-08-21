@@ -496,7 +496,86 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             if (i % 100 === 0) toast.loading(`Enriching existing records… ${enriched.toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
           }
         }
+
+        // ---- Evidence rows (verified creator + secondary signals) ----
+        const withEvidence = prepared.filter((p) => p.evidence.length);
+        if (withEvidence.length) {
+          toast.loading("Saving evidence links…", { id: tId });
+          const evidenceByKey = new Map<string, EvidenceRow[]>();
+          for (const p of withEvidence) if (!evidenceByKey.has(p.key)) evidenceByKey.set(p.key, p.evidence);
+
+          // teacher id per key: enriched rows are known, new rows are read back.
+          const idByKey = new Map<string, string>();
+          for (const p of toEnrich) {
+            const m = matchMap.get(p.key);
+            if (m) idByKey.set(p.key, m.id);
+          }
+          if (inserted > 0) {
+            const { data: freshRows } = await supabase
+              .from("teacher_prospects")
+              .select("id, manus_dedupe_key, email, first_name, last_name, city, state")
+              .eq("import_batch_id", batch.id)
+              .limit(50000);
+            for (const r of freshRows ?? []) {
+              const k = r.manus_dedupe_key
+                ? `manus:${r.manus_dedupe_key}`
+                : r.email
+                  ? `email:${String(r.email).toLowerCase()}`
+                  : `name:${(r.first_name ?? "").toLowerCase()}|${(r.last_name ?? "").toLowerCase()}||${(r.state ?? "").toLowerCase()}|${(r.city ?? "").toLowerCase()}`;
+              if (!idByKey.has(k)) idByKey.set(k, String(r.id));
+            }
+          }
+
+          const evRows: Array<Record<string, unknown>> = [];
+          for (const [k, list] of evidenceByKey) {
+            const teacherId = idByKey.get(k);
+            if (!teacherId) continue;
+            for (const e of list) {
+              evRows.push({
+                teacher_prospect_id: teacherId,
+                evidence_class: e.evidence_class,
+                signal_type: e.signal_type,
+                summary: e.summary,
+                source_url: e.source_url,
+                source_label: e.source_label,
+                confidence: e.confidence,
+                match_basis: e.match_basis,
+                import_batch_id: batch.id,
+              });
+            }
+          }
+
+          // Drop rows we already have (same teacher + class + url/summary).
+          if (evRows.length) {
+            const teacherIds = Array.from(new Set(evRows.map((r) => r.teacher_prospect_id as string)));
+            const existingEv = new Set<string>();
+            const EV_ID_CHUNK = 300;
+            for (let i = 0; i < teacherIds.length; i += EV_ID_CHUNK) {
+              const { data: exEv } = await supabase
+                .from("teacher_evidence")
+                .select("teacher_prospect_id, evidence_class, source_url, summary")
+                .in("teacher_prospect_id", teacherIds.slice(i, i + EV_ID_CHUNK));
+              for (const r of exEv ?? []) {
+                existingEv.add(`${r.teacher_prospect_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`);
+              }
+            }
+            const fresh = evRows.filter(
+              (r) => !existingEv.has(`${r.teacher_prospect_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`),
+            );
+            const EV_CHUNK = 500;
+            for (let i = 0; i < fresh.length; i += EV_CHUNK) {
+              const { error: evErr } = await supabase
+                .from("teacher_evidence")
+                .insert(fresh.slice(i, i + EV_CHUNK) as never);
+              if (evErr && !/duplicate key|unique constraint/i.test(evErr.message)) {
+                throw new Error(`evidence insert failed: ${evErr.message}`);
+              }
+            }
+            evidenceSaved = fresh.length;
+          }
+        }
       } catch (e) {
+
         await supabase.from("teacher_import_batches")
           .update({ status: "failed", approved_count: inserted, record_count: prepared.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, enriched_before_failure: enriched, skipped_duplicates: totalSkipped } })
           .eq("id", batch.id);

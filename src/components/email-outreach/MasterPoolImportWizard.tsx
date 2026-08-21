@@ -22,8 +22,35 @@ const TARGET_FIELDS = [
   "first_name", "last_name", "name", "email", "school", "district",
   "city", "state", "grade", "subject", "teacher_type", "experience_years",
   "linkedin_url", "phone",
+  // Manus City / Metro export — roster extras
+  "dedupe_key", "record_added_at", "outreach_status", "notes",
+  // Manus City / Metro export — verified enrichment
+  "verified_enrichment_fact_count", "verified_enrichment_signal_types",
+  "verified_creator_signal_count", "verified_creator_summary", "verified_creator_source_urls",
+  // Manus City / Metro export — secondary (lower confidence) signals
+  "secondary_signal_count", "secondary_signal_sources", "secondary_signal_details",
+  "secondary_signal_source_urls", "secondary_signal_confidence", "secondary_signal_match_basis",
 ] as const;
 type TargetField = (typeof TARGET_FIELDS)[number];
+
+/** Split a Manus pipe-delimited cell into trimmed parts. */
+/** Keep select strings out of the type-level parser (build speed). */
+const sel = (s: string): string => s;
+
+const pipeList = (v: string | null | undefined): string[] =>
+
+  (v ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+
+type EvidenceRow = {
+  evidence_class: "verified_creator" | "secondary";
+  signal_type: string | null;
+  summary: string | null;
+  source_url: string | null;
+  source_label: string | null;
+  confidence: string | null;
+  match_basis: string | null;
+};
+
 
 const REQUIRED: TargetField[] = ["state", "city"]; // teacher_prospects requires city+state NOT NULL
 
@@ -58,7 +85,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [qaPhase, setQaPhase] = useState<string>("");
   // Step 4
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ inserted: number; enriched: number; skipped: number; batch_id: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ inserted: number; enriched: number; skipped: number; evidence: number; batch_id: string } | null>(null);
   // Step 5
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [destCampaignId, setDestCampaignId] = useState("");
@@ -122,12 +149,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   };
 
   /* ---------- Shared helpers ---------- */
-  // Mirrors the generated `dedupe_key` column on teacher_prospects.
+  // Match key. Manus's own dedupe_key wins, then email, then name+city+state
+  // (which mirrors the generated `dedupe_key` column on teacher_prospects).
   const dedupeKeyForRow = (row: Record<string, string>): string => {
     const get = (f: TargetField) => {
       const col = mapping[f];
       return col ? (row[col] ?? "").trim() : "";
     };
+    const manus = get("dedupe_key");
+    if (manus) return `manus:${manus}`;
     const email = get("email").toLowerCase();
     if (email) return `email:${email}`;
     const cityV = (mapping.city ? get("city") : defaultCity).trim().toLowerCase();
@@ -135,11 +165,110 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     return `name:${get("first_name").toLowerCase()}|${get("last_name").toLowerCase()}||${stateV}|${cityV}`;
   };
 
-  // Fields we can write onto an existing record (phone has no column today).
-  const ENRICHABLE: TargetField[] = [
+  // DB columns we can write onto an existing record, honouring the conflict mode.
+  const ENRICHABLE: string[] = [
     "name", "first_name", "last_name", "email", "school", "district",
-    "city", "state", "grade", "subject", "teacher_type", "experience_years", "linkedin_url",
+    "city", "state", "grade", "subject", "teacher_type", "experience_years",
+    "linkedin_url", "phone", "notes", "outreach_status_source", "record_added_at",
   ];
+
+  // Manus-authoritative columns: always refreshed from the file when present,
+  // because they are counts/labels owned by the exporter, not hand-edited data.
+  const ALWAYS_WRITE: string[] = [
+    "manus_dedupe_key",
+    "verified_enrichment_fact_count", "verified_enrichment_signal_types",
+    "verified_creator_signal_count", "secondary_signal_count",
+    "secondary_signal_confidence", "secondary_signal_match_basis",
+  ];
+
+  type Prepared = {
+    key: string;
+    values: Record<string, unknown>;   // DB column → value (only what the CSV has)
+    evidence: EvidenceRow[];
+    rawUnmapped: Record<string, string>;
+    email: string | null;
+  };
+
+  /** Turn one CSV row into DB values + evidence rows. Null = missing city/state. */
+  const buildRow = (r: Record<string, string>): Prepared | null => {
+    const get = (f: TargetField): string | null => {
+      const col = mapping[f]; if (!col) return null;
+      const v = (r[col] ?? "").trim(); return v === "" ? null : v;
+    };
+    const num = (f: TargetField): number | null => {
+      const v = get(f); if (!v) return null;
+      const n = parseInt(v.replace(/[^\d-]/g, ""), 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    const rawUnmapped: Record<string, string> = {};
+    for (const col of unmapped) if (r[col]) rawUnmapped[col] = r[col];
+    const email = (get("email") ?? "").toLowerCase() || null;
+    const city = get("city") ?? (defaultCity || null);
+    const state = get("state") ?? (defaultState || null);
+    if (!city || !state) return null;
+
+    const addedAt = get("record_added_at");
+    const values: Record<string, unknown> = {
+      first_name: get("first_name"),
+      last_name: get("last_name"),
+      name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
+      email,
+      school: get("school"),
+      district: get("district"),
+      city, state,
+      grade: get("grade"),
+      subject: get("subject"),
+      teacher_type: get("teacher_type"),
+      experience_years: num("experience_years"),
+      linkedin_url: get("linkedin_url"),
+      phone: get("phone"),
+      notes: get("notes"),
+      manus_dedupe_key: get("dedupe_key"),
+      outreach_status_source: get("outreach_status"),
+      record_added_at: addedAt && !Number.isNaN(Date.parse(addedAt)) ? new Date(addedAt).toISOString() : null,
+      verified_enrichment_fact_count: num("verified_enrichment_fact_count"),
+      verified_enrichment_signal_types: get("verified_enrichment_signal_types"),
+      verified_creator_signal_count: num("verified_creator_signal_count"),
+      secondary_signal_count: num("secondary_signal_count"),
+      secondary_signal_confidence: get("secondary_signal_confidence"),
+      secondary_signal_match_basis: get("secondary_signal_match_basis"),
+    };
+
+    // ---- Evidence rows (kept out of the flat record on purpose) ----
+    const evidence: EvidenceRow[] = [];
+    const creatorSummaries = pipeList(get("verified_creator_summary"));
+    const creatorUrls = pipeList(get("verified_creator_source_urls"));
+    const creatorLen = Math.max(creatorSummaries.length, creatorUrls.length);
+    for (let i = 0; i < creatorLen; i++) {
+      evidence.push({
+        evidence_class: "verified_creator",
+        signal_type: get("verified_enrichment_signal_types"),
+        summary: creatorSummaries[i] ?? null,
+        source_url: creatorUrls[i] ?? null,
+        source_label: null,
+        confidence: "verified",
+        match_basis: null,
+      });
+    }
+    const secSources = pipeList(get("secondary_signal_sources"));
+    const secDetails = pipeList(get("secondary_signal_details"));
+    const secUrls = pipeList(get("secondary_signal_source_urls"));
+    const secLen = Math.max(secSources.length, secDetails.length, secUrls.length);
+    for (let i = 0; i < secLen; i++) {
+      evidence.push({
+        evidence_class: "secondary",
+        signal_type: secSources[i] ?? null,
+        summary: secDetails[i] ?? null,
+        source_url: secUrls[i] ?? null,
+        source_label: secSources[i] ?? null,
+        confidence: get("secondary_signal_confidence"),
+        match_basis: get("secondary_signal_match_basis"),
+      });
+    }
+
+    return { key: dedupeKeyForRow(r), values, evidence, rawUnmapped, email };
+  };
+
 
   /* ---------- Step 3: QA preview ---------- */
   const computeQa = async () => {
@@ -186,15 +315,20 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         for (const row of csvRows) {
           const match = map.get(dedupeKeyForRow(row));
           if (!match) continue;
+          const p = buildRow(row);
+          if (!p) continue;
           for (const f of ENRICHABLE) {
-            const col = mapping[f];
-            if (!col) continue;
-            const v = (row[col] ?? "").trim();
-            if (!v) continue;
+            const v = p.values[f];
+            if (v === null || v === undefined || v === "") continue;
             if (conflictMode === "overwrite" || match.empty_fields.includes(f)) fieldsToFill++;
+          }
+          for (const f of ALWAYS_WRITE) {
+            const v = p.values[f];
+            if (v !== null && v !== undefined && v !== "") fieldsToFill++;
           }
         }
       }
+
 
       setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
@@ -226,41 +360,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       }).select("id").single();
       if (bErr || !batch) throw new Error(bErr?.message ?? "batch insert failed");
 
-      type Prepared = {
-        key: string;
-        values: Record<string, unknown>;   // only fields present in the CSV
-        rawUnmapped: Record<string, string>;
-        email: string | null;
-      };
+      const prepared = csvRows.map(buildRow).filter(Boolean) as Prepared[];
 
-      const prepared = csvRows.map((r): Prepared | null => {
-        const get = (f: TargetField): string | null => {
-          const col = mapping[f]; if (!col) return null;
-          const v = (r[col] ?? "").trim(); return v === "" ? null : v;
-        };
-        const rawUnmapped: Record<string, string> = {};
-        for (const col of unmapped) if (r[col]) rawUnmapped[col] = r[col];
-        const email = (get("email") ?? "").toLowerCase() || null;
-        const city = get("city") ?? (defaultCity || null);
-        const state = get("state") ?? (defaultState || null);
-        if (!city || !state) return null;
-        const exp = get("experience_years");
-        const values: Record<string, unknown> = {
-          first_name: get("first_name"),
-          last_name: get("last_name"),
-          name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
-          email,
-          school: get("school"),
-          district: get("district"),
-          city, state,
-          grade: get("grade"),
-          subject: get("subject"),
-          teacher_type: get("teacher_type"),
-          experience_years: exp && /^\d+$/.test(exp) ? parseInt(exp, 10) : null,
-          linkedin_url: get("linkedin_url"),
-        };
-        return { key: dedupeKeyForRow(r), values, rawUnmapped, email };
-      }).filter(Boolean) as Prepared[];
 
       // ---- Split: rows that match an existing teacher vs brand new rows ----
       const enrichEnabled = importMode !== "add_only";
@@ -318,6 +419,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       const totalChunks = Math.max(1, Math.ceil(rowsToInsert.length / CHUNK));
       const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} new rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped)` : ""}`);
       let inserted = 0;
+      let evidenceSaved = 0;
+
       let enriched = 0;
       let skippedConflict = 0;
       try {
@@ -368,6 +471,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               patch[f] = v;
               if (!isEmptyOnRecord) before[f] = "(overwritten)";
             }
+            // Manus-owned columns are always refreshed from the file.
+            for (const f of ALWAYS_WRITE) {
+              const v = p.values[f];
+              if (v === null || v === undefined || v === "") continue;
+              patch[f] = v;
+            }
+
             const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
             const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
             const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
@@ -392,7 +502,89 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             if (i % 100 === 0) toast.loading(`Enriching existing records… ${enriched.toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
           }
         }
+
+        // ---- Evidence rows (verified creator + secondary signals) ----
+        const withEvidence = prepared.filter((p) => p.evidence.length);
+        if (withEvidence.length) {
+          toast.loading("Saving evidence links…", { id: tId });
+          const evidenceByKey = new Map<string, EvidenceRow[]>();
+          for (const p of withEvidence) if (!evidenceByKey.has(p.key)) evidenceByKey.set(p.key, p.evidence);
+
+          // teacher id per key: enriched rows are known, new rows are read back.
+          const idByKey = new Map<string, string>();
+          for (const p of toEnrich) {
+            const m = matchMap.get(p.key);
+            if (m) idByKey.set(p.key, m.id);
+          }
+          if (inserted > 0) {
+            const { data: freshRows } = await supabase
+              .from("teacher_prospects")
+              .select("id, manus_dedupe_key, email, first_name, last_name, city, state")
+              .eq("import_batch_id", batch.id)
+              .limit(50000);
+            for (const r of freshRows ?? []) {
+              const k = r.manus_dedupe_key
+                ? `manus:${r.manus_dedupe_key}`
+                : r.email
+                  ? `email:${String(r.email).toLowerCase()}`
+                  : `name:${(r.first_name ?? "").toLowerCase()}|${(r.last_name ?? "").toLowerCase()}||${(r.state ?? "").toLowerCase()}|${(r.city ?? "").toLowerCase()}`;
+              if (!idByKey.has(k)) idByKey.set(k, String(r.id));
+            }
+          }
+
+          const evRows: Array<Record<string, unknown>> = [];
+          for (const [k, list] of evidenceByKey) {
+            const teacherId = idByKey.get(k);
+            if (!teacherId) continue;
+            for (const e of list) {
+              evRows.push({
+                teacher_id: teacherId,
+                evidence_class: e.evidence_class,
+                signal_type: e.signal_type,
+                summary: e.summary,
+                source_url: e.source_url,
+                source_label: e.source_label,
+                confidence: e.confidence,
+                match_basis: e.match_basis,
+                import_batch_id: batch.id,
+              });
+            }
+          }
+
+          // Drop rows we already have (same teacher + class + url/summary).
+          if (evRows.length) {
+            const teacherIds = Array.from(new Set(evRows.map((r) => r.teacher_id as string)));
+            const existingEv = new Set<string>();
+            const EV_ID_CHUNK = 300;
+            type ExEv = { teacher_id: string; evidence_class: string; source_url: string | null; summary: string | null };
+            for (let i = 0; i < teacherIds.length; i += EV_ID_CHUNK) {
+              const { data: exEv } = await supabase
+                .from("teacher_evidence")
+                .select(sel("teacher_id, evidence_class, source_url, summary"))
+                .in("teacher_id", teacherIds.slice(i, i + EV_ID_CHUNK))
+                .returns<ExEv[]>();
+              for (const r of exEv ?? []) {
+                existingEv.add(`${r.teacher_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`);
+              }
+            }
+            const fresh = evRows.filter(
+              (r) => !existingEv.has(`${r.teacher_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`),
+            );
+            const EV_CHUNK = 500;
+            for (let i = 0; i < fresh.length; i += EV_CHUNK) {
+              const { error: evErr } = await supabase
+                .from("teacher_evidence")
+                .insert(fresh.slice(i, i + EV_CHUNK) as never);
+              if (evErr && !/duplicate key|unique constraint/i.test(evErr.message)) {
+                throw new Error(`evidence insert failed: ${evErr.message}`);
+              }
+            }
+            evidenceSaved += fresh.length;
+          }
+
+        }
       } catch (e) {
+
         await supabase.from("teacher_import_batches")
           .update({ status: "failed", approved_count: inserted, record_count: prepared.length, dedupe_stats: { error: (e as Error).message, inserted_before_failure: inserted, enriched_before_failure: enriched, skipped_duplicates: totalSkipped } })
           .eq("id", batch.id);
@@ -402,10 +594,10 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       const finalSkipped = totalSkipped + skippedConflict;
       await supabase.from("teacher_import_batches")
-        .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, import_mode: importMode, conflict_mode: conflictMode } })
+        .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, evidence_saved: evidenceSaved, import_mode: importMode, conflict_mode: conflictMode } })
         .eq("id", batch.id);
 
-      setImportResult({ inserted, enriched, skipped: finalSkipped, batch_id: batch.id });
+      setImportResult({ inserted, enriched, skipped: finalSkipped, evidence: evidenceSaved, batch_id: batch.id });
       toast.success(`Imported ${inserted.toLocaleString()} new${enriched ? `, enriched ${enriched.toLocaleString()}` : ""}${finalSkipped ? `, skipped ${finalSkipped.toLocaleString()}` : ""}`, { id: tId });
 
 
@@ -649,6 +841,10 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                     {importResult.enriched > 0 && (
                       <div className="text-sm font-bold text-[#15803d]">Enriched {importResult.enriched.toLocaleString()} existing {importResult.enriched === 1 ? "teacher" : "teachers"}</div>
                     )}
+                    {importResult.evidence > 0 && (
+                      <div className="text-xs text-[#0d3aa8]">Saved {importResult.evidence.toLocaleString()} evidence link{importResult.evidence === 1 ? "" : "s"} (verified creator + secondary signals).</div>
+                    )}
+
                     {importResult.skipped > 0 && (
                       <div className="text-xs text-[#526078]">Skipped {importResult.skipped.toLocaleString()} duplicate {importResult.skipped === 1 ? "row" : "rows"} (already in Master Pool or repeated in the file).</div>
                     )}

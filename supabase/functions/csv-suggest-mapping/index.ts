@@ -15,7 +15,13 @@ const TARGET_FIELDS = [
   "first_name", "last_name", "name", "email", "school", "district",
   "city", "state", "grade", "subject", "teacher_type", "experience_years",
   "linkedin_url", "phone",
+  "dedupe_key", "record_added_at", "outreach_status", "notes",
+  "verified_enrichment_fact_count", "verified_enrichment_signal_types",
+  "verified_creator_signal_count", "verified_creator_summary", "verified_creator_source_urls",
+  "secondary_signal_count", "secondary_signal_sources", "secondary_signal_details",
+  "secondary_signal_source_urls", "secondary_signal_confidence", "secondary_signal_match_basis",
 ] as const;
+
 
 const FieldEnum = z.enum(TARGET_FIELDS);
 
@@ -60,9 +66,12 @@ Rules:
 - Only use header strings that appear EXACTLY in the CSV headers list.
 - "name" should only be used if first_name AND last_name cannot be split out; prefer first/last when both exist.
 - "teacher_type" values are: active, retired, camp_enrichment.
+- "dedupe_key" is the exporter's own unique row key (e.g. a Manus dedupe_key column) — never invent it from other columns.
+- Manus City/Metro exports use pipe-delimited evidence columns; map them to the matching verified_* and secondary_signal_* fields.
 - Put every CSV header that did not map into "unmapped".
 - Keep "reasoning" to one short sentence.
 Return JSON.`;
+
 
     const { output } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),

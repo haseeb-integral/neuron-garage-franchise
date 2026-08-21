@@ -2960,6 +2960,56 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_evidence: {
+        Row: {
+          confidence: string | null
+          created_at: string
+          evidence_class: string
+          id: string
+          import_batch_id: string | null
+          match_basis: string | null
+          signal_type: string | null
+          source_label: string | null
+          source_url: string | null
+          summary: string | null
+          teacher_id: string
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string
+          evidence_class: string
+          id?: string
+          import_batch_id?: string | null
+          match_basis?: string | null
+          signal_type?: string | null
+          source_label?: string | null
+          source_url?: string | null
+          summary?: string | null
+          teacher_id: string
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string
+          evidence_class?: string
+          id?: string
+          import_batch_id?: string | null
+          match_basis?: string | null
+          signal_type?: string | null
+          source_label?: string | null
+          source_url?: string | null
+          summary?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_evidence_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_import_batches: {
         Row: {
           approved_count: number
@@ -3040,13 +3090,20 @@ export type Database = {
           mailing_state: string | null
           mailing_street: string | null
           mailing_zip: string | null
+          manus_dedupe_key: string | null
           name: string | null
           needs_email_enrichment: boolean
           notes: string | null
           other_email: string | null
+          outreach_status_source: string | null
+          phone: string | null
           raw: Json | null
+          record_added_at: string | null
           school: string | null
           school_nces_id: string | null
+          secondary_signal_confidence: string | null
+          secondary_signal_count: number
+          secondary_signal_match_basis: string | null
           segment: string | null
           state: string
           status: string
@@ -3056,6 +3113,9 @@ export type Database = {
           updated_at: string
           us_cities_scored_id: string | null
           verification_status: string | null
+          verified_creator_signal_count: number
+          verified_enrichment_fact_count: number
+          verified_enrichment_signal_types: string[] | null
         }
         Insert: {
           apify_run_id?: string | null
@@ -3082,13 +3142,20 @@ export type Database = {
           mailing_state?: string | null
           mailing_street?: string | null
           mailing_zip?: string | null
+          manus_dedupe_key?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
           notes?: string | null
           other_email?: string | null
+          outreach_status_source?: string | null
+          phone?: string | null
           raw?: Json | null
+          record_added_at?: string | null
           school?: string | null
           school_nces_id?: string | null
+          secondary_signal_confidence?: string | null
+          secondary_signal_count?: number
+          secondary_signal_match_basis?: string | null
           segment?: string | null
           state: string
           status?: string
@@ -3098,6 +3165,9 @@ export type Database = {
           updated_at?: string
           us_cities_scored_id?: string | null
           verification_status?: string | null
+          verified_creator_signal_count?: number
+          verified_enrichment_fact_count?: number
+          verified_enrichment_signal_types?: string[] | null
         }
         Update: {
           apify_run_id?: string | null
@@ -3124,13 +3194,20 @@ export type Database = {
           mailing_state?: string | null
           mailing_street?: string | null
           mailing_zip?: string | null
+          manus_dedupe_key?: string | null
           name?: string | null
           needs_email_enrichment?: boolean
           notes?: string | null
           other_email?: string | null
+          outreach_status_source?: string | null
+          phone?: string | null
           raw?: Json | null
+          record_added_at?: string | null
           school?: string | null
           school_nces_id?: string | null
+          secondary_signal_confidence?: string | null
+          secondary_signal_count?: number
+          secondary_signal_match_basis?: string | null
           segment?: string | null
           state?: string
           status?: string
@@ -3140,6 +3217,9 @@ export type Database = {
           updated_at?: string
           us_cities_scored_id?: string | null
           verification_status?: string | null
+          verified_creator_signal_count?: number
+          verified_enrichment_fact_count?: number
+          verified_enrichment_signal_types?: string[] | null
         }
         Relationships: [
           {

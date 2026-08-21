@@ -177,6 +177,93 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     "secondary_signal_confidence", "secondary_signal_match_basis",
   ];
 
+  type Prepared = {
+    key: string;
+    values: Record<string, unknown>;   // DB column → value (only what the CSV has)
+    evidence: EvidenceRow[];
+    rawUnmapped: Record<string, string>;
+    email: string | null;
+  };
+
+  /** Turn one CSV row into DB values + evidence rows. Null = missing city/state. */
+  const buildRow = (r: Record<string, string>): Prepared | null => {
+    const get = (f: TargetField): string | null => {
+      const col = mapping[f]; if (!col) return null;
+      const v = (r[col] ?? "").trim(); return v === "" ? null : v;
+    };
+    const num = (f: TargetField): number | null => {
+      const v = get(f); if (!v) return null;
+      const n = parseInt(v.replace(/[^\d-]/g, ""), 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    const rawUnmapped: Record<string, string> = {};
+    for (const col of unmapped) if (r[col]) rawUnmapped[col] = r[col];
+    const email = (get("email") ?? "").toLowerCase() || null;
+    const city = get("city") ?? (defaultCity || null);
+    const state = get("state") ?? (defaultState || null);
+    if (!city || !state) return null;
+
+    const addedAt = get("record_added_at");
+    const values: Record<string, unknown> = {
+      first_name: get("first_name"),
+      last_name: get("last_name"),
+      name: get("name") ?? ([get("first_name"), get("last_name")].filter(Boolean).join(" ") || null),
+      email,
+      school: get("school"),
+      district: get("district"),
+      city, state,
+      grade: get("grade"),
+      subject: get("subject"),
+      teacher_type: get("teacher_type"),
+      experience_years: num("experience_years"),
+      linkedin_url: get("linkedin_url"),
+      phone: get("phone"),
+      notes: get("notes"),
+      manus_dedupe_key: get("dedupe_key"),
+      outreach_status_source: get("outreach_status"),
+      record_added_at: addedAt && !Number.isNaN(Date.parse(addedAt)) ? new Date(addedAt).toISOString() : null,
+      verified_enrichment_fact_count: num("verified_enrichment_fact_count"),
+      verified_enrichment_signal_types: get("verified_enrichment_signal_types"),
+      verified_creator_signal_count: num("verified_creator_signal_count"),
+      secondary_signal_count: num("secondary_signal_count"),
+      secondary_signal_confidence: get("secondary_signal_confidence"),
+      secondary_signal_match_basis: get("secondary_signal_match_basis"),
+    };
+
+    // ---- Evidence rows (kept out of the flat record on purpose) ----
+    const evidence: EvidenceRow[] = [];
+    const creatorSummaries = pipeList(get("verified_creator_summary"));
+    const creatorUrls = pipeList(get("verified_creator_source_urls"));
+    const creatorLen = Math.max(creatorSummaries.length, creatorUrls.length);
+    for (let i = 0; i < creatorLen; i++) {
+      evidence.push({
+        evidence_class: "verified_creator",
+        signal_type: get("verified_enrichment_signal_types"),
+        summary: creatorSummaries[i] ?? null,
+        source_url: creatorUrls[i] ?? null,
+        source_label: null,
+        confidence: "verified",
+        match_basis: null,
+      });
+    }
+    const secSources = pipeList(get("secondary_signal_sources"));
+    const secDetails = pipeList(get("secondary_signal_details"));
+    const secUrls = pipeList(get("secondary_signal_source_urls"));
+    const secLen = Math.max(secSources.length, secDetails.length, secUrls.length);
+    for (let i = 0; i < secLen; i++) {
+      evidence.push({
+        evidence_class: "secondary",
+        signal_type: secSources[i] ?? null,
+        summary: secDetails[i] ?? null,
+        source_url: secUrls[i] ?? null,
+        source_label: secSources[i] ?? null,
+        confidence: get("secondary_signal_confidence"),
+        match_basis: get("secondary_signal_match_basis"),
+      });
+    }
+
+    return { key: dedupeKeyForRow(r), values, evidence, rawUnmapped, email };
+  };
 
 
   /* ---------- Step 3: QA preview ---------- */

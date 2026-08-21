@@ -419,6 +419,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       const totalChunks = Math.max(1, Math.ceil(rowsToInsert.length / CHUNK));
       const tId = toast.loading(`Importing ${rowsToInsert.length.toLocaleString()} new rows… 0/${totalChunks}${totalSkipped ? ` (${totalSkipped.toLocaleString()} skipped)` : ""}`);
       let inserted = 0;
+      let evidenceSaved = 0;
+
       let enriched = 0;
       let skippedConflict = 0;
       try {

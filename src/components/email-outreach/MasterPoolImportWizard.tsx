@@ -385,6 +385,10 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         if (importMode === "enrich_only") { skippedExisting++; continue; }
         newRows.push({
           ...p.values,
+          // These three DB columns are NOT NULL — never send a blank.
+          verified_enrichment_fact_count: (p.values.verified_enrichment_fact_count as number) ?? 0,
+          verified_creator_signal_count: (p.values.verified_creator_signal_count as number) ?? 0,
+          secondary_signal_count: (p.values.secondary_signal_count as number) ?? 0,
           needs_email_enrichment: !p.email,
           status: "new",
           enrichment_source: source,

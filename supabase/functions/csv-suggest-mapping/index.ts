@@ -23,12 +23,16 @@ const TARGET_FIELDS = [
 ] as const;
 
 
-const FieldEnum = z.enum(TARGET_FIELDS);
-
+// Use a simple array of pairs — records/enums with nullable values are a
+// common cause of "response did not match schema" from structured output.
 const Schema = z.object({
-  mapping: z.record(FieldEnum, z.string().nullable()),
-  unmapped: z.array(z.string()),
-  reasoning: z.string().optional(),
+  mappings: z.array(
+    z.object({
+      target_field: z.string(),
+      csv_header: z.string(),
+    }),
+  ),
+  reasoning: z.string(),
 });
 
 Deno.serve(async (req) => {

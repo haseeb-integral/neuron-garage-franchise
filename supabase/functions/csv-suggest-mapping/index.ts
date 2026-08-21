@@ -23,12 +23,16 @@ const TARGET_FIELDS = [
 ] as const;
 
 
-const FieldEnum = z.enum(TARGET_FIELDS);
-
+// Use a simple array of pairs — records/enums with nullable values are a
+// common cause of "response did not match schema" from structured output.
 const Schema = z.object({
-  mapping: z.record(FieldEnum, z.string().nullable()),
-  unmapped: z.array(z.string()),
-  reasoning: z.string().optional(),
+  mappings: z.array(
+    z.object({
+      target_field: z.string(),
+      csv_header: z.string(),
+    }),
+  ),
+  reasoning: z.string(),
 });
 
 Deno.serve(async (req) => {
@@ -62,13 +66,14 @@ Available target fields:
 ${TARGET_FIELDS.join(", ")}
 
 Rules:
-- For each target field, pick the single best matching CSV header, or null if none fits.
-- Only use header strings that appear EXACTLY in the CSV headers list.
+- Return a "mappings" array. Include one entry ONLY for target fields that have a confident match.
+- "target_field" must be one of the available target fields listed above.
+- "csv_header" must be a string that appears EXACTLY in the CSV headers list.
+- Never map the same CSV header to two target fields. Omit fields with no match (do not use null).
 - "name" should only be used if first_name AND last_name cannot be split out; prefer first/last when both exist.
 - "teacher_type" values are: active, retired, camp_enrichment.
 - "dedupe_key" is the exporter's own unique row key (e.g. a Manus dedupe_key column) — never invent it from other columns.
 - Manus City/Metro exports use pipe-delimited evidence columns; map them to the matching verified_* and secondary_signal_* fields.
-- Put every CSV header that did not map into "unmapped".
 - Keep "reasoning" to one short sentence.
 Return JSON.`;
 
@@ -79,13 +84,18 @@ Return JSON.`;
       prompt,
     });
 
-    // Sanity-check: drop mappings that reference unknown headers
+    // Sanity-check: keep only known target fields + real headers, no double-use
     const headerSet = new Set(headers);
+    const fieldSet = new Set<string>(TARGET_FIELDS);
     const cleaned: Record<string, string | null> = {};
-    for (const [k, v] of Object.entries(output.mapping ?? {})) {
-      cleaned[k] = v && headerSet.has(v) ? v : null;
+    const used = new Set<string>();
+    for (const m of output?.mappings ?? []) {
+      const f = String(m?.target_field ?? "");
+      const h = String(m?.csv_header ?? "");
+      if (!fieldSet.has(f) || !headerSet.has(h) || cleaned[f] || used.has(h)) continue;
+      cleaned[f] = h;
+      used.add(h);
     }
-    const used = new Set(Object.values(cleaned).filter(Boolean) as string[]);
     const unmapped = headers.filter((h) => !used.has(h));
 
     return json({ mapping: cleaned, unmapped, reasoning: output.reasoning });

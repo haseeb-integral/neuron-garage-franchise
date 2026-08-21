@@ -84,13 +84,18 @@ Return JSON.`;
       prompt,
     });
 
-    // Sanity-check: drop mappings that reference unknown headers
+    // Sanity-check: keep only known target fields + real headers, no double-use
     const headerSet = new Set(headers);
+    const fieldSet = new Set<string>(TARGET_FIELDS);
     const cleaned: Record<string, string | null> = {};
-    for (const [k, v] of Object.entries(output.mapping ?? {})) {
-      cleaned[k] = v && headerSet.has(v) ? v : null;
+    const used = new Set<string>();
+    for (const m of output?.mappings ?? []) {
+      const f = String(m?.target_field ?? "");
+      const h = String(m?.csv_header ?? "");
+      if (!fieldSet.has(f) || !headerSet.has(h) || cleaned[f] || used.has(h)) continue;
+      cleaned[f] = h;
+      used.add(h);
     }
-    const used = new Set(Object.values(cleaned).filter(Boolean) as string[]);
     const unmapped = headers.filter((h) => !used.has(h));
 
     return json({ mapping: cleaned, unmapped, reasoning: output.reasoning });

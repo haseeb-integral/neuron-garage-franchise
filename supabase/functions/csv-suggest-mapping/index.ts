@@ -66,13 +66,14 @@ Available target fields:
 ${TARGET_FIELDS.join(", ")}
 
 Rules:
-- For each target field, pick the single best matching CSV header, or null if none fits.
-- Only use header strings that appear EXACTLY in the CSV headers list.
+- Return a "mappings" array. Include one entry ONLY for target fields that have a confident match.
+- "target_field" must be one of the available target fields listed above.
+- "csv_header" must be a string that appears EXACTLY in the CSV headers list.
+- Never map the same CSV header to two target fields. Omit fields with no match (do not use null).
 - "name" should only be used if first_name AND last_name cannot be split out; prefer first/last when both exist.
 - "teacher_type" values are: active, retired, camp_enrichment.
 - "dedupe_key" is the exporter's own unique row key (e.g. a Manus dedupe_key column) — never invent it from other columns.
 - Manus City/Metro exports use pipe-delimited evidence columns; map them to the matching verified_* and secondary_signal_* fields.
-- Put every CSV header that did not map into "unmapped".
 - Keep "reasoning" to one short sentence.
 Return JSON.`;
 

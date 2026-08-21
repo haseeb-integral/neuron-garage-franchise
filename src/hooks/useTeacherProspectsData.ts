@@ -23,6 +23,16 @@ type DbRow = {
   linkedin_url: string | null;
   school_nces_id: string | null;
   raw: Record<string, unknown> | null;
+  phone: string | null;
+  record_added_at: string | null;
+  outreach_status_source: string | null;
+  manus_dedupe_key: string | null;
+  verified_enrichment_fact_count: number | null;
+  verified_enrichment_signal_types: string[] | null;
+  verified_creator_signal_count: number | null;
+  secondary_signal_count: number | null;
+  secondary_signal_confidence: string | null;
+  secondary_signal_match_basis: string | null;
 };
 
 const normalizeGrade = (g: string | null): GradeLevel => {
@@ -54,7 +64,7 @@ export const mapRow = (r: DbRow): TeacherProspect => ({
   city: r.city,
   state: r.state,
   email: r.email ?? "",
-  phone: "",
+  phone: r.phone ?? "",
   linkedin: r.linkedin_url ?? "",
   fitScore: (r.fit_score ?? 0) as number,
   tag: "Untagged" as TeacherTag,
@@ -68,6 +78,15 @@ export const mapRow = (r: DbRow): TeacherProspect => ({
   enrichmentSource: r.enrichment_source,
   verificationStatus: r.verification_status,
   needsEmailEnrichment: !!r.needs_email_enrichment,
+  recordAddedAt: r.record_added_at ?? null,
+  outreachStatusSource: r.outreach_status_source ?? null,
+  manusDedupeKey: r.manus_dedupe_key ?? null,
+  verifiedFactCount: r.verified_enrichment_fact_count ?? 0,
+  verifiedSignalTypes: r.verified_enrichment_signal_types ?? null,
+  creatorSignalCount: r.verified_creator_signal_count ?? 0,
+  secondarySignalCount: r.secondary_signal_count ?? 0,
+  secondarySignalConfidence: r.secondary_signal_confidence ?? null,
+  secondarySignalMatchBasis: r.secondary_signal_match_basis ?? null,
 });
 
 export interface Stats {
@@ -84,6 +103,7 @@ export interface UseTeacherProspectsDataArgs {
   cityFilters: string[];
   debouncedSearch: string;
   sourceFilter: string;
+  signalFilter?: string;
   hideInOutreach: boolean;
   allPromotedIds: string[];
 }
@@ -105,6 +125,7 @@ export interface UseTeacherProspectsDataResult {
 
 export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
   const { page, pageSize, cityFilters, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds } = args;
+  const signalFilter = args.signalFilter ?? "all";
 
   const [prospects, setProspects] = useState<TeacherProspect[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -142,8 +163,11 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
     else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
+    if (signalFilter === "creator") q = q.gt("verified_creator_signal_count", 0);
+    else if (signalFilter === "secondary") q = q.gt("secondary_signal_count", 0);
+    else if (signalFilter === "has_phone") q = q.not("phone", "is", null);
     return q;
-  }, [cityFilters, debouncedSearch, sourceFilter]);
+  }, [cityFilters, debouncedSearch, sourceFilter, signalFilter]);
 
   const loadPage = useCallback(async () => {
     setLoadingProspects(true);
@@ -165,6 +189,10 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
     else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
+
+    if (signalFilter === "creator") q = q.gt("verified_creator_signal_count", 0);
+    else if (signalFilter === "secondary") q = q.gt("secondary_signal_count", 0);
+    else if (signalFilter === "has_phone") q = q.not("phone", "is", null);
 
     if (hideInOutreach && allPromotedIds.length > 0 && allPromotedIds.length <= 2000) {
       q = q.not("id", "in", `(${allPromotedIds.join(",")})`);
@@ -196,7 +224,7 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
       setLoadedAt(new Date());
     }
     setLoadingProspects(false);
-  }, [page, pageSize, cityFilters, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds]);
+  }, [page, pageSize, cityFilters, debouncedSearch, sourceFilter, signalFilter, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
     const myReq = ++statsReqIdRef.current;

@@ -37,6 +37,16 @@ export interface TeacherProspect {
   linkedinUrl?: string | null;     // flat linkedin_url column
   status?: ProspectStatus;         // teacher_prospects.status
   schoolNcesId?: string | null;
+  // v1.2 — Manus enrichment columns
+  recordAddedAt?: string | null;
+  outreachStatusSource?: string | null;
+  manusDedupeKey?: string | null;
+  verifiedFactCount?: number;
+  verifiedSignalTypes?: string[] | null;
+  creatorSignalCount?: number;
+  secondarySignalCount?: number;
+  secondarySignalConfidence?: string | null;
+  secondarySignalMatchBasis?: string | null;
 }
 
 // Dummy seed data removed in v1.0. Empty export kept so other surfaces compile.

@@ -532,7 +532,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             if (!teacherId) continue;
             for (const e of list) {
               evRows.push({
-                teacher_prospect_id: teacherId,
+                teacher_id: teacherId,
                 evidence_class: e.evidence_class,
                 signal_type: e.signal_type,
                 summary: e.summary,
@@ -547,20 +547,22 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
           // Drop rows we already have (same teacher + class + url/summary).
           if (evRows.length) {
-            const teacherIds = Array.from(new Set(evRows.map((r) => r.teacher_prospect_id as string)));
+            const teacherIds = Array.from(new Set(evRows.map((r) => r.teacher_id as string)));
             const existingEv = new Set<string>();
             const EV_ID_CHUNK = 300;
+            type ExEv = { teacher_id: string; evidence_class: string; source_url: string | null; summary: string | null };
             for (let i = 0; i < teacherIds.length; i += EV_ID_CHUNK) {
               const { data: exEv } = await supabase
                 .from("teacher_evidence")
-                .select("teacher_prospect_id, evidence_class, source_url, summary")
-                .in("teacher_prospect_id", teacherIds.slice(i, i + EV_ID_CHUNK));
+                .select(sel("teacher_id, evidence_class, source_url, summary"))
+                .in("teacher_id", teacherIds.slice(i, i + EV_ID_CHUNK))
+                .returns<ExEv[]>();
               for (const r of exEv ?? []) {
-                existingEv.add(`${r.teacher_prospect_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`);
+                existingEv.add(`${r.teacher_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`);
               }
             }
             const fresh = evRows.filter(
-              (r) => !existingEv.has(`${r.teacher_prospect_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`),
+              (r) => !existingEv.has(`${r.teacher_id}|${r.evidence_class}|${r.source_url ?? ""}|${r.summary ?? ""}`),
             );
             const EV_CHUNK = 500;
             for (let i = 0; i < fresh.length; i += EV_CHUNK) {
@@ -571,8 +573,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                 throw new Error(`evidence insert failed: ${evErr.message}`);
               }
             }
-            evidenceSaved = fresh.length;
+            evidenceSaved += fresh.length;
           }
+
         }
       } catch (e) {
 

@@ -147,12 +147,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         const headers = res.meta.fields ?? [];
         setCsvHeaders(headers);
         setCsvRows(res.data);
-        // Naive auto-map first so user sees something instantly
-        const naive: Mapping = {};
-        for (const f of TARGET_FIELDS) {
-          const m = headers.find((h) => norm(h) === norm(f) || norm(h) === norm(f.replace(/_/g, "")));
-          if (m) naive[f] = m;
-        }
+        // Deterministic alias auto-map first (works offline, no AI needed)
+        const naive = aliasMap(headers);
         setMapping(naive);
         setUnmapped(headers.filter((h) => !Object.values(naive).includes(h)));
         // Then ask Lovable AI for a better mapping in the background
@@ -162,8 +158,16 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             body: { headers, sample_rows: res.data.slice(0, 5) },
           });
           if (!error && data?.mapping) {
-            setMapping(data.mapping as Mapping);
-            setUnmapped(data.unmapped ?? []);
+            // AI result never loses a field the alias map already resolved.
+            const aiMap = data.mapping as Mapping;
+            const merged: Mapping = { ...naive };
+            for (const f of TARGET_FIELDS) {
+              const col = aiMap[f];
+              if (col && headers.includes(col)) merged[f] = col;
+            }
+            const used = Object.values(merged).filter(Boolean) as string[];
+            setMapping(merged);
+            setUnmapped(headers.filter((h) => !used.includes(h)));
             setAiReasoning(data.reasoning ?? "");
           }
         } catch (e) {

@@ -465,6 +465,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               patch[f] = v;
               if (!isEmptyOnRecord) before[f] = "(overwritten)";
             }
+            // Manus-owned columns are always refreshed from the file.
+            for (const f of ALWAYS_WRITE) {
+              const v = p.values[f];
+              if (v === null || v === undefined || v === "") continue;
+              patch[f] = v;
+            }
+
             const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
             const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
             const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];

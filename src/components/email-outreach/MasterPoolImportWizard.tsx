@@ -594,7 +594,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       const finalSkipped = totalSkipped + skippedConflict;
       await supabase.from("teacher_import_batches")
-        .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, import_mode: importMode, conflict_mode: conflictMode } })
+        .update({ status: "complete", approved_count: inserted, record_count: prepared.length, dedupe_stats: { skipped_in_batch: skippedInBatch, skipped_existing: skippedExisting, skipped_conflict: skippedConflict, enriched, evidence_saved: evidenceSaved, import_mode: importMode, conflict_mode: conflictMode } })
         .eq("id", batch.id);
 
       setImportResult({ inserted, enriched, skipped: finalSkipped, batch_id: batch.id });

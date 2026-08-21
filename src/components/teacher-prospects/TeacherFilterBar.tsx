@@ -6,6 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown, Check } from "lucide-react";
 import type { SourceFilter } from "@/lib/teacherSourceLabels";
+import type { SignalFilter } from "@/stores/teacherProspectsStore";
 
 interface Props {
   cities: string[];
@@ -15,6 +16,8 @@ interface Props {
   setSourceFilter: (v: SourceFilter) => void;
   search: string;
   setSearch: (v: string) => void;
+  signalFilter: SignalFilter;
+  setSignalFilter: (v: SignalFilter) => void;
   hideInOutreach: boolean;
   setHideInOutreach: (v: boolean) => void;
   inOutreachCount: number;
@@ -47,7 +50,7 @@ export function TeacherFilterBar(p: Props) {
 
   return (
     <div className="mb-0 rounded-xl border border-[#e7edf5] bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
-      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(220px,1fr)_240px_220px]">
+      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(220px,1fr)_220px_200px_200px]">
         <div className="relative min-w-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8794ab]" />
           <Input
@@ -126,6 +129,17 @@ export function TeacherFilterBar(p: Props) {
             <SelectItem value="smartlead">SmartLead Enriched</SelectItem>
             <SelectItem value="linkedin">LinkedIn Import</SelectItem>
             <SelectItem value="needs_email">Needs Email Enrichment</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={p.signalFilter} onValueChange={(v) => p.setSignalFilter(v as SignalFilter)}>
+          <SelectTrigger className={selectClass}>
+            <SelectValue placeholder="Signals" />
+          </SelectTrigger>
+          <SelectContent className="bg-white">
+            <SelectItem value="all">All Signals</SelectItem>
+            <SelectItem value="creator">Has creator signal</SelectItem>
+            <SelectItem value="secondary">Has side-business signal</SelectItem>
+            <SelectItem value="has_phone">Has phone number</SelectItem>
           </SelectContent>
         </Select>
       </div>

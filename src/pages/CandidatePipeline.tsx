@@ -272,6 +272,40 @@ const CandidatePipeline = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadKey]);
 
+  // Live updates: new leads (e.g. from the public application form) and edits made by
+  // teammates appear without a manual refresh. Debounced so a burst of rows = one reload.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setReloadKey((k) => k + 1), 1000);
+    };
+
+    const channel = supabase
+      .channel("candidate-pipeline-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "candidates" },
+        (payload) => {
+          const row: any = payload.new ?? {};
+          const name = [row.first_name, row.last_name].filter(Boolean).join(" ").trim();
+          toast.success(name ? `New lead: ${name}` : "New lead added");
+          scheduleReload();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "candidates" },
+        () => scheduleReload(),
+      )
+      .subscribe();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Open detail panel when arriving via global search (?candidate=ID)
   // ID may be the DB uuid (from global search) or numeric local id.
   useEffect(() => {

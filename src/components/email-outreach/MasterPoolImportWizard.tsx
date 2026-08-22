@@ -421,9 +421,28 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       const prepared = csvRows.map(buildRow).filter(Boolean) as Prepared[];
 
-
       // ---- Split: rows that match an existing teacher vs brand new rows ----
       const enrichEnabled = importMode !== "add_only";
+
+      // The QA snapshot can be stale (mapping changed, or another import ran in
+      // between). Re-check matches right before writing so existing teachers are
+      // enriched instead of being rejected later as duplicate rows.
+      let matchMapLive = matchMap;
+      if (enrichEnabled) {
+        const uniqueKeys = Array.from(new Set(prepared.map((p) => p.key)));
+        const { data: freshDedupe, error: freshErr } = await supabase.functions.invoke(
+          "teacher-prospects-dedupe-count",
+          { body: { dedupe_keys: uniqueKeys, with_matches: true } },
+        );
+        if (freshErr) throw new Error(`Duplicate re-check failed: ${freshErr.message}`);
+        const fresh = new Map<string, MatchInfo>();
+        for (const m of (freshDedupe as { matches?: MatchInfo[] } | null)?.matches ?? []) {
+          fresh.set(m.dedupe_key, m);
+        }
+        matchMapLive = fresh;
+        setMatchMap(fresh);
+      }
+
       const seenKeys = new Set<string>();
       const newRows: Array<Record<string, unknown>> = [];
       const toEnrich: Prepared[] = [];
@@ -433,7 +452,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       for (const p of prepared) {
         if (seenKeys.has(p.key)) { skippedInBatch++; continue; }
         seenKeys.add(p.key);
-        const match = matchMap.get(p.key);
+        const match = matchMapLive.get(p.key);
         if (match) {
           if (enrichEnabled) toEnrich.push(p);
           else skippedExisting++;
@@ -514,7 +533,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         if (toEnrich.length) {
           const existingRaws = new Map<string, Record<string, unknown> | null>();
           const ID_CHUNK = 500;
-          const ids = toEnrich.map((p) => matchMap.get(p.key)!.id);
+          const ids = toEnrich.map((p) => matchMapLive.get(p.key)!.id);
           for (let i = 0; i < ids.length; i += ID_CHUNK) {
             const { data: rawRows } = await supabase
               .from("teacher_prospects").select("id, raw").in("id", ids.slice(i, i + ID_CHUNK));
@@ -523,7 +542,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
           for (let i = 0; i < toEnrich.length; i++) {
             const p = toEnrich[i];
-            const match = matchMap.get(p.key)!;
+            const match = matchMapLive.get(p.key)!;
             const patch: Record<string, unknown> = {};
             const before: Record<string, unknown> = {};
             for (const f of ENRICHABLE) {
@@ -576,7 +595,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           // teacher id per key: enriched rows are known, new rows are read back.
           const idByKey = new Map<string, string>();
           for (const p of toEnrich) {
-            const m = matchMap.get(p.key);
+            const m = matchMapLive.get(p.key);
             if (m) idByKey.set(p.key, m.id);
           }
           if (inserted > 0) {

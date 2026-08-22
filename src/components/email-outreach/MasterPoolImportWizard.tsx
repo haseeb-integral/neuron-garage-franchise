@@ -421,9 +421,28 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       const prepared = csvRows.map(buildRow).filter(Boolean) as Prepared[];
 
-
       // ---- Split: rows that match an existing teacher vs brand new rows ----
       const enrichEnabled = importMode !== "add_only";
+
+      // The QA snapshot can be stale (mapping changed, or another import ran in
+      // between). Re-check matches right before writing so existing teachers are
+      // enriched instead of being rejected later as duplicate rows.
+      let matchMapLive = matchMap;
+      if (enrichEnabled) {
+        const uniqueKeys = Array.from(new Set(prepared.map((p) => p.key)));
+        const { data: freshDedupe, error: freshErr } = await supabase.functions.invoke(
+          "teacher-prospects-dedupe-count",
+          { body: { dedupe_keys: uniqueKeys, with_matches: true } },
+        );
+        if (freshErr) throw new Error(`Duplicate re-check failed: ${freshErr.message}`);
+        const fresh = new Map<string, MatchInfo>();
+        for (const m of (freshDedupe as { matches?: MatchInfo[] } | null)?.matches ?? []) {
+          fresh.set(m.dedupe_key, m);
+        }
+        matchMapLive = fresh;
+        setMatchMap(fresh);
+      }
+
       const seenKeys = new Set<string>();
       const newRows: Array<Record<string, unknown>> = [];
       const toEnrich: Prepared[] = [];

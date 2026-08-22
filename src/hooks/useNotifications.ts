@@ -41,6 +41,22 @@ export function useNotifications() {
     },
   });
 
+  // Live bell: new notifications land instantly; the 60s poll stays as a fallback.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`notifications-live-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => qc.invalidateQueries({ queryKey: ["notifications", userId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, qc]);
+
   const items = query.data ?? [];
   const unreadCount = items.filter((n) => !n.read_at).length;
 

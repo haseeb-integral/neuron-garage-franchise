@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,10 +42,13 @@ export function useNotifications() {
   });
 
   // Live bell: new notifications land instantly; the 60s poll stays as a fallback.
+  // The channel name is unique per hook instance because the bell is mounted in
+  // more than one header at a time and Supabase reuses channels by topic name.
+  const channelId = useRef(Math.random().toString(36).slice(2)).current;
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`notifications-live-${userId}`)
+      .channel(`notifications-live-${userId}-${channelId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
@@ -55,7 +58,8 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, qc]);
+  }, [userId, qc, channelId]);
+
 
   const items = query.data ?? [];
   const unreadCount = items.filter((n) => !n.read_at).length;

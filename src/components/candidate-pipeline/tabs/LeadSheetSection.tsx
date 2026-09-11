@@ -192,6 +192,9 @@ export function LeadSheetSection({ candidate }: Props) {
         const loaded: ProfileForm = {
           background: p.background ?? "",
           motivation: p.motivation ?? "",
+          experience_with_children: p.experience_with_children ?? "",
+          interest_in_neuron_garage: p.interest_in_neuron_garage ?? "",
+          educational_philosophy: p.educational_philosophy ?? "",
           liquid_capital: p.liquid_capital != null ? String(p.liquid_capital) : "",
           net_worth: p.net_worth != null ? String(p.net_worth) : "",
           timeline: p.timeline ?? "",
@@ -244,6 +247,9 @@ export function LeadSheetSection({ candidate }: Props) {
       candidate_id: dbId,
       background: current.background || null,
       motivation: current.motivation || null,
+      experience_with_children: current.experience_with_children || null,
+      interest_in_neuron_garage: current.interest_in_neuron_garage || null,
+      educational_philosophy: current.educational_philosophy || null,
       liquid_capital: current.liquid_capital ? Number(current.liquid_capital) : null,
       net_worth: current.net_worth ? Number(current.net_worth) : null,
       timeline: current.timeline || null,
@@ -311,6 +317,39 @@ export function LeadSheetSection({ candidate }: Props) {
 
   return (
     <div className="space-y-4 py-4" onBlur={handleAutoSave}>
+      {/* Experience with children */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-exp-children">What is their experience working with children?</Label>
+        <Textarea
+          id="ls-exp-children"
+          rows={2}
+          value={form.experience_with_children}
+          onChange={(e) => update("experience_with_children", e.target.value)}
+        />
+      </div>
+
+      {/* Interest in Neuron Garage */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-interest">What interested them in Neuron Garage?</Label>
+        <Textarea
+          id="ls-interest"
+          rows={2}
+          value={form.interest_in_neuron_garage}
+          onChange={(e) => update("interest_in_neuron_garage", e.target.value)}
+        />
+      </div>
+
+      {/* Educational philosophy */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-edu-phil">What is their educational philosophy?</Label>
+        <Textarea
+          id="ls-edu-phil"
+          rows={2}
+          value={form.educational_philosophy}
+          onChange={(e) => update("educational_philosophy", e.target.value)}
+        />
+      </div>
+
       {/* Role */}
       <div className="space-y-2">
         <Label>What would be your role in Neuron Garage?</Label>

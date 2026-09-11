@@ -20,6 +20,9 @@ interface ProfileForm {
   // existing
   background: string;
   motivation: string;
+  experience_with_children: string;
+  interest_in_neuron_garage: string;
+  educational_philosophy: string;
   liquid_capital: string;
   net_worth: string;
   timeline: string;
@@ -43,6 +46,9 @@ interface ProfileForm {
 const empty: ProfileForm = {
   background: "",
   motivation: "",
+  experience_with_children: "",
+  interest_in_neuron_garage: "",
+  educational_philosophy: "",
   liquid_capital: "",
   net_worth: "",
   timeline: "",
@@ -101,6 +107,9 @@ const fromYesNo = (v: YesNo): boolean | null =>
 const FIELD_LABELS: Record<keyof ProfileForm, string> = {
   background: "Background",
   motivation: "Motivation",
+  experience_with_children: "Experience working with children",
+  interest_in_neuron_garage: "Interest in Neuron Garage",
+  educational_philosophy: "Educational philosophy",
   liquid_capital: "Liquid capital",
   net_worth: "Net worth",
   timeline: "Timeline",

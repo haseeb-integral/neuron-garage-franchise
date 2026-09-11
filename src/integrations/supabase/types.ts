@@ -571,6 +571,9 @@ export type Database = {
           desired_market_city: string | null
           desired_market_state: string | null
           discovery_source: string | null
+          educational_philosophy: string | null
+          experience_with_children: string | null
+          interest_in_neuron_garage: string | null
           liquid_capital: number | null
           location_preferences: string | null
           married: boolean | null
@@ -595,6 +598,9 @@ export type Database = {
           desired_market_city?: string | null
           desired_market_state?: string | null
           discovery_source?: string | null
+          educational_philosophy?: string | null
+          experience_with_children?: string | null
+          interest_in_neuron_garage?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
           married?: boolean | null
@@ -619,6 +625,9 @@ export type Database = {
           desired_market_city?: string | null
           desired_market_state?: string | null
           discovery_source?: string | null
+          educational_philosophy?: string | null
+          experience_with_children?: string | null
+          interest_in_neuron_garage?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
           married?: boolean | null

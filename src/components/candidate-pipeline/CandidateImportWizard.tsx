@@ -122,6 +122,12 @@ export function CandidateImportWizard({
       }
       db.email_source = "manual";
 
+      const profile: Record<string, any> = {};
+      for (const col of PROFILE_COLS) {
+        const v = get(col.profileField!);
+        if (v) profile[col.profileField!] = v;
+      }
+
       const name = `${db.first_name ?? ""} ${db.last_name ?? ""}`.trim();
       const display = { name: name || "(no name)", email: db.email ?? "", city: [db.city, db.state].filter(Boolean).join(", "), stage: db.current_stage ?? "new_lead" };
 

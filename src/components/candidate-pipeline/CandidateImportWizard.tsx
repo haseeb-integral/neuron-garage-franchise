@@ -19,6 +19,8 @@ type StagedRow = {
 };
 
 const IMPORTABLE = CANDIDATE_CSV_COLUMNS.filter((c) => c.importable && c.dbField);
+/** Step-1 answers that live on candidate_profiles. */
+const PROFILE_COLS = CANDIDATE_CSV_COLUMNS.filter((c) => c.importable && c.profileField);
 
 /** Loose header match: ignore case, spaces, underscores. */
 const norm = (s: string) => (s ?? "").toLowerCase().replace(/[\s_-]/g, "");
@@ -28,6 +30,10 @@ function buildHeaderMap(headers: string[]): Record<string, string> {
   for (const col of IMPORTABLE) {
     const hit = headers.find((h) => norm(h) === norm(col.header) || norm(h) === norm(col.dbField!));
     if (hit) map[col.dbField!] = hit;
+  }
+  for (const col of PROFILE_COLS) {
+    const hit = headers.find((h) => norm(h) === norm(col.header) || norm(h) === norm(col.profileField!));
+    if (hit) map[col.profileField!] = hit;
   }
   return map;
 }

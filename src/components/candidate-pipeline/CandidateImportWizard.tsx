@@ -184,11 +184,30 @@ export function CandidateImportWizard({
     let inserted = 0;
     const CHUNK = 500;
     const payload = approved.map((r) => ({ ...r.db, import_batch_id: batch }));
+    const profileByEmail = new Map<string, Record<string, any>>();
+    approved.forEach((r) => { if (r.profile && r.db.email) profileByEmail.set(r.db.email, r.profile); });
     for (let i = 0; i < payload.length; i += CHUNK) {
       const slice = payload.slice(i, i + CHUNK);
-      const { error, count } = await supabase.from("candidates").insert(slice as any, { count: "exact" });
+      const { data, error, count } = await supabase
+        .from("candidates")
+        .insert(slice as any, { count: "exact" })
+        .select("id, email");
       if (error) { toast.error(`Import failed: ${error.message}`); break; }
       inserted += count ?? slice.length;
+
+      // Step-1 answers live on candidate_profiles — write them for the new rows.
+      const profileRows = (data ?? [])
+        .map((row: any) => {
+          const p = profileByEmail.get(String(row.email ?? "").toLowerCase());
+          return p ? { candidate_id: row.id, ...p } : null;
+        })
+        .filter(Boolean) as any[];
+      if (profileRows.length) {
+        const { error: pErr } = await supabase
+          .from("candidate_profiles")
+          .upsert(profileRows, { onConflict: "candidate_id" });
+        if (pErr) toast.error(`Saved candidates, but their answers failed: ${pErr.message}`);
+      }
     }
     setImporting(false);
     setBatchId(batch);

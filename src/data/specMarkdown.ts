@@ -36,7 +36,7 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 19. [Backend & Edge Functions](#19-backend--edge-functions)
 20. [Third-Party APIs](#20-third-party-apis)
 21. [Phase 2 Roadmap](#21-phase-2-roadmap)
-22. [Recent Changes (v1.3 → v1.4)](#22-recent-changes-v13--v14)
+22. [Recent Changes (v1.4 → v1.5)](#22-recent-changes-v14--v15)
 
 ---
 

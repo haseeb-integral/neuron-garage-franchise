@@ -53,6 +53,9 @@ export const CANDIDATE_CSV_COLUMNS: CandidateCsvColumn[] = [
   { header: "Partner Email", get: (c) => c.partnerEmail ?? "", dbField: "partner_email", importable: true },
   { header: "Partner Phone", get: (c) => c.partnerPhone ?? "", dbField: "partner_phone", importable: true },
   { header: "Other Opportunities", get: (c) => c.otherOpportunities ?? "", dbField: "other_opportunities", importable: true },
+  { header: "Experience With Children", get: (c) => (c as any).experienceWithChildren ?? "", profileField: "experience_with_children", importable: true },
+  { header: "Interest In Neuron Garage", get: (c) => (c as any).interestInNeuronGarage ?? "", profileField: "interest_in_neuron_garage", importable: true },
+  { header: "Educational Philosophy", get: (c) => (c as any).educationalPhilosophy ?? "", profileField: "educational_philosophy", importable: true },
   // Read-only / informational columns
   { header: "Qualification Score", get: (c) => String(computeComposite(c.qualificationScores)) },
   { header: "Responsiveness", get: (c) => String(c.qualificationScores?.teaching ?? 0) },

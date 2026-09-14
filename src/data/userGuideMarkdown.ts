@@ -9,7 +9,7 @@
 export const USER_GUIDE_MARKDOWN = `# Neuron Garage Franchise Development — User's Guide
 
 > A friendly walkthrough of the Neuron Garage Franchise Acquisition System.
-> **Guide version 1.4 · Updated May 31, 2026**
+> **Guide version 1.5 · Updated September 14, 2026**
 > Live URL: neuron-garage-franchise.lovable.app
 > Need the full technical spec? Open the **Full Specification** page in the sidebar (it stays in lock-step with this guide).
 
@@ -68,6 +68,7 @@ Type a city, get a score out of 100. We look at the live SOW signals (12 metrics
 - **Adjust weighting sliders** if you care more about, say, school density than population. Master sliders auto-rebalance to 100%. Sub-metric weights are typed as relative importance and normalized on Apply.
 - **City Notes** — leave a comment on any city; teammates see it on the same drawer.
 - **Export Raw Signals** as XLSX for offline review.
+- **Brand watchlist** — the list of known national brands (KidStrong, Code Ninjas, Snapology, Bricks 4 Kidz, Mad Science, School of Rock and more) lives in **one shared table**. It is the same list for everybody on the team, and it is the only place we decide "national brand vs local camp". Add a brand once and every page and every crawl uses it.
 - **Ask AI** any question about the city ("What's the K-6 teacher pool?", "How do schools compare to the state average?"). Answers obey our **3-tier Operator & Venue Supply rule** so the number you see on screen is the same number the AI quotes back to you.
 
 ### One calibrated number everywhere
@@ -108,13 +109,35 @@ City Search ranks cities by demographics. Market Validation goes one level deepe
 |---|---|---|
 | **Pricing Acceptance** | 27% | Are families here already paying $300–$700+ per week for camps? |
 | **Scaled Operator** | 27% | Do trusted national brands (KidStrong, Code Ninjas, iD Tech…) already operate here? |
-| **Market Balance** | 20% | Is the market underserved or already saturated? Sweet spot ≈ 350 kids ages 5–12 per premium provider. |
-| **Enrichment Diversity** | 13% | How many *types* of enrichment exist (STEM, art, music, theater…)? |
-| **Market Depth** | 13% | How many premium providers are in the city? (4 = thin, 40 = deep) |
+| **Enrichment Diversity** | — | How many *types* of enrichment exist (STEM, art, music, theater…)? |
+| **Market Depth** | — | How many premium providers are in the city? (a handful = thin, dozens = deep) |
 
-These 5 numbers add up to one composite called the **MVS** (Market Validation Score).
+These pillars roll up into one composite called the **MVS** (Market Validation Score).
 
-> Market Absorption (sellout-rate) was retired in v1.1 — the data was too unreliable. The 5 remaining pillars were re-balanced to still sum to 100%.
+> **Market Balance Index (MBI) is now a review flag, not a score.** It no longer changes the MVS. It just warns you when a city looks crowded or unusually empty, so a human can take a second look.
+
+> Market Absorption (sellout-rate) was retired in v1.1 — the data was too unreliable.
+
+### What counts as a "premium" provider
+
+One rule, used everywhere:
+
+- The provider's **lowest weekly price is $300 or more**, **and** its **highest weekly price is $400 or more**.
+- If a provider has no readable price and is **not** on the brand watchlist, we call it **Mid**, not premium.
+- Brands marked as premium on the shared watchlist count as premium even without a price.
+
+The order we decide in: community / childcare rules first, then the price gate, then the brand watchlist, then AI as the last resort.
+
+### Prices we trust
+
+- We read prices with a smarter reader (v2) that understands **units** — "$840 for two weeks" is stored as **$420 per week**, not $840.
+- We accept weekly prices between **$100 and $2,500**. Anything outside that is thrown out.
+- The word "tuition" is never used in a search, so school tuition pages can't pollute camp pricing.
+
+### Thin-market badges
+
+- **Saturated** — a lot of premium supply for the number of kids.
+- **Unproven** — too few providers or too little price evidence to trust the score yet.
 
 ### How to use the page
 
@@ -159,6 +182,27 @@ From the deep dive, click **Export Market Brief** for a one-page PDF you can sha
 ### Need the math?
 
 Open **MVS Methodology** in the sidebar for the full formula, normalization ranges, premium-tier definition, and shared data stack.
+
+---
+
+## Feature 1B — Site Analysis
+
+> **"Is this specific building a good place to open?"**
+
+City Search picks the city. Market Validation checks the money. **Site Analysis** scores an actual address out of 100.
+
+### What it looks at
+
+- **Schools nearby** — how many elementary schools sit inside the drive-time ring, and what grades they serve.
+- **Families nearby** — kids ages 5–12, household income, growth.
+- **Competition nearby** — premium providers already in the ring.
+- **Access** — drive time and how easy the site is to reach.
+
+### How to read it
+
+- Every sub-score has a **tooltip** — hover it and you get the plain-English meaning.
+- Click **Show formula details** to see the exact inputs, weights, and math behind that sub-score.
+- Re-run a site any time to pick up fresh data.
 
 ---
 
@@ -223,22 +267,51 @@ Got an interested reply? It promotes into the Candidate Pipeline automatically �
 
 > **"Who's getting close to signing?"**
 
-A Kanban board with **7 stages**: New Lead → Engaged → Qualified → Immersion → Confirmation → Signing → Disqualified. Drag a card to move someone forward. Open it to see their qualification scorecard, notes, homework, documents, and Selection Committee votes.
+**7 stages**: New Lead → Engaged → Qualified → Immersion → Confirmation → Signing → Disqualified.
 
-### What you can do
+### Three ways to look at the pipeline
 
-- See every candidate, every stage, every owner — at a glance.
-- Open a card for a **six-criteria 1–5 qualification score**: capital, motivation, market knowledge, time commitment, leadership, culture fit.
-- Track **days in stage** so nothing goes stale (green ≤3, amber 4–7, red 8+).
-- Manage **Documents** in a dedicated tab (FDD, FA, Step 2/4 uploads, candidate compliance files).
-- Cast **Selection Committee votes** during the Immersion stage (manual votes supported).
-- Apply a **score override** with a written reason if your gut disagrees with the formula — every override is written to the **compliance audit log**.
-- **Export Packet** — one click to bundle a candidate's score, notes, and key docs for a committee review.
+1. **Board** — the Kanban view. Drag a card to move someone forward.
+2. **Calendar** — every scheduled call, for the **whole team** (not just you), by day, week, or month. When you book a call you pick the **call type from the seven process steps**, so the calendar always says which step the call is for.
+3. **Table** — a spreadsheet view with **Download CSV** and **Import CSV**. The importer checks for duplicates, shows you a preview before anything saves, and gives you an **Undo** if the import was wrong.
+
+### Inside a candidate card — 4 tabs
+
+In this order:
+
+1. **Overview** — contact details (read-only here), the qualification scores, the signals & red flags summary, and the recruiter's tag.
+2. **Qualification Process** — the whole 7-step process on one tab. Step 1 holds the contact intake form, the first-call script questions, and the desired market city / state. Later steps hold scripts, post-call action checklists, homework tracking, references, and compliance items. Everything **saves by itself** when you click away — there is no Save button.
+3. **Uploaded Documents** — every file, including FDD proof and homework.
+4. **Committee Votes** — Selection Committee voting during Immersion.
+
+### The 5 qualification pillars
+
+Rated 1–5 stars each, with a notes box under each one:
+
+- **Responsiveness**
+- **Elementary Experience**
+- **Process Alignment**
+- **Philosophical Alignment**
+- **Market Fit**
+
+They combine into one **Qualification** score. The old "Fit score" is gone — the board filter is now **Qualification**.
+
+### Signals & red flags
+
+Inside the steps you can log good signals and warning signs as you go. They roll up into a summary on the Overview tab, so you see the whole picture without reading every step.
+
+### The blue tag
+
+The blue tag ("Interested", "High Potential", "Follow-Up"…) is **chosen by the recruiter** from a dropdown. It is not calculated.
+
+### Where leads come from
+
+Every candidate records **Source Type → Source Name → Campaign** (for example Outbound → SmartLead → a specific campaign). Leads from the public application form arrive as **Inbound → Landing Page**, land in **New Lead**, and show up **instantly, with a toast** — no page refresh needed. If the email already exists, we add a note to the existing candidate instead of creating a duplicate.
 
 ### The hard gates (by design)
 
 - A card **cannot drop into Signing** until it has passed **Confirmation**.
-- The **16-day FDD gate** is enforced — a candidate cannot sign within 16 days of receiving the FDD. The gate appears in the Documents tab and blocks the stage move if the clock hasn't run.
+- **16-day FDD gate** — a candidate cannot sign within 16 days of getting the FDD. You record the **FDD sent date** in Step 4 post-call actions and upload **proof the FDD was sent**. That one date is the only date the lock reads, and the block is enforced in the database, so it can't be clicked around. Everything is written to the compliance audit trail.
 
 ### Card anatomy
 
@@ -246,8 +319,8 @@ A Kanban board with **7 stages**: New Lead → Engaged → Qualified → Immersi
 |---|---|
 | **Left stripe** | Days in stage. Green ≤3, amber 4–7, red 8+. |
 | **Initials circle** | Candidate avatar (no score, no signal). |
-| **"Qual" pill** | Composite of the 5 star-pillar ratings — Responsiveness, Experience with Elementary Age Children, Process Fit, Philosophical Alignment, Market Fit. Hidden until at least one pillar is rated. |
-| **Blue tag** | Short qualitative status ("Interested", "High Potential", "Follow-Up"). |
+| **"Qual" pill** | Composite of the 5 pillar ratings. Hidden until at least one pillar is rated. |
+| **Blue tag** | Recruiter-chosen status label. |
 | **"Day N"** | Days in the current stage; resets on move. |
 | **Small letter circle** | Owner — first initial of the assigned teammate. Hover for full name. |
 
@@ -306,29 +379,28 @@ If you're not Haseeb or Brett, you won't see this — that's intentional.
 
 The sidebar has the full set of reference docs. Use these when this guide isn't enough:
 
-- **Full Specification** — the complete v1.4 product spec (technical).
+- **Full Specification** — the complete v1.5 product spec (technical).
 - **Demographics Methodology** — how the City Search numbers are computed.
+- **MVS Methodology** — the Market Validation math.
+- **Teacher Search Methodology** — how teacher fit is scored and how the master pool grows.
 - **Email Outreach Docs** — SmartLead integration, transactional email infra, bounce / suppression handling.
 - **Observability Guide** — how the data-health surface works.
 - **SmartLead Spec** — full integration contract.
 
 ---
 
-## Phase 2 — what's coming next
+## Phase 2 — what's still coming
 
-Source of truth: \`.lovable/phase-2/\`. The 9-item SOW (one line each):
+Market Validation (1A) and Site Analysis (1B) are **built and live** — they're documented above. Still ahead:
 
 | # | Item | What it adds |
 |---|---|---|
-| 1 | **Market Validation 1A** | Tier-1 stamp on every city using the latest SOW data. |
-| 2 | **Site Analysis 1B** | Real estate / site fit overlay on top of city scores. |
-| 3 | **Candidate Portal** | Self-serve portal for franchisee applicants. |
-| 4 | **Candidate Pipeline 1.5** | Pipeline polish — better documents, scorecard upgrades. |
-| 5 | **Teacher Search 1.5** | Faster filters, better fit-score model. |
-| 6 | **SmartLead 1.5** | Live outreach unlock after warm-up. |
-| 7 | **Mailboxes** | Per-recruiter inbox management. |
-| 8 | **Video Training module** | Onboarding & training videos for new franchisees. |
-| 9 | **Manus CSI app** | Standalone CSI scoring app (CSI v2 already uploaded). |
+| 1 | **Candidate Portal** | Self-serve portal for franchisee applicants. |
+| 2 | **Teacher Search 1.5** | Faster filters, better fit-score model. |
+| 3 | **SmartLead 1.5** | Live outreach unlock after warm-up. |
+| 4 | **Mailboxes** | Per-recruiter inbox management. |
+| 5 | **Video Training module** | Onboarding & training videos for new franchisees. |
+| 6 | **Manus CSI app** | Standalone CSI scoring app (CSI v2 already uploaded). |
 
 Onboarding (the 7-step franchisee launch program) is **parked** until the first signed franchisees come through.
 
@@ -356,6 +428,18 @@ Everyone on the team sees the same data. There's no private view — that's inte
 
 **Why can't I drop a card into Signing?**
 Two gates. The **Confirmation gate** — Signing only opens after Confirmation passes. The **16-day FDD gate** — a candidate cannot sign within 16 days of receiving the FDD. Both are enforced; neither is a bug.
+
+**Where do I save the FDD sent date?**
+Step 4, in the post-call actions. That is the only place, and the 16-day lock reads that same date. Upload the proof there too.
+
+**Does the calendar show only my calls?**
+No — it shows everyone's calls, on purpose, so the team can see the whole week.
+
+**How do new website leads get in?**
+Someone fills in the public application form (first name, last name, email, phone). They appear in **New Lead** right away with a toast. Same email twice? We add a note to the existing person instead of making a duplicate.
+
+**Can I bulk-load candidates from a spreadsheet?**
+Yes. Table view → Download CSV to get the template, fill it in, then Import CSV. It previews duplicates first and you can undo.
 
 **What's the difference between Master Teacher DB and SmartLead?**
 The Master Pool is everyone we know. SmartLead is the subset currently in a live campaign. Toggle between them at the top of Email Outreach.

@@ -15,6 +15,8 @@ export interface CandidateCsvColumn {
   get: (c: Candidate) => string;
   /** Database column this maps to on import. Omit for read-only columns. */
   dbField?: string;
+  /** When set, the value lives on candidate_profiles instead of candidates. */
+  profileField?: string;
   importable?: boolean;
 }
 

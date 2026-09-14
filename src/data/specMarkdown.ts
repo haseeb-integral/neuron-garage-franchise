@@ -844,51 +844,48 @@ Explicitly out of scope: Google / Microsoft / SSO login, multi-tenancy, mobile a
 
 ---
 
-## 22. Recent Changes (v1.3 → v1.4)
+## 22. Recent Changes (v1.4 → v1.5)
 
-Tight summary of what shipped between **May 21 → May 31, 2026** (~1,400 commits). Pulled from \`CHANGELOG_HASEEB.md\`, \`.lovable/plan.md\`, \`.lovable/phase-2/CHANGELOG.md\`, and the codebase.
+What shipped between **May 31 → September 14, 2026**.
 
-**Cross-cutting**
-- **Neuron AI** ⌘K global assistant (§12) — replaces per-screen Ask AI bars over the next ~2 weeks. Knowledge brain at \`_shared/appKnowledge.ts\`; \`ai_action_log\` audit trail.
-- **Notifications header bell** (§13) — RLS-locked per user, 60 s poll, wired in PageHeader + CityTopBar.
-- **Database Health & Observability** surface (§14) — \`/db-health\`, weekly digest, Observability AI.
-- **Phase 2 cabinet** at \`.lovable/phase-2/\` — locked SOW + execution plan + plain-English plan + frozen sources.
-- **"One calibrated number everywhere"** rule (Brett) — every score surface reads the recomputed helper, never stale DB values.
+**Market Validation (MVS 1A) — new**
+- Full discovery → enrich → price → weeks → tier pipeline live, with \`mvs_pipeline_runs\` as the per-stage audit trail.
+- \`mvs_operator_watchlist\` made the single source of truth for national-brand vs local-operator; hard-coded brand arrays removed from the scrapers; aliases + missing brands added (Snapology, Bricks 4 Kidz, Code Ninjas, Mad Science, Engineering For Kids, KidStrong, Camp Invention, Camp Bow Wow, School of Rock, Young Rembrandts, Abrakadoodle, Drama Kids International). The watchlist is now a **shared team list**.
+- Price extraction **v2** (unit-aware) fixed "\$840 for two weeks" being read as \$840/week.
+- Discovery: up to 100 places per city, \$100–\$2,500 accepted, the word "tuition" excluded everywhere, Google Maps timeouts fixed, Yelp categories tightened, Sawyer limited to one URL.
+- Premium rule locked at min ≥ \$300 **and** max ≥ \$400; bucket precedence Community/Childcare → Price-Gate → Brand → AI; unpriced non-premium brands default to Mid.
+- MBI rebuilt as a review flag; Market Depth tightened; thin-market flags consolidated into **Saturated** and **Unproven**.
+- Pricing evidence drill-down now reads the full provider pool so it matches the score.
+
+**Site Analysis (SAS 1B) — new**
+- \`/site-analysis\` with per-sub-score formula tooltips and Show-formula details; refined \`school_type\` grade weights; \`compute-sas\` crash fixed by moving all edge functions to \`npm:\` imports.
 
 **City Search**
-- \`city_market_signals\` table severed 2026-05-21; live evidence rows now synthesized from \`us_cities_scored\` columns.
-- 12-metric Key Market Signals whitelist locks the drawer to the same inputs as the row scoring.
-- \`MarketDetailDrawer\` rewritten with hero summary, per-pillar coverage panel, City Notes editor, Manus-upload sibling-row banner, Export Raw Signals.
-- Ask AI: 3-tier Operator & Venue Supply intent rule, session context, sub-metric boosts applied, "Searched" header, "What changed" weight diff, "never invent a state" rule, default-open reasoning, internal-key leak fixed (\`franchiseeSupply\` → "Operator & Venue Supply").
-- 0-results empty state with one-click "Clear filters".
-- Crash guard on factual-answer responses with no \`filters\` block.
-- Corrected canonical city count to **817** (was 948/960 in v1.3).
-- Manus CSI v2 upload integrated as a sibling-row data source.
+- "TAM" renamed to **Operator & Venue Supply** across the whole app (internal keys unchanged); the term is banned from AI prompts.
+- AI market report: "Recommended Next Move" renamed **Data Confidence**.
+- \`us_cities_scored\` reconfirmed as the sole source of truth for city metrics; pipeline ordering bug fixed (cities showing providers but zero pricing acceptance).
 
 **Teacher Search**
-- Market Context Banner, Next Best Action strip, Saved Lists, Bulk Action Bar, Teacher AI panel, Funnel Widget, City Search Rail all shipped.
+- Master pool grew to **310,084** records (24,657 added in the last Houston-area import).
+- Import wizard gained **Enrichment Mode**: add new, enrich only, or both — with fill-blanks vs overwrite, so re-running an import is safe and new detail is no longer blocked as a duplicate.
 
-**Email Outreach**
-- Transactional email infrastructure (\`send-transactional-email\`, \`process-email-queue\`, \`weekly-data-health-digest\`, \`preview-transactional-email\`, \`handle-email-suppression\`, \`handle-email-unsubscribe\`, \`/unsubscribe\` route, suppression + unsubscribe tables).
+**Candidate Pipeline — largely rebuilt**
+- Tabs reduced to Overview · Qualification Process · Uploaded Documents · Committee Votes · Activity.
+- The whole 7-step process moved onto one **Qualification Process** tab with script questions, auto-saving intake, per-step signals & red flags, homework tracking, and step-scoped uploads.
+- Qualification pillars renamed to Responsiveness, Elementary Experience, Process Alignment, Philosophical Alignment, Market Fit, each with notes; scoring moved into Overview; legacy fit score removed and the board filter renamed **Qualification**.
+- Blue fit tag is now a manual recruiter choice.
+- FDD: proof upload added, sent date moved to Step 4 Post-Call Actions, and both the field and the 16-day lock now read \`candidate_compliance.fdd_sent_at\`.
+- Step 5 references block with "Completed candidate reference checks"; Step 6 pen overnight action.
+- Three-level source capture (Type → Name → Campaign) with automatic SmartLead campaign mapping.
+- **Calendar** view of all team calls (call type = process step) and a **Table** view with CSV download/import, duplicate checks and undo — including the Step-1 profile answers.
+- New Step-1 questions: experience with children, interest in Neuron Garage, educational philosophy.
+- Inbound applications via \`submit-application\` (validation, honeypot, rate limit, dedupe, staff notification) land as **New Lead** and appear live on the board via realtime.
+- All Canada test prospects deleted; pipeline reset clean.
 
-**Candidate Pipeline**
-- **Documents** tab (FF_DOCUMENTS) + \`candidate_files\`.
-- **16-day FDD hard-block** (FF_FDD_GATE) via \`FddCountdown\`.
-- **Compliance audit log** (FF_COMPLIANCE) — \`candidate_compliance\` + \`candidate_compliance_audit\`.
-- **Manual qualification-score override** (FF_SCORE_OVERRIDE) + history table.
-- **Manual votes** for committee members without accounts (FF_MANUAL_VOTES).
-- **Step 2 / Step 4 uploads** (FF_STEP2_UPLOADS / FF_STEP4_UPLOADS).
-- Export Packet button on the detail panel header.
-- Kanban: stage-aware hover, softened avatars, white drawer body.
-
-**Auth**
-- \`/reset-password\` route added.
-
-**Edge functions added since v1.3**
-\`neuron-ai\`, \`neuron-ai-confirm\`, \`ask\`, \`ask-city\`, \`city-analyst\`, \`observability-ai\`, \`teacher-search-ai\`, \`users-guide-ai\`, \`recompute-city-derived\`, \`backfill-census-gaps\`, \`seed-cities-weather\`, \`send-transactional-email\`, \`preview-transactional-email\`, \`process-email-queue\`, \`weekly-data-health-digest\`, \`handle-email-suppression\`, \`handle-email-unsubscribe\`, \`teacher-prospects-dedupe-count\`, \`deepgram-tts\`.
-
-**Dashboard**
-- Retired "161,199 need enrichment" line.
+**Security & maintenance**
+- \`campaign_cache\`, \`mvs_pipeline_runs\`, \`mvs_providers\` reads restricted to staff (\`public.is_staff\`); realtime policies made topic-scoped.
+- \`react-router-dom\` updated to 7.18.2.
+- All 47 edge functions migrated from \`esm.sh\` to \`npm:\` imports.
 
 ---
 

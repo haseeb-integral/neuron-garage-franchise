@@ -12,6 +12,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type StagedRow = {
   db: Record<string, any>;
+  profile?: Record<string, any>;
   display: { name: string; email: string; city: string; stage: string };
   qa: "approved" | "rejected";
   reason?: string;
@@ -19,6 +20,8 @@ type StagedRow = {
 };
 
 const IMPORTABLE = CANDIDATE_CSV_COLUMNS.filter((c) => c.importable && c.dbField);
+/** Step-1 answers that live on candidate_profiles. */
+const PROFILE_COLS = CANDIDATE_CSV_COLUMNS.filter((c) => c.importable && c.profileField);
 
 /** Loose header match: ignore case, spaces, underscores. */
 const norm = (s: string) => (s ?? "").toLowerCase().replace(/[\s_-]/g, "");
@@ -28,6 +31,10 @@ function buildHeaderMap(headers: string[]): Record<string, string> {
   for (const col of IMPORTABLE) {
     const hit = headers.find((h) => norm(h) === norm(col.header) || norm(h) === norm(col.dbField!));
     if (hit) map[col.dbField!] = hit;
+  }
+  for (const col of PROFILE_COLS) {
+    const hit = headers.find((h) => norm(h) === norm(col.header) || norm(h) === norm(col.profileField!));
+    if (hit) map[col.profileField!] = hit;
   }
   return map;
 }
@@ -115,6 +122,12 @@ export function CandidateImportWizard({
       }
       db.email_source = "manual";
 
+      const profile: Record<string, any> = {};
+      for (const col of PROFILE_COLS) {
+        const v = get(col.profileField!);
+        if (v) profile[col.profileField!] = v;
+      }
+
       const name = `${db.first_name ?? ""} ${db.last_name ?? ""}`.trim();
       const display = { name: name || "(no name)", email: db.email ?? "", city: [db.city, db.state].filter(Boolean).join(", "), stage: db.current_stage ?? "new_lead" };
 
@@ -126,7 +139,7 @@ export function CandidateImportWizard({
       else if (seen.has(db.email)) { qa = "rejected"; reason = "Duplicate email in this file"; }
       if (db.email) seen.add(db.email);
 
-      rows.push({ db, display, qa, reason, warnings });
+      rows.push({ db, profile: Object.keys(profile).length ? profile : undefined, display, qa, reason, warnings });
     }
 
     // Duplicate check against existing candidates
@@ -171,11 +184,30 @@ export function CandidateImportWizard({
     let inserted = 0;
     const CHUNK = 500;
     const payload = approved.map((r) => ({ ...r.db, import_batch_id: batch }));
+    const profileByEmail = new Map<string, Record<string, any>>();
+    approved.forEach((r) => { if (r.profile && r.db.email) profileByEmail.set(r.db.email, r.profile); });
     for (let i = 0; i < payload.length; i += CHUNK) {
       const slice = payload.slice(i, i + CHUNK);
-      const { error, count } = await supabase.from("candidates").insert(slice as any, { count: "exact" });
+      const { data, error, count } = await supabase
+        .from("candidates")
+        .insert(slice as any, { count: "exact" })
+        .select("id, email");
       if (error) { toast.error(`Import failed: ${error.message}`); break; }
       inserted += count ?? slice.length;
+
+      // Step-1 answers live on candidate_profiles — write them for the new rows.
+      const profileRows = (data ?? [])
+        .map((row: any) => {
+          const p = profileByEmail.get(String(row.email ?? "").toLowerCase());
+          return p ? { candidate_id: row.id, ...p } : null;
+        })
+        .filter(Boolean) as any[];
+      if (profileRows.length) {
+        const { error: pErr } = await supabase
+          .from("candidate_profiles")
+          .upsert(profileRows, { onConflict: "candidate_id" });
+        if (pErr) toast.error(`Saved candidates, but their answers failed: ${pErr.message}`);
+      }
     }
     setImporting(false);
     setBatchId(batch);

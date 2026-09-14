@@ -1,6 +1,7 @@
 import type { Candidate, StageId } from "@/data/pipelineData";
 import { STAGES } from "@/data/pipelineData";
 import { computeComposite } from "@/lib/candidateScoring";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Single source of truth for the candidate CSV. Export and import both read this
@@ -15,6 +16,8 @@ export interface CandidateCsvColumn {
   get: (c: Candidate) => string;
   /** Database column this maps to on import. Omit for read-only columns. */
   dbField?: string;
+  /** When set, the value lives on candidate_profiles instead of candidates. */
+  profileField?: string;
   importable?: boolean;
 }
 
@@ -51,6 +54,9 @@ export const CANDIDATE_CSV_COLUMNS: CandidateCsvColumn[] = [
   { header: "Partner Email", get: (c) => c.partnerEmail ?? "", dbField: "partner_email", importable: true },
   { header: "Partner Phone", get: (c) => c.partnerPhone ?? "", dbField: "partner_phone", importable: true },
   { header: "Other Opportunities", get: (c) => c.otherOpportunities ?? "", dbField: "other_opportunities", importable: true },
+  { header: "Experience With Children", get: (c) => (c as any).experienceWithChildren ?? "", profileField: "experience_with_children", importable: true },
+  { header: "Interest In Neuron Garage", get: (c) => (c as any).interestInNeuronGarage ?? "", profileField: "interest_in_neuron_garage", importable: true },
+  { header: "Educational Philosophy", get: (c) => (c as any).educationalPhilosophy ?? "", profileField: "educational_philosophy", importable: true },
   // Read-only / informational columns
   { header: "Qualification Score", get: (c) => String(computeComposite(c.qualificationScores)) },
   { header: "Responsiveness", get: (c) => String(c.qualificationScores?.teaching ?? 0) },
@@ -75,8 +81,38 @@ export function candidatesToCsv(rows: Candidate[]): string {
   return [header, ...body].join("\n");
 }
 
-export function downloadCandidatesCsv(rows: Candidate[], filenamePrefix = "candidate-pipeline") {
-  const csv = candidatesToCsv(rows);
+/** Pull the Step-1 answers (stored on candidate_profiles) onto the rows. */
+async function withProfileAnswers(rows: Candidate[]): Promise<Candidate[]> {
+  const ids = rows.map((r) => (r as any).dbId).filter(Boolean) as string[];
+  if (!ids.length) return rows;
+  try {
+    const byId = new Map<string, any>();
+    const CHUNK = 300;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const { data } = await supabase
+        .from("candidate_profiles")
+        .select("candidate_id, experience_with_children, interest_in_neuron_garage, educational_philosophy")
+        .in("candidate_id", ids.slice(i, i + CHUNK));
+      (data ?? []).forEach((d: any) => byId.set(d.candidate_id, d));
+    }
+    return rows.map((r) => {
+      const p = byId.get((r as any).dbId);
+      if (!p) return r;
+      return {
+        ...r,
+        experienceWithChildren: p.experience_with_children ?? "",
+        interestInNeuronGarage: p.interest_in_neuron_garage ?? "",
+        educationalPhilosophy: p.educational_philosophy ?? "",
+      } as Candidate;
+    });
+  } catch {
+    return rows;
+  }
+}
+
+export async function downloadCandidatesCsv(rows: Candidate[], filenamePrefix = "candidate-pipeline") {
+  const enriched = await withProfileAnswers(rows);
+  const csv = candidatesToCsv(enriched);
   // BOM so Excel opens UTF-8 correctly
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

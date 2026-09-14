@@ -740,7 +740,7 @@ All tables have RLS enabled. Source of truth = generated \`src/integrations/supa
 
 ## 19. Backend & Edge Functions
 
-All deployed as Deno edge functions under \`supabase/functions/\`. **30 functions** as of this revision.
+All deployed as Deno edge functions under \`supabase/functions/\`. **47 functions** as of this revision. All of them import dependencies with \`npm:\` specifiers (the old \`https://esm.sh\` imports were removed in September 2026 after they caused runtime crashes).
 
 | Function | Purpose |
 |---|---|
@@ -775,7 +775,26 @@ All deployed as Deno edge functions under \`supabase/functions/\`. **30 function
 | \`handle-email-unsubscribe\` | Public \`/unsubscribe\` token redeem |
 | \`deepgram-tts\` | Text-to-speech (used by reply-listen / accessibility surfaces) |
 
-Shared modules under \`supabase/functions/_shared/\`: \`cityGeo.ts\`, \`metricFetchers.ts\`, \`scoring.ts\`, \`appKnowledge.ts\`, \`aiAssistantKB.ts\`, \`knowledge.ts\`, \`observabilityKnowledge.ts\`, \`transactional-email-templates/\` (React Email).
+Added since v1.4:
+
+| Function | Purpose |
+|---|---|
+| \`mvs-acs-pull\` | Market Validation demand pull (Census) |
+| \`mvs-discover-providers\` | Provider discovery (Google Maps / Yelp / single Sawyer URL) |
+| \`mvs-enrich-websites\` | Provider website crawl |
+| \`mvs-price-b3\` | Price extraction v2 (unit-aware, Gemini) |
+| \`mvs-b3-shortlist-refresh\` | Re-price the shortlist only |
+| \`mvs-extract-weeks\` | Weeks-of-operation extraction |
+| \`mvs-classify-tier\` | Direct / Adjacent / Distant classification |
+| \`mvs-run-pipeline\`, \`mvs-refresh-all\` | Pipeline orchestrators + run audit |
+| \`compute-sas\`, \`sas-calibrate\` | Site Analysis scoring + calibration |
+| \`get-mapbox-token\` | Server-issued map token |
+| \`submit-application\` | Public franchise-applicant intake → new lead |
+| \`backfill-affluent-families\` | Targeted Census backfill |
+| \`seed-private-elementary-counts\` | Private elementary seed |
+| \`seed-urban-cache\`, \`seed-urban-cache-all\` | Urban-area cache seeding |
+
+Shared modules under \`supabase/functions/_shared/\`: \`cityGeo.ts\`, \`metricFetchers.ts\` (reads the shared operator watchlist with in-memory caching), \`scoring.ts\`, \`appKnowledge.ts\`, \`aiAssistantKB.ts\`, \`knowledge.ts\`, \`observabilityKnowledge.ts\`, \`transactional-email-templates/\` (React Email).
 
 ---
 

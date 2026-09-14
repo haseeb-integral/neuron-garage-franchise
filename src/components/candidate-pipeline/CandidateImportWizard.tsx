@@ -12,6 +12,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type StagedRow = {
   db: Record<string, any>;
+  profile?: Record<string, any>;
   display: { name: string; email: string; city: string; stage: string };
   qa: "approved" | "rejected";
   reason?: string;

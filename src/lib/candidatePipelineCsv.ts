@@ -80,8 +80,38 @@ export function candidatesToCsv(rows: Candidate[]): string {
   return [header, ...body].join("\n");
 }
 
-export function downloadCandidatesCsv(rows: Candidate[], filenamePrefix = "candidate-pipeline") {
-  const csv = candidatesToCsv(rows);
+/** Pull the Step-1 answers (stored on candidate_profiles) onto the rows. */
+async function withProfileAnswers(rows: Candidate[]): Promise<Candidate[]> {
+  const ids = rows.map((r) => (r as any).dbId).filter(Boolean) as string[];
+  if (!ids.length) return rows;
+  try {
+    const byId = new Map<string, any>();
+    const CHUNK = 300;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const { data } = await supabase
+        .from("candidate_profiles")
+        .select("candidate_id, experience_with_children, interest_in_neuron_garage, educational_philosophy")
+        .in("candidate_id", ids.slice(i, i + CHUNK));
+      (data ?? []).forEach((d: any) => byId.set(d.candidate_id, d));
+    }
+    return rows.map((r) => {
+      const p = byId.get((r as any).dbId);
+      if (!p) return r;
+      return {
+        ...r,
+        experienceWithChildren: p.experience_with_children ?? "",
+        interestInNeuronGarage: p.interest_in_neuron_garage ?? "",
+        educationalPhilosophy: p.educational_philosophy ?? "",
+      } as Candidate;
+    });
+  } catch {
+    return rows;
+  }
+}
+
+export async function downloadCandidatesCsv(rows: Candidate[], filenamePrefix = "candidate-pipeline") {
+  const enriched = await withProfileAnswers(rows);
+  const csv = candidatesToCsv(enriched);
   // BOM so Excel opens UTF-8 correctly
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

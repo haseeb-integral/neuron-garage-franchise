@@ -139,7 +139,7 @@ export function CandidateImportWizard({
       else if (seen.has(db.email)) { qa = "rejected"; reason = "Duplicate email in this file"; }
       if (db.email) seen.add(db.email);
 
-      rows.push({ db, display, qa, reason, warnings });
+      rows.push({ db, profile: Object.keys(profile).length ? profile : undefined, display, qa, reason, warnings });
     }
 
     // Duplicate check against existing candidates

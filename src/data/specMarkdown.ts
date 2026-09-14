@@ -5,9 +5,9 @@
 export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — Product Specification
 
 > Detailed specification of the Neuron Garage Franchise Acquisition System.
-> **Document version 1.4 · Updated May 31, 2026** · For internal review.
+> **Document version 1.5 · Updated September 14, 2026** · For internal review.
 > Live URL: neuron-garage-franchise.lovable.app
-> **What's new since v1.3:** see §18 Recent Changes for the v1.3 → v1.4 delta. Highlights: Neuron AI global assistant (⌘K), header-bell notifications, Database Health & Observability surface, Candidate Pipeline Documents tab + compliance + score-override + 16-day FDD gate, transactional email infrastructure, Manus CSI v2 upload, recomputed "one calibrated number everywhere" rule, Phase 2 cabinet at \`.lovable/phase-2/\`.
+> **What's new since v1.4:** see §22 Recent Changes for the v1.4 → v1.5 delta. Highlights: Market Validation (MVS 1A) and Site Analysis (SAS 1B) shipped as live surfaces (§6A, §6B), one shared operator watchlist as the single source of truth for brand classification, "TAM" renamed to **Operator & Venue Supply** everywhere, price extraction v2 with unit awareness, a fully rebuilt Candidate Pipeline (Qualification Process tab, signals & red flags, references, FDD compliance trail, calendar, table view, CSV import/export), inbound lead capture via \`submit-application\` with realtime board updates, teacher master pool at 310,084 records with enrichment-mode imports.
 
 ---
 
@@ -19,6 +19,8 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 4. [Navigation & Layout](#4-navigation--layout)
 5. [Dashboard](#5-dashboard)
 6. [Feature 1 — City Search](#6-feature-1--city-search)
+6A. [Market Validation (MVS 1A)](#6a-market-validation-mvs-1a)
+6B. [Site Analysis (SAS 1B)](#6b-site-analysis-sas-1b)
 7. [Feature 2 — Teacher Search](#7-feature-2--teacher-search)
 8. [Feature 3 — Email Outreach](#8-feature-3--email-outreach)
 9. [Feature 4 — Candidate Pipeline](#9-feature-4--candidate-pipeline)
@@ -52,12 +54,14 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 
 The product is a React + TypeScript single-page app, backed by Lovable Cloud (managed Supabase: Postgres + Auth + Edge Functions + Storage + Realtime).
 
-### Key numbers (May 31, 2026)
+### Key numbers (September 14, 2026)
 
 - **817 U.S. cities** pre-scored in \`us_cities_scored\` (population ≥ 50,000).
-- **38,196 public K–12 schools** in \`public_schools\` (NCES CCD).
+- **61,199 public K–12 schools** in \`public_schools\` (NCES CCD).
+- **310,084 teacher records** in the master pool (\`teacher_prospects\`).
+- **6,213 discovered camp/enrichment providers** in \`mvs_providers\`; **24 brands** on the shared operator watchlist.
 - **12 live SOW metrics** across 3 categories (Demand · Operator & Venue Supply · Competitive Opportunity).
-- **30 deployed edge functions** (§19).
+- **47 deployed edge functions** (§19).
 
 ### Goals
 
@@ -217,6 +221,56 @@ Natural-language query → \`ai-city-query\` edge function. Behavior:
 ### Compare mode
 
 Select up to 4 cities and open a side-by-side modal (\`MarketCompareModal\`). Reads scores from the same recomputed helper.
+
+---
+
+## 6A. Market Validation (MVS 1A)
+
+**Purpose:** after City Search ranks a market on demographics, Market Validation checks what is actually on the ground — who already runs kids' camps and enrichment there, what they charge, and how many weeks they run.
+
+Routes: \`/market-validation\` (city list + scores), \`/market-validation/rollout\` (run status per city), \`/market-validation/competitors\` (per-city provider list), \`/market-validation/evidence\` (raw provider evidence), \`/mvs-qa-queue\` (review queue). Docs: \`/mvs-spec\`, \`/mvs-methodology\`.
+
+### Pipeline (edge functions)
+
+| Step | Function | What it does |
+|---|---|---|
+| A | \`mvs-acs-pull\` | Census pull for the market's demand inputs |
+| B1 | \`mvs-discover-providers\` | Crawls Google Maps, Yelp and a single Sawyer URL (\`hisawyer.com/s/summer-camps-for-kids\`) for up to 100 places per city |
+| B2 | \`mvs-enrich-websites\` | Finds and crawls each provider's website |
+| B3 | \`mvs-price-b3\` | Price extraction **v2** — Gemini reads the page and returns the price **with its unit** (per week / per session / per two weeks), so a \`$840 / 2 weeks\` listing is stored as \`$420\`/week |
+| B3b | \`mvs-b3-shortlist-refresh\` | Re-runs pricing on the shortlist only |
+| C | \`mvs-extract-weeks\` | Weeks-of-operation extraction |
+| D | \`mvs-classify-tier\` | Tier classification (Direct / Adjacent / Distant) |
+| — | \`mvs-run-pipeline\`, \`mvs-refresh-all\` | Orchestrators; every pass writes a row to \`mvs_pipeline_runs\` |
+
+\`mvs_pipeline_runs\` is the audit trail: one row per city per pass, with per-stage counters (e.g. \`b3_price_pass\`) so acceptance rates can be inspected after the fact. Reads on \`mvs_providers\`, \`mvs_pipeline_runs\` and \`campaign_cache\` are restricted to staff via \`public.is_staff(auth.uid())\`.
+
+### Operator watchlist — single source of truth
+
+\`mvs_operator_watchlist\` is the **only** list that decides whether a provider is a national brand or a local operator. It is a **shared team table** (not per-user), holds brand names plus aliases, a tier (Direct / Adjacent / Distant) and an \`is_premium_brand\` flag. Edge functions read it through \`_shared/metricFetchers.ts\` with in-memory caching — no hard-coded brand arrays anywhere in the pipeline.
+
+### Price bucket rules (locked)
+
+- **Premium** = minimum weekly price **≥ \$300** *and* maximum weekly price **≥ \$400**.
+- Accepted price range for extraction: **\$100 – \$2,500** per week. The word "tuition" is excluded from every search query and from price parsing.
+- Provider bucket precedence: **Community / Childcare → Price-Gate → Brand → AI**. A provider with no price that is not a known premium brand defaults to **Mid**.
+
+### Market flags
+
+- **Market Balance Index (MBI)** is a **review flag**, not a score — it points the analyst at markets that look unbalanced.
+- **Market Depth** thresholds were tightened; thin-market warnings are consolidated into two badges: **Saturated** and **Unproven**.
+- Pricing evidence drill-down (\`LiveCityDeepDive\`) reads the complete provider pool, so the evidence list always matches the score shown.
+
+---
+
+## 6B. Site Analysis (SAS 1B)
+
+**Purpose:** score an individual **site** (a specific address / trade area), not a whole city. Route: \`/site-analysis\`; brief at \`/sas-brief\`; methodology at \`/sas-methodology\`.
+
+- Math lives in \`src/lib/sas-math.ts\`; scoring runs in the \`compute-sas\` edge function, with \`sas-calibrate\` for calibration passes.
+- Every sub-score carries a **tooltip with its formula** plus a **Show formula details** panel — same "show the math" rule as City Search.
+- The \`school_type\` factor uses refined school-grade weights (elementary-serving schools count most).
+- Maps use a server-issued token from \`get-mapbox-token\` (the key is never shipped to the browser).
 
 ---
 

@@ -421,40 +421,42 @@ Templates live in \`supabase/functions/_shared/transactional-email-templates/\` 
 
 Plus a parallel **Disqualified** column.
 
-### Board behavior
+### Three views
 
-- Kanban with horizontal scroll on small screens; "Jump to" pill nav above the board.
-- Pipeline Analytics bar above the board (count per stage, conversion rates).
-- Each card: name, fit score, days in stage, last activity, owner, stage-aware hover.
+- **Board** — Kanban with horizontal scroll, "Jump to" pill nav, Pipeline Analytics bar (count per stage, conversion rates). Cards show name, qualification score, days in stage, last activity, owner.
+- **Calendar** — every scheduled call for the **whole team** (not just the signed-in user), by day / week / month. Call type is chosen from the seven qualification process steps (\`EventDialog\`).
+- **Table** — spreadsheet view with **Download CSV** and **Import CSV** (\`CandidateImportWizard\`): AI-free header matching, duplicate checking, and undo. CSV covers candidate fields **and** the Step-1 profile answers (Experience With Children, Interest In Neuron Garage, Educational Philosophy).
 
-### Detail panel (\`CandidateDetailPanel\`)
+### Inbound leads
 
-Tabs:
+The \`submit-application\` edge function is the public intake endpoint for the franchise-applicant landing page (first name, last name, email, phone). It validates input, blocks bots with a honeypot, rate-limits to 5 submissions per email per hour, deduplicates by email, tags the record \`new_lead\` with source **Inbound → Landing Page**, logs an activity note and notifies staff. The board subscribes to realtime inserts/updates, so a new lead appears **without a refresh** (1-second debounce + toast).
 
-- **Overview** — contact, source, fit score, deal owner, photo.
-- **Lead Sheet** — full intake.
-- **Qualification** — six 1–5 star ratings (capital, motivation, market knowledge, time commitment, leadership, culture fit) with auto-calc composite stored in \`candidate_qualification\`.
-- **Notes & Activity** — chronological log; add a note inline.
-- **Stage History** — every transition with notes (\`candidate_stage_history\`).
-- **Homework** — trial-close checklist (territory selected, financing in place, family aligned, etc.).
-- **Committee Votes** — Selection Committee Approve / Decline. Manual votes for members without app accounts (feature flag \`FF_MANUAL_VOTES\`).
-- **Documents** (feature flag \`FF_DOCUMENTS\`) — per-candidate file dropzone backed by \`candidate_files\` + Lovable Cloud Storage.
+### Detail panel (\`CandidateDetailPanel\`) — 5 tabs
 
-Header carries an **Export Packet** button (\`exportResearchPacket\`) that builds a per-candidate research PDF.
+Tab order is fixed: **Overview · Qualification Process · Uploaded Documents · Committee Votes · Activity**.
 
-### Tier-3 hardening (feature-flagged)
+- **Overview** — read-only contact block, source (three levels: Type → Name → Campaign, with automatic SmartLead campaign mapping), deal owner, the manual blue **fit tag** (\`TagSelect\`), the full qualification scoring, and a **Signals & Red Flags** summary rolled up from the process steps.
+- **Qualification Process** — the whole 7-step process on one tab (\`ProcessTab\`), each step with its script questions, contact intake (auto-saves on blur — no Save button), post-call actions, homework tracking and document uploads scoped to that step:
+  1. Initial Qualification — lead sheet incl. experience with children, interest in Neuron Garage, educational philosophy, role, spouse/partner, desired market city/state (with registration-state alerts), mailing address, then trial close.
+  2. Business Overview Call — Track Homework.
+  3. Internal: Background & Credit Check.
+  4. FDD & Franchise Agreement Review — **FDD sent date** and **FDD proof upload** live in Post-Call Actions.
+  5. Business Immersion & Evaluation — Post-Call Actions, then the three reference checks (\`ReferencesBlock\`) and a "Completed candidate reference checks" item.
+  6. Confirmation Call — includes "Overnighted a personalized Neuron Garage pen with their franchise number on it."
+  7. Signing Call.
+- **Uploaded Documents** — per-candidate file dropzone backed by \`candidate_files\` + Lovable Cloud Storage.
+- **Committee Votes** — Selection Committee Approve / Decline, including manual votes for members without app accounts.
+- **Activity** — Stage History above the Activity Timeline. It is an audit trail only; free-text note creation was removed.
 
-Registered on \`src/lib/featureFlags.ts\`. All currently ON:
+Header carries **Export Packet** (\`exportResearchPacket\`) and a compliance packet PDF builder.
 
-- \`FF_DOCUMENTS\` — Documents tab + dropzone.
-- \`FF_STEP2_UPLOADS\` — background / credit uploads at the Initial Qualification step.
-- \`FF_STEP4_UPLOADS\` — immersion uploads.
-- \`FF_COMPLIANCE\` — compliance audit log (\`candidate_compliance\` + \`candidate_compliance_audit\`).
-- \`FF_FDD_GATE\` — **16-day FDD hard-block**: a candidate cannot leave FDD Review for Immersion until 16 calendar days have elapsed since FDD delivery (\`FddCountdown\` enforces it client-side; DB validates server-side).
-- \`FF_SCORE_OVERRIDE\` — manual qualification-score override with audit trail (\`candidate_score_overrides_history\`).
-- \`FF_MANUAL_VOTES\` — record committee votes for members without app accounts.
+### Qualification scoring
 
-Flags flip a feature off without a code revert.
+Five pillars, rated by the recruiter: **Responsiveness · Elementary Experience · Process Alignment · Philosophical Alignment · Market Fit**, each with its own notes, auto-rolled into a composite stored in \`candidate_qualification\`. The legacy "fit score" was removed; the board filter is now **Qualification** and reads the composite. Manual overrides are audited in \`candidate_score_overrides_history\`.
+
+### FDD 16-day compliance gate (locked)
+
+A prospect cannot sign a franchise agreement fewer than **16 calendar days** after receiving the FDD. \`candidate_compliance.fdd_sent_at\` is the **single source of truth** — the Step-4 date field (\`FddSentDateField\`) and the countdown both read and write it. Database triggers block the stage transition server-side; \`candidate_compliance_audit\` keeps the auditable trail.
 
 ### Confirmation Gate (locked)
 
@@ -661,15 +663,24 @@ All tables have RLS enabled. Source of truth = generated \`src/integrations/supa
 
 ### Candidates
 
-- \`candidates\` — \`first_name, last_name, email, phone, city, state, current_stage, fit_score, fit_tag, assigned_to\`.
-- \`candidate_profiles\` — motivation, background, liquid capital, net worth, timeline, partner involvement, location preferences.
-- \`candidate_qualification\` — 5 sub-scores (financial / leadership / teaching / culture / market) + composite.
+- \`candidates\` — \`first_name, last_name, email, phone, city, state, current_stage, fit_tag, assigned_to\`, plus three-level source (\`source_type\`, \`source_name\`, \`source_campaign\`). The legacy \`fit_score\` was retired.
+- \`candidate_profiles\` — lead-sheet intake: motivation, background, liquid capital, net worth, timeline, spouse/partner, desired market city/state, mailing address, and the Step-1 answers \`experience_with_children\`, \`interest_in_neuron_garage\`, \`educational_philosophy\`.
+- \`candidate_qualification\` — the 5 pillar scores (responsiveness / elementary experience / process alignment / philosophical alignment / market fit) + composite + per-pillar notes.
+- \`candidate_process_steps\` — per-step state, script answers, signals and red flags.
+- \`candidate_events\` — scheduled calls behind the Calendar view (call type = process step).
+- \`candidate_activities\` — activity timeline entries (system-generated).
 - \`candidate_stage_history\` — every transition with notes.
 - \`candidate_votes\` — Selection Committee rows.
 - \`candidate_checklist_items\` — per-stage checklist (auto-seeded for Confirmation via trigger).
-- \`candidate_files\` — Documents tab uploads (FF_DOCUMENTS).
-- \`candidate_compliance\` + \`candidate_compliance_audit\` — compliance audit log (FF_COMPLIANCE).
-- \`candidate_score_overrides_history\` — manual score-override audit (FF_SCORE_OVERRIDE).
+- \`candidate_files\` — Uploaded Documents + per-step uploads (incl. \`fdd_proof\` and homework).
+- \`candidate_compliance\` + \`candidate_compliance_audit\` — FDD dates and the 16-day gate audit trail.
+- \`candidate_score_overrides_history\` — manual score-override audit.
+
+### Market Validation & Site Analysis
+
+- \`mvs_providers\` — discovered camp/enrichment providers with price, weeks, tier and evidence (staff-read only).
+- \`mvs_operator_watchlist\` — **shared** brand list (names, aliases, tier, \`is_premium_brand\`); single source of truth for brand classification.
+- \`mvs_pipeline_runs\` — one row per city per pipeline pass, with per-stage counters (staff-read only).
 
 ### Onboarding (Phase 2 scaffolding present)
 

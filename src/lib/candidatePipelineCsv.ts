@@ -1,6 +1,7 @@
 import type { Candidate, StageId } from "@/data/pipelineData";
 import { STAGES } from "@/data/pipelineData";
 import { computeComposite } from "@/lib/candidateScoring";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Single source of truth for the candidate CSV. Export and import both read this

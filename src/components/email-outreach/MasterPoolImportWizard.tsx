@@ -41,6 +41,14 @@ const pipeList = (v: string | null | undefined): string[] =>
 
   (v ?? "").split("|").map((s) => s.trim()).filter(Boolean);
 
+/** The teacher row stores one overall review level. Mixed evidence stays LOW. */
+const overallSecondaryConfidence = (v: string | null | undefined): string | null => {
+  const levels = pipeList(v).map((level) => level.toUpperCase());
+  if (levels.includes("LOW")) return "LOW";
+  if (levels.includes("MEDIUM")) return "MEDIUM";
+  return null;
+};
+
 type EvidenceRow = {
   evidence_class: "verified_creator" | "secondary";
   signal_type: string | null;
@@ -318,7 +326,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         : null,
       verified_creator_signal_count: num("verified_creator_signal_count"),
       secondary_signal_count: num("secondary_signal_count"),
-      secondary_signal_confidence: get("secondary_signal_confidence"),
+      secondary_signal_confidence: overallSecondaryConfidence(get("secondary_signal_confidence")),
       secondary_signal_match_basis: get("secondary_signal_match_basis"),
     };
 
@@ -357,6 +365,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     const secSources = pipeList(get("secondary_signal_sources"));
     const secDetails = pipeList(get("secondary_signal_details"));
     const secUrls = pipeList(get("secondary_signal_source_urls"));
+    const secConfidences = pipeList(get("secondary_signal_confidence"));
     const secLen = Math.max(secSources.length, secDetails.length, secUrls.length);
     for (let i = 0; i < secLen; i++) {
       evidence.push({
@@ -365,7 +374,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         summary: secDetails[i] ?? null,
         source_url: secUrls[i] ?? null,
         source_label: secSources[i] ?? null,
-        confidence: get("secondary_signal_confidence"),
+        confidence: secConfidences[i] ?? overallSecondaryConfidence(get("secondary_signal_confidence")),
         match_basis: get("secondary_signal_match_basis"),
       });
     }
@@ -616,48 +625,53 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             for (const r of rawRows ?? []) existingRaws.set(String(r.id), (r.raw ?? null) as Record<string, unknown> | null);
           }
 
-          for (let i = 0; i < toEnrich.length; i++) {
-            const p = toEnrich[i];
-            const match = resolveMatch(p)!;
-            const patch: Record<string, unknown> = {};
-            const before: Record<string, unknown> = {};
-            for (const f of ENRICHABLE) {
-              const v = p.values[f];
-              if (v === null || v === undefined || v === "") continue;
-              const isEmptyOnRecord = match.empty_fields.includes(f);
-              if (conflictMode === "fill_blanks" && !isEmptyOnRecord) continue;
-              patch[f] = v;
-              if (!isEmptyOnRecord) before[f] = "(overwritten)";
-            }
-            // Manus-owned columns are always refreshed from the file.
-            for (const f of ALWAYS_WRITE) {
-              const v = p.values[f];
-              if (v === null || v === undefined || v === "") continue;
-              patch[f] = v;
-            }
+          const ENRICH_CONCURRENCY = 12;
+          for (let start = 0; start < toEnrich.length; start += ENRICH_CONCURRENCY) {
+            const group = toEnrich.slice(start, start + ENRICH_CONCURRENCY);
+            const results = await Promise.all(group.map(async (p) => {
+              const match = resolveMatch(p);
+              if (!match) return false;
+              const patch: Record<string, unknown> = {};
+              const before: Record<string, unknown> = {};
+              for (const f of ENRICHABLE) {
+                const v = p.values[f];
+                if (v === null || v === undefined || v === "") continue;
+                const isEmptyOnRecord = match.empty_fields.includes(f);
+                if (conflictMode === "fill_blanks" && !isEmptyOnRecord) continue;
+                patch[f] = v;
+                if (!isEmptyOnRecord) before[f] = "(overwritten)";
+              }
+              // Manus-owned columns are always refreshed from the file.
+              for (const f of ALWAYS_WRITE) {
+                const v = p.values[f];
+                if (v === null || v === undefined || v === "") continue;
+                patch[f] = v;
+              }
 
-            const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
-            const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
-            const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
-            mergedRaw.enrichment_history = [
-              ...history,
-              { batch_id: batch.id, at: new Date().toISOString(), mode: conflictMode, fields: Object.keys(patch), overwritten: Object.keys(before) },
-            ];
+              const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
+              const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
+              const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
+              mergedRaw.enrichment_history = [
+                ...history,
+                { batch_id: batch.id, at: new Date().toISOString(), mode: conflictMode, fields: Object.keys(patch), overwritten: Object.keys(before) },
+              ];
 
-            if (Object.keys(patch).length === 0 && !Object.keys(p.rawUnmapped).length) continue;
+              if (Object.keys(patch).length === 0 && !Object.keys(p.rawUnmapped).length) return false;
 
-            const { error: upErr } = await supabase.from("teacher_prospects")
-              .update({
-                ...patch,
-                raw: mergedRaw as never,
-                last_enriched_at: new Date().toISOString(),
-                import_batch_id: batch.id,
-                ...(patch.email ? { needs_email_enrichment: false } : {}),
-              } as never)
-              .eq("id", match.id);
-            if (upErr) throw new Error(`enrich failed on ${match.id}: ${upErr.message}`);
-            enriched++;
-            if (i % 100 === 0) toast.loading(`Enriching existing records… ${enriched.toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
+              const { error: upErr } = await supabase.from("teacher_prospects")
+                .update({
+                  ...patch,
+                  raw: mergedRaw as never,
+                  last_enriched_at: new Date().toISOString(),
+                  import_batch_id: batch.id,
+                  ...(patch.email ? { needs_email_enrichment: false } : {}),
+                } as never)
+                .eq("id", match.id);
+              if (upErr) throw new Error(`enrich failed on ${match.id}: ${upErr.message}`);
+              return true;
+            }));
+            enriched += results.filter(Boolean).length;
+            toast.loading(`Enriching existing records… ${Math.min(start + group.length, toEnrich.length).toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
           }
         }
 

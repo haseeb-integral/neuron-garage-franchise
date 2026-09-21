@@ -5,6 +5,7 @@ import { ArrowUpDown, BadgeCheck, ChevronLeft, ChevronRight, ChevronsLeft, Chevr
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SourceBadge } from "./SourceBadge";
 import { statusBadgeFor } from "@/lib/teacherSourceLabels";
+import { prospectTier, hookFacts, signalLabel } from "@/lib/teacherSignals";
 
 export type OutreachInfo = {
   campaign_id: string | null;

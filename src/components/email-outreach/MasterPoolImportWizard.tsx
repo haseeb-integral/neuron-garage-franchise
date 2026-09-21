@@ -126,7 +126,12 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   // Step 3
-  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number; fieldsToFill: number } | null>(null);
+  const [qa, setQa] = useState<{
+    total: number; withEmail: number; validEmail: number; inBatchDupes: number;
+    existingInMaster: number; missingRequired: number; fieldsToFill: number;
+    rowsVerifiedFacts: number; rowsCreatorSignals: number; rowsSecMedium: number;
+    rowsSecLow: number; evidenceLinks: number;
+  } | null>(null);
   const [matchMap, setMatchMap] = useState<Map<string, MatchInfo>>(new Map());
   const [qaLoading, setQaLoading] = useState(false);
   const [qaPhase, setQaPhase] = useState<string>("");

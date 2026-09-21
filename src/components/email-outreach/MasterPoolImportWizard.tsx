@@ -215,6 +215,18 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     };
     const manus = get("dedupe_key");
     if (manus) return `manus:${manus}`;
+    return fallbackKeyForRow(row);
+  };
+
+  // Second-chance key: what teacher_prospects.dedupe_key itself is built from.
+  // A Manus key only matches teachers we already imported with that key, so a
+  // row keyed by Manus must also be checked by email / name+city+state or we
+  // would treat an existing teacher as brand new and lose their signals.
+  const fallbackKeyForRow = (row: Record<string, string>): string => {
+    const get = (f: TargetField) => {
+      const col = mapping[f];
+      return col ? (row[col] ?? "").trim() : "";
+    };
     const email = get("email").toLowerCase();
     if (email) return `email:${email}`;
     const cityV = (mapping.city ? get("city") : defaultCity).trim().toLowerCase();

@@ -122,6 +122,22 @@ export function SmartLeadCampaignsPanel() {
     setActing(actionKey);
     try {
       if (status === "START") {
+        // CAN-SPAM pre-flight: every email step needs the unsubscribe tag.
+        complianceCache.delete(String(c.id));
+        let compliant = false;
+        try {
+          compliant = await fetchCompliance(String(c.id));
+        } catch {
+          throw new Error("Could not read this campaign's email steps to check the unsubscribe link. Try again.");
+        }
+        setCompliance((prev) => ({ ...prev, [String(c.id)]: compliant }));
+        if (!compliant) {
+          toast.error(
+            "Cannot activate: one or more email steps are missing the {{unsubscribe}} tag. CAN-SPAM requires an unsubscribe link in every outgoing email.",
+          );
+          setActing(null);
+          return;
+        }
         await applyDefaultLaunchSetup(c.id);
       }
       await callSmartLeadProxy(`/campaigns/${c.id}/status`, "POST", { status });
@@ -199,6 +215,16 @@ export function SmartLeadCampaignsPanel() {
                     <td className="px-3 py-1">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <span className="truncate font-medium text-[#07142f]">{c.name ?? `Campaign ${c.id}`}</span>
+                        {compliance[String(c.id)] === true && (
+                          <ShieldCheck size={12} className="shrink-0 text-emerald-600" aria-label="Compliant">
+                            <title>Compliant</title>
+                          </ShieldCheck>
+                        )}
+                        {compliance[String(c.id)] === false && (
+                          <ShieldAlert size={12} className="shrink-0 text-red-600" aria-label="Missing unsubscribe">
+                            <title>Missing unsubscribe</title>
+                          </ShieldAlert>
+                        )}
                         {isTest && <span className="rounded bg-amber-100 px-1 text-[9px] font-bold leading-4 text-amber-800">TEST</span>}
                         <span className="text-[10px] text-[#8794ab]">· {c.id}</span>
                       </div>

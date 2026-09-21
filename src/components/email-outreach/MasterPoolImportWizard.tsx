@@ -252,6 +252,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
   type Prepared = {
     key: string;
+    altKey: string | null;             // second-chance match key (email / name+city+state)
     values: Record<string, unknown>;   // DB column → value (only what the CSV has)
     evidence: EvidenceRow[];
     rawUnmapped: Record<string, string>;
@@ -337,7 +338,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       });
     }
 
-    return { key: dedupeKeyForRow(r), values, evidence, rawUnmapped, email };
+    const key = dedupeKeyForRow(r);
+    const fallback = fallbackKeyForRow(r);
+    return { key, altKey: fallback !== key ? fallback : null, values, evidence, rawUnmapped, email };
   };
 
 

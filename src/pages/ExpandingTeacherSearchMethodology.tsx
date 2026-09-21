@@ -13,7 +13,7 @@ const ExpandingTeacherSearchMethodology = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "expanding-teacher-search-methodology.md";
+    a.download = "teacher-record-enrichment-methodology.md";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -24,7 +24,7 @@ const ExpandingTeacherSearchMethodology = () => {
     <DocShell
       eyebrow="Methodology · Plain English"
       eyebrowIcon={GraduationCap}
-      title={<>Expanding Teacher Search and Enrichment — Methodology</>}
+      title={<>Teacher Record Enrichment — Methodology</>}
       subtitle="How the Manus enrichment system works, what Houston and Austin proved, the confidence rules, the per-city retooling checklist, and how every signal now appears on a teacher record in this app."
       action={
         <Button

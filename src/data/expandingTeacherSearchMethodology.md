@@ -1,4 +1,6 @@
-# **Expanding Teacher Search and Enrichment — Methodology**
+# **Teacher Record Enrichment — Methodology**
+
+*(Previously titled "Expanding Teacher Search and Enrichment". Same document, new name.)*
 
 **Version 2.0 · Two-City Proof (Houston + Austin)**
 **Date:** September 21, 2026 · **Prepared by:** Brett Thomas, Integral Associates, with Manus

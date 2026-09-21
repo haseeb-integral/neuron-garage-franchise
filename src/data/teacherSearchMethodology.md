@@ -1,6 +1,8 @@
 # Teacher Search — Methodology (Plain English)
 
-**Version:** v1.1 · **Date:** 2026-07-24 · **Audience:** Admin users
+**Version:** v1.2 · **Date:** 2026-09-21 · **Audience:** Admin users
+
+*Changed since v1.1: added the enrichment layer — prospect tiers, the evidence panel on each teacher, the Signals filter, and how confidence levels (HIGH / MEDIUM / LOW) work. Full detail lives in the **Teacher Record Enrichment** doc.*
 
 *Changed since v1.0: corrected the source filter options, and clarified that the Fit Score is not automatically calculated today — it is entered by hand or left blank until a scoring rule is wired up.*
 

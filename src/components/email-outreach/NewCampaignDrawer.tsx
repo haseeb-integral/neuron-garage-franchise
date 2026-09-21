@@ -167,7 +167,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     return hours * 60 + minutes;
   };
 
-  const validate = () => {
+  const validate = (launch = false) => {
     if (!name.trim()) return "Campaign name required.";
     if (testMode && !effectiveTestRecipient) return "Test mode needs a recipient email.";
     if (!days.length) return "Pick at least one sending day.";

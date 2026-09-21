@@ -57,6 +57,26 @@ The tag is what shows up as a colored pill in the table.
 
 ---
 
+## 3A. The enrichment layer — how we spot the best prospects (new, September 2026)
+
+For Houston and Austin, a separate research pipeline (run with a tool called **Manus**) checked each teacher against public records — business licences, DonorsChoose classroom projects, education grants, awards, tutoring profiles. The results are stored on each teacher as **evidence**, and every enriched teacher falls into one of three tiers:
+
+- **Tier 1 — Entrepreneurial signal.** We found a side business or second professional licence matching the teacher's name and city (for example an insurance or real-estate licence). These are the strongest prospects — call them first.
+- **Tier 2 — Outreach hook.** No business signal, but we found a verified fact you can open an email with — "you ran a funded DonorsChoose project", "you won a district grant". 
+- **Tier 3 — Verified contact.** Name, email, school and district confirmed. Good for normal outreach.
+
+In the table, Tier 1 teachers show an amber **Side business** chip and Tier 2 teachers show a green chip with the hook in plain words. The list sorts **best prospects first** by default, and the **Signals** filter lets you show only Tier 1, only Tier 2, or only the matches that still need a quick verification.
+
+Click a teacher and the **Enrichment & Signals** panel shows each signal as its own card: what was found, the source, a clickable link to the original public record, and a **confidence** badge:
+
+- **HIGH** — strong match (for example an official email match). Safe to use.
+- **MEDIUM** — name + city match. Real, but worth a quick check before you write.
+- **LOW** — weak match. Context only.
+
+Verified facts and lower-confidence signals are always shown **separately** and are never merged into one score — they are context to help the recruiter, not an automatic judgement.
+
+---
+
 ## 4. What each teacher's status means
 
 Every teacher has a status that tells you where they are in our process:

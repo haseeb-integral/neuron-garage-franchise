@@ -700,9 +700,11 @@ All tables have RLS enabled. Source of truth = generated \`src/integrations/supa
 
 ### Teachers
 
-- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, enrichment_source, last_enriched_at\`. v1.2 extensions: \`status\` (\`new\` | \`in_smartlead\` | \`suppressed\` | …), \`last_pushed_at\`, \`needs_email_enrichment\`, \`verification_status\` (\`valid\` | \`catch_all\` | \`invalid\` | null), \`dedupe_key\` (generated), \`raw\` (jsonb of unmapped CSV columns), \`teacher_import_batch_id\` (FK).
+- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, enrichment_source, last_enriched_at\`. v1.2 extensions: \`status\` (\`new\` | \`in_smartlead\` | \`suppressed\` | …), \`last_pushed_at\`, \`needs_email_enrichment\`, \`verification_status\` (\`valid\` | \`catch_all\` | \`invalid\` | null), \`dedupe_key\` (generated), \`raw\` (jsonb of unmapped CSV columns), \`teacher_import_batch_id\` (FK). v1.6 enrichment columns: \`verified_enrichment_fact_count\`, \`verified_enrichment_signal_types\` (array), \`verified_creator_signal_count\`, \`secondary_signal_count\`, \`secondary_signal_confidence\`.
+- \`teacher_evidence\` — one row per signal or verified fact: \`teacher_prospect_id\`, \`evidence_class\` (\`verified_creator\` | \`secondary\` | \`verified_fact\`), \`signal_type\`, \`source_label\`, \`summary\`, \`source_url\`, \`match_basis\`, \`confidence\` (\`HIGH\` | \`MEDIUM\` | \`LOW\`, null for verified facts). Dedupe index includes \`md5(summary)\`.
 - \`teacher_prospects_cities\` — per-city aggregate snapshot.
 - \`teacher_prospects_stats\` — cached counters powering the funnel widget.
+- \`teacher_prospects_search\` — security-definer RPC backing free-text search (server-side \`ilike\` + true count).
 - \`teacher_saved_lists\` — per-user named teacher lists.
 - \`teacher_import_batches\` — one row per CSV import (\`source\`, \`destination\`, \`row_count\`, \`column_mapping\`, \`unmapped_columns\`, \`created_by\`).
 - \`imports\` — generic import job audit.

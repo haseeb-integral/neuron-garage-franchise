@@ -139,7 +139,9 @@ Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard` (l
 The store (`useTeacherProspectsStore`) is the single source of truth for filters and paging. Filters:
 
 - `cityFilters: string[]` — multi-city. Serialized as `?city=austin,denver`.
-- `search: string` — debounced 350ms across name, school, city, specialization.
+- `search: string` — debounced 350ms across name, school, city, specialization. Name search runs through a security-definer RPC so it searches the full pool and returns a true total count (fixed 2026-09: a plain table query could miss rows and misreport counts).
+- `signalsFilter` — **All / Tier 1 (entrepreneurial signal) / Tier 2 (outreach hook) / MEDIUM-confidence matches**. Filters by the teacher's evidence rows, not by a stored flag.
+- Default sort is **best prospects first**: Tier 1 → Tier 2 → verified contact, then Fit Score.
 - `sourceFilter` — one of `all` · `smartlead` · `linkedin` · `needs_email`. Shown in the UI as **All Sources**, **SmartLead Enriched**, **LinkedIn Import**, **Needs Email Enrichment**. These are *bucketed* labels derived from `enrichment_source` + `verification_status` + email presence in `src/lib/teacherSourceLabels.ts` — not the raw ingest channel.
 - `hideInOutreach: boolean` — hides rows whose `id` appears in `email_campaign_recipients`.
 - Paging: `page`, `pageSize`.

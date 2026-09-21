@@ -367,7 +367,24 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           if (seen.has(email)) inBatchDupes++; else seen.add(email);
         }
         dedupeKeys.push(dedupeKeyForRow(row));
+        const alt = fallbackKeyForRow(row);
+        if (alt) dedupeKeys.push(alt);
       }
+
+      // Honest signal counts read straight from the file.
+      const preparedAll = csvRows.map(buildRow).filter(Boolean) as Prepared[];
+      let rowsVerifiedFacts = 0, rowsCreatorSignals = 0, rowsSecMedium = 0, rowsSecLow = 0, evidenceLinks = 0;
+      for (const p of preparedAll) {
+        if (Number(p.values.verified_enrichment_fact_count ?? 0) > 0) rowsVerifiedFacts++;
+        if (Number(p.values.verified_creator_signal_count ?? 0) > 0) rowsCreatorSignals++;
+        const conf = String(p.values.secondary_signal_confidence ?? "").toUpperCase();
+        if (Number(p.values.secondary_signal_count ?? 0) > 0) {
+          if (conf === "MEDIUM") rowsSecMedium++;
+          else if (conf === "LOW") rowsSecLow++;
+        }
+        evidenceLinks += p.evidence.length;
+      }
+
       const unique = Array.from(new Set(dedupeKeys));
       setQaPhase("Checking existing records in Master Pool");
       toast.loading(`Checking existing records in Master Pool…`, { id: tId });
@@ -377,7 +394,6 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       });
       if (dedupeError) throw new Error(`Dedupe check failed: ${dedupeError.message}`);
       const payload = dedupeData as { existing_count?: number; matches?: MatchInfo[] } | null;
-      const existingInMaster = Number(payload?.existing_count ?? 0);
 
       const map = new Map<string, MatchInfo>();
       for (const m of payload?.matches ?? []) map.set(m.dedupe_key, m);
@@ -385,12 +401,12 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       // How many individual cells would actually be written on existing rows.
       let fieldsToFill = 0;
+      const matchedIds = new Set<string>();
       if (wantMatches && map.size) {
-        for (const row of csvRows) {
-          const match = map.get(dedupeKeyForRow(row));
+        for (const p of preparedAll) {
+          const match = map.get(p.key) ?? (p.altKey ? map.get(p.altKey) : undefined);
           if (!match) continue;
-          const p = buildRow(row);
-          if (!p) continue;
+          matchedIds.add(match.id);
           for (const f of ENRICHABLE) {
             const v = p.values[f];
             if (v === null || v === undefined || v === "") continue;
@@ -402,9 +418,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           }
         }
       }
+      const existingInMaster = wantMatches ? matchedIds.size : Number(payload?.existing_count ?? 0);
 
 
-      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill });
+      setQa({
+        total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill,
+        rowsVerifiedFacts, rowsCreatorSignals, rowsSecMedium, rowsSecLow, evidenceLinks,
+      });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

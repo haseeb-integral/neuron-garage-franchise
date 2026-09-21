@@ -204,12 +204,22 @@ export function TeacherTable({
                   <td className={cellCls}>
                     {(() => {
                       const chips: React.ReactNode[] = [];
-                      if ((p.verifiedFactCount ?? 0) > 0)
-                        chips.push(<span key="v" title={`${p.verifiedFactCount} verified enrichment facts${p.verifiedSignalTypes?.length ? `: ${p.verifiedSignalTypes.join(", ")}` : ""}`} className="inline-flex items-center gap-1 rounded-full bg-[#dcfce7] px-1.5 py-0.5 text-[10px] font-bold text-[#0a8f5a]"><BadgeCheck size={10} />{p.verifiedFactCount}</span>);
-                      if ((p.creatorSignalCount ?? 0) > 0)
-                        chips.push(<span key="c" title={`${p.creatorSignalCount} verified creator signals`} className="inline-flex items-center gap-1 rounded-full bg-[#eef4ff] px-1.5 py-0.5 text-[10px] font-bold text-[#174be8]"><Sparkles size={10} />{p.creatorSignalCount}</span>);
-                      if ((p.secondarySignalCount ?? 0) > 0)
-                        chips.push(<span key="s" title={`${p.secondarySignalCount} side-business signals${p.secondarySignalConfidence ? ` (confidence: ${p.secondarySignalConfidence})` : ""}`} className="inline-flex items-center gap-1 rounded-full bg-[#fef3c7] px-1.5 py-0.5 text-[10px] font-bold text-[#92400e]"><Store size={10} />{p.secondarySignalCount}</span>);
+                      const tier = prospectTier(p);
+                      const hooks = hookFacts(p.verifiedSignalTypes);
+                      if (tier.tier === 1)
+                        chips.push(
+                          <span key="t1" title={`${p.secondarySignalCount ?? 0} side-business signal(s)${p.secondarySignalConfidence ? ` — ${p.secondarySignalConfidence} confidence` : ""}`} className="inline-flex items-center gap-1 rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-black text-[#92400e]">
+                            <Store size={10} /> Side business{p.secondarySignalConfidence ? ` · ${p.secondarySignalConfidence}` : ""}
+                          </span>,
+                        );
+                      if (hooks.length > 0)
+                        chips.push(
+                          <span key="hook" title={hooks.map(signalLabel).join(" · ")} className="inline-flex max-w-[190px] items-center gap-1 truncate rounded-full bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#0a8f5a]">
+                            <BadgeCheck size={10} /> {signalLabel(hooks[0])}{hooks.length > 1 ? ` +${hooks.length - 1}` : ""}
+                          </span>,
+                        );
+                      if (chips.length === 0 && (p.verifiedFactCount ?? 0) > 0)
+                        chips.push(<span key="v" title="Role and grade confirmed by district directory" className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-2 py-0.5 text-[10px] font-bold text-[#34445f]"><BadgeCheck size={10} /> Verified contact</span>);
                       if (p.phone)
                         chips.push(<span key="p" title={p.phone} className="inline-flex items-center gap-1 rounded-full bg-[#eef2f7] px-1.5 py-0.5 text-[10px] font-bold text-[#34445f]"><Phone size={10} /></span>);
                       return chips.length ? <div className="flex flex-wrap items-center gap-1">{chips}</div> : <span className="text-[#cdd5e0]">—</span>;

@@ -136,7 +136,10 @@ export function TeacherFilterBar(p: Props) {
             <SelectValue placeholder="Signals" />
           </SelectTrigger>
           <SelectContent className="bg-white">
-            <SelectItem value="all">All Signals</SelectItem>
+            <SelectItem value="all">All teachers</SelectItem>
+            <SelectItem value="tier1">Tier 1 — entrepreneurial signal</SelectItem>
+            <SelectItem value="tier2">Tier 2 — outreach hook</SelectItem>
+            <SelectItem value="medium_plus">Signal, MEDIUM confidence only</SelectItem>
             <SelectItem value="creator">Has creator signal</SelectItem>
             <SelectItem value="secondary">Has side-business signal</SelectItem>
             <SelectItem value="has_phone">Has phone number</SelectItem>

@@ -301,15 +301,29 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       manus_dedupe_key: get("dedupe_key"),
       outreach_status_source: get("outreach_status"),
       record_added_at: addedAt && !Number.isNaN(Date.parse(addedAt)) ? new Date(addedAt).toISOString() : null,
-      verified_enrichment_fact_count: num("verified_enrichment_fact_count") ?? 0,
+      // Blank count cells stay null so we never wipe a real number on an
+      // existing teacher. The insert path coerces null to 0 (NOT NULL columns).
+      verified_enrichment_fact_count: num("verified_enrichment_fact_count"),
       verified_enrichment_signal_types: pipeList(get("verified_enrichment_signal_types")).length
         ? pipeList(get("verified_enrichment_signal_types"))
         : null,
-      verified_creator_signal_count: num("verified_creator_signal_count") ?? 0,
-      secondary_signal_count: num("secondary_signal_count") ?? 0,
+      verified_creator_signal_count: num("verified_creator_signal_count"),
+      secondary_signal_count: num("secondary_signal_count"),
       secondary_signal_confidence: get("secondary_signal_confidence"),
       secondary_signal_match_basis: get("secondary_signal_match_basis"),
     };
+
+    // Keep the original " | " strings verbatim on the record (raw jsonb) so no
+    // detail is lost even if the lists are uneven when we split them.
+    const RAW_SIGNAL_FIELDS: TargetField[] = [
+      "verified_enrichment_signal_types", "verified_creator_summary", "verified_creator_source_urls",
+      "secondary_signal_sources", "secondary_signal_details", "secondary_signal_source_urls",
+      "secondary_signal_confidence", "secondary_signal_match_basis",
+    ];
+    for (const f of RAW_SIGNAL_FIELDS) {
+      const v = get(f);
+      if (v) rawUnmapped[f] = v;
+    }
 
     // ---- Evidence rows (kept out of the flat record on purpose) ----
     const evidence: EvidenceRow[] = [];

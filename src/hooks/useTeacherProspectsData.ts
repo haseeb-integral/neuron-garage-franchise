@@ -203,31 +203,20 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
     setLoadError(null);
     const myReq = ++reqIdRef.current;
     const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
 
-    let q = supabase
-      .from("teacher_prospects")
-      .select("*", { count: "planned" })
-      .order("created_at", { ascending: false });
-
-    if (cityFilters.length > 0) q = q.in("city", cityFilters);
-    if (debouncedSearch?.trim()) {
-      const s = debouncedSearch.trim().replace(/[%_",]/g, "");
-      q = q.or(`name.ilike."%${s}%",school.ilike."%${s}%",city.ilike."%${s}%",state.ilike."%${s}%",email.ilike."%${s}%"`);
-    }
-    if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
-    else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
-    else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
-
-    q = applySignalFilter(q, signalFilter);
-
-    if (hideInOutreach && allPromotedIds.length > 0 && allPromotedIds.length <= 2000) {
-      q = q.not("id", "in", `(${allPromotedIds.join(",")})`);
-    }
-
-    const { data, error, count } = await q.range(from, to);
+    // Server-side search. A plain filtered select cannot use the trigram
+    // indexes under the staff RLS rule, so it scans all rows and times out.
+    const { data, error } = await supabase.rpc("teacher_prospects_search", {
+      p_search: debouncedSearch?.trim() || null,
+      p_cities: cityFilters.length > 0 ? cityFilters : null,
+      p_source_filter: sourceFilter,
+      p_signal_filter: signalFilter,
+      p_sort: sortMode,
+      p_exclude_ids: hideInOutreach && allPromotedIds.length > 0 ? allPromotedIds : null,
+      p_limit: pageSize,
+      p_offset: from,
+    });
     if (myReq !== reqIdRef.current || !mountedRef.current) return;
-
 
     if (error) {
       const isTimeout = /statement timeout|canceling statement/i.test(error.message);
@@ -239,19 +228,13 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
       setProspects([]);
       setTotalCount(0);
     } else {
-      let rows = (data ?? []).map((r) => mapRow(r as unknown as DbRow));
-      let total = count ?? 0;
-      if (hideInOutreach && allPromotedIds.length > 2000) {
-        const hidden = new Set(allPromotedIds);
-        rows = rows.filter((r) => !hidden.has(r.uuid));
-        total = Math.max(0, total - allPromotedIds.length);
-      }
-      setProspects(rows);
-      setTotalCount(total);
+      const payload = (data ?? {}) as { total?: number; rows?: unknown[] };
+      setProspects((payload.rows ?? []).map((r) => mapRow(r as DbRow)));
+      setTotalCount(payload.total ?? 0);
       setLoadedAt(new Date());
     }
     setLoadingProspects(false);
-  }, [page, pageSize, cityFilters, debouncedSearch, sourceFilter, signalFilter, hideInOutreach, allPromotedIds]);
+  }, [page, pageSize, cityFilters, debouncedSearch, sourceFilter, signalFilter, sortMode, hideInOutreach, allPromotedIds]);
 
   const loadStats = useCallback(async () => {
     const myReq = ++statsReqIdRef.current;

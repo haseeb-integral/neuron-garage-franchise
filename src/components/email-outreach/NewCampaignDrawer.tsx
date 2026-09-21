@@ -498,7 +498,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                   <textarea value={s.body} onChange={(e) => setSequences((prev) => prev.map((x, idx) => idx === i ? { ...x, body: e.target.value } : x))} placeholder="Email body" className="min-h-[80px] w-full rounded-lg border border-[#dbe4f2] p-3 text-sm" />
                 </div>
               ))}
-              <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: "" }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>
+              <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: FOOTER }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>
             </div>
           )}
         </div>

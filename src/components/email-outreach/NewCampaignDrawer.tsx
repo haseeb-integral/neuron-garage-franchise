@@ -3,7 +3,7 @@ import { X, Loader2, Check, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
-import { canSpamFooter, checkCanSpam, UNSUBSCRIBE_TAG } from "@/lib/canSpam";
+import { canSpamFooter, checkCanSpam, hasUnsubscribeTag, UNSUBSCRIBE_TAG } from "@/lib/canSpam";
 
 type SequenceStep = { day: number; subject: string; body: string };
 
@@ -496,6 +496,14 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                   </div>
                   <input value={s.subject} onChange={(e) => setSequences((prev) => prev.map((x, idx) => idx === i ? { ...x, subject: e.target.value } : x))} placeholder="Subject" className="mb-2 h-9 w-full rounded-lg border border-[#dbe4f2] px-3 text-sm" />
                   <textarea value={s.body} onChange={(e) => setSequences((prev) => prev.map((x, idx) => idx === i ? { ...x, body: e.target.value } : x))} placeholder="Email body" className="min-h-[80px] w-full rounded-lg border border-[#dbe4f2] p-3 text-sm" />
+                  <p className="mt-1 text-[11px] text-[#7a879c]">
+                    Include <code className="font-bold">{UNSUBSCRIBE_TAG}</code> in your email to add an unsubscribe link (required).
+                  </p>
+                  {!hasUnsubscribeTag(s.body) && (
+                    <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900">
+                      CAN-SPAM requires an unsubscribe link. Add <code className="font-bold">{UNSUBSCRIBE_TAG}</code> to this email step.
+                    </p>
+                  )}
                 </div>
               ))}
               <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: FOOTER }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>

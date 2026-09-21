@@ -52,3 +52,28 @@ export function checkCanSpam(
   }
   return null;
 }
+
+/**
+ * SmartLead returns sequence steps in a few shapes. Pull the email body text
+ * out of whichever field is present.
+ */
+export function sequenceBodyText(seq: unknown): string {
+  if (!seq || typeof seq !== "object") return "";
+  const s = seq as Record<string, unknown>;
+  const variants = Array.isArray(s.seq_variants) ? s.seq_variants : [];
+  const variantText = variants
+    .map((v) => (v && typeof v === "object" ? String((v as Record<string, unknown>).email_body ?? "") : ""))
+    .join("\n");
+  return [s.email_body, s.body, s.seq_delay_details_body, variantText]
+    .map((v) => (typeof v === "string" ? v : ""))
+    .join("\n");
+}
+
+/**
+ * True when at least one sequence step has no unsubscribe tag.
+ * An empty sequence list also counts as non-compliant.
+ */
+export function sequencesMissingUnsubscribe(sequences: unknown): boolean {
+  if (!Array.isArray(sequences) || sequences.length === 0) return true;
+  return sequences.some((s) => !hasUnsubscribeTag(sequenceBodyText(s)));
+}

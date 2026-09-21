@@ -503,6 +503,14 @@ SmartLead maintains a master unsubscribe/block list across all campaigns. Leads 
 
 **Build opportunity:** A Suppression List screen inside the app showing all blocked/unsubscribed emails, with the ability to manually add domains or emails before a campaign launches (e.g., block all @austinisd.org if a district asks to be removed).
 
+**Shipped September 21, 2026 — CAN-SPAM enforcement.** We no longer rely on SmartLead's block list alone:
+
+* \`smartlead-push-leads\` filters every candidate address against our own \`suppressed\_emails\` table (chunks of 500\) and returns a \`suppressed\` count. Pushes always send \`ignore\_global\_block\_list: false\` and \`ignore\_unsubscribe\_list: false\`.
+
+* \`smartlead-webhook\` upserts EMAIL\_BOUNCED / LEAD\_BOUNCED → \`bounce\`, LEAD\_UNSUBSCRIBED / EMAIL\_UNSUBSCRIBED → \`unsubscribe\`, SPAM\_COMPLAINT / EMAIL\_MARKED\_SPAM → \`complaint\` into \`suppressed\_emails\` (append-only, unique on email).
+
+* **Unsubscribe-tag gate.** GET /campaigns/{id}/sequences is read before activation (Campaigns panel, via smartlead-proxy) and before every lead push (dry run included). Any step body without \`{{unsubscribe}}\` blocks the action: the UI shows a toast, the edge function returns HTTP 400 with \`"Campaign sequences are missing {{unsubscribe}} tag…"\`. A campaign with zero steps is treated as non-compliant. Shared helpers: \`src/lib/canSpam.ts\` (\`sequenceBodyText\`, \`sequencesMissingUnsubscribe\`) with a mirrored copy inside the edge function. The campaign list renders a green/red compliance shield, cached 10 minutes, fetched 5 campaigns at a time.
+
 **7.5 Email Thread History per Lead**
 
 The full email thread between the app and a specific lead (all sent emails, opens, replies) is retrievable.

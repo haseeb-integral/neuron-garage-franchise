@@ -4,7 +4,7 @@
 
 **Document Type:** Engineering Reference  
 **Audience:** Developers, contractors, technical leads  
-**Last Updated:** May 20, 2026  
+**Last Updated:** September 21, 2026 (CAN-SPAM enforcement — see §7.4)  
 **Status:** Production (Phases 1–5 complete)
 
 **1\. System Architecture Overview**

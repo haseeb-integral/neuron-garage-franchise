@@ -440,7 +440,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         summary: creatorSummaries[i] ?? null,
         source_url: creatorUrls[i] ?? null,
         source_label: null,
-        confidence: "verified",
+        confidence: "HIGH",
         match_basis: null,
       });
     }
@@ -450,14 +450,36 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     const secConfidences = pipeList(get("secondary_signal_confidence"));
     const secLen = Math.max(secSources.length, secDetails.length, secUrls.length);
     for (let i = 0; i < secLen; i++) {
+      const label = secSources[i] ?? secSources[0] ?? null;
+      const detail = secDetails[i] ?? null;
+      const raw = `${label ?? ""} ${detail ?? ""}`;
+      const code =
+        /real estate|TREC/i.test(raw) ? "real_estate_license"
+        : /insurance|TDI/i.test(raw) ? "insurance_license"
+        : /licensing and regulation|TDLR/i.test(raw) ? "occupational_license"
+        : "side_business_signal";
+      const conf = (secConfidences[i] ?? overallSecondaryConfidence(get("secondary_signal_confidence")) ?? "").toUpperCase();
       evidence.push({
         evidence_class: "secondary",
-        signal_type: secSources[i] ?? null,
-        summary: secDetails[i] ?? null,
-        source_url: secUrls[i] ?? null,
-        source_label: secSources[i] ?? null,
-        confidence: secConfidences[i] ?? overallSecondaryConfidence(get("secondary_signal_confidence")),
+        signal_type: code,
+        summary: detail,
+        source_url: secUrls[i] ?? secUrls[0] ?? null,
+        source_label: label,
+        confidence: conf === "MEDIUM" || conf === "LOW" ? conf : null,
         match_basis: get("secondary_signal_match_basis"),
+      });
+    }
+    // Verified facts get their own evidence rows so the teacher panel can list
+    // them in plain English instead of only showing a count.
+    for (const label of pipeList(get("verified_enrichment_signal_types"))) {
+      evidence.push({
+        evidence_class: "verified_fact",
+        signal_type: label,
+        summary: null,
+        source_url: null,
+        source_label: "Manus enrichment",
+        confidence: "HIGH",
+        match_basis: null,
       });
     }
 

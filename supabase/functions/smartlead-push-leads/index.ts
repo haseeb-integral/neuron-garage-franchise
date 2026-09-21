@@ -43,6 +43,30 @@ Deno.serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as PushBody;
     if (!body.campaign_id) return json({ error: "campaign_id is required" }, 400);
 
+    // CAN-SPAM gate: never push leads into a campaign whose email steps are
+    // missing the unsubscribe tag. Runs for dry runs too.
+    {
+      const seqRes = await fetch(
+        `${SMARTLEAD_BASE}/campaigns/${body.campaign_id}/sequences?api_key=${apiKey}`,
+        { headers: { "Content-Type": "application/json" } },
+      );
+      const seqText = await seqRes.text();
+      if (!seqRes.ok) {
+        return json({ error: `Could not read campaign sequences (${seqRes.status}). ${seqText.slice(0, 200)}` }, 400);
+      }
+      let seqParsed: unknown = [];
+      try { seqParsed = JSON.parse(seqText); } catch { /* keep */ }
+      const sequences = Array.isArray(seqParsed)
+        ? seqParsed
+        : ((seqParsed as { data?: unknown })?.data ?? []);
+      if (sequencesMissingUnsubscribe(sequences)) {
+        return json({
+          error:
+            "Campaign sequences are missing {{unsubscribe}} tag. Add an unsubscribe link to all email steps before pushing leads. This is required for CAN-SPAM compliance.",
+        }, 400);
+      }
+    }
+
     // Build query: verified (+ optionally catch_all) prospects with valid emails
     // that are NOT already in outreach_queue for this campaign.
     const allowedStatuses = body.include_catch_all ? ["valid", "catch_all"] : ["valid"];

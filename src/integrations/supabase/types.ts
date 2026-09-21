@@ -3858,6 +3858,19 @@ export type Database = {
           city: string
         }[]
       }
+      teacher_prospects_search: {
+        Args: {
+          p_cities?: string[]
+          p_exclude_ids?: string[]
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_signal_filter?: string
+          p_sort?: string
+          p_source_filter?: string
+        }
+        Returns: Json
+      }
       teacher_prospects_stats: {
         Args: {
           p_cities?: string[]

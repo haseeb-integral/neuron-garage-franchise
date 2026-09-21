@@ -15,6 +15,13 @@
       "when": 1790015262742,
       "tag": "0001_rebuild_teacher_evidence_from_raw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790018626567,
+      "tag": "0002_teacher_prospects_search_rpc",
+      "breakpoints": true
     }
   ]
 }

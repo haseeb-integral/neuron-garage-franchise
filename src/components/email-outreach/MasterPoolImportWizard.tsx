@@ -14,6 +14,7 @@ type Step = 1 | 2 | 3 | 4;
 type Destination = "master_only" | "master_and_smartlead";
 type ImportMode = "add_only" | "add_and_enrich" | "enrich_only";
 type ConflictMode = "fill_blanks" | "overwrite";
+type Mapping = Partial<Record<TargetField, string | null>>;
 
 type MatchInfo = { dedupe_key: string; id: string; empty_fields: string[] };
 
@@ -101,8 +102,6 @@ type EvidenceRow = {
 
 
 const REQUIRED: TargetField[] = ["state", "city"]; // teacher_prospects requires city+state NOT NULL
-
-type Mapping = Partial<Record<TargetField, string | null>>;
 
 interface SLCampaign { id: string; name: string; status?: string }
 

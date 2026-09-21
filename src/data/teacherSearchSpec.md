@@ -61,6 +61,18 @@ merged into `raw`, and an audit entry appended to `raw.enrichment_history`
 (batch id, timestamp, mode, fields written, fields overwritten). The batch row in
 `teacher_import_batches` stores inserted / enriched / skipped counts in `dedupe_stats`.
 
+### The 27-column Manus import contract (locked)
+
+City exports produced by the Manus enrichment pipeline follow a fixed 27-column format. When the wizard sees that standard header, column mapping is **automatic** — no manual mapping step. Manual mapping only appears for non-standard files.
+
+Import rules:
+
+- A blank CSV cell never overwrites a value already stored.
+- Full signal text (`" | "`-separated) is preserved; nothing is truncated to a count.
+- The separate one-row-per-signal "sprint" file is blocked from the main import (it would duplicate teacher rows).
+- Matching uses `dedupe_key` first, then email — never name alone.
+- Re-importing the same file never duplicates evidence rows.
+
 
 ---
 

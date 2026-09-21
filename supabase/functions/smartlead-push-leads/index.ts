@@ -177,7 +177,9 @@ Deno.serve(async (req) => {
 
     return json({
       pushed,
-      skipped: alreadyIn.size,
+      skipped: alreadyIn.size + suppressedCount,
+      already_in_campaign: alreadyIn.size,
+      suppressed: suppressedCount,
       candidates: prospects.length,
       errors: errors.length ? errors : undefined,
     });

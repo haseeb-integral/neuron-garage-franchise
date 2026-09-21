@@ -29,6 +29,13 @@
       "when": 1790018654207,
       "tag": "0003_teacher_prospects_search_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790018791728,
+      "tag": "0004_teacher_prospects_search_dynamic",
+      "breakpoints": true
     }
   ]
 }

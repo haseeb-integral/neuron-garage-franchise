@@ -6,7 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown, Check } from "lucide-react";
 import type { SourceFilter } from "@/lib/teacherSourceLabels";
-import type { SignalFilter } from "@/stores/teacherProspectsStore";
+import type { SignalFilter, SortMode } from "@/stores/teacherProspectsStore";
 
 interface Props {
   cities: string[];
@@ -18,6 +18,8 @@ interface Props {
   setSearch: (v: string) => void;
   signalFilter: SignalFilter;
   setSignalFilter: (v: SignalFilter) => void;
+  sortMode: SortMode;
+  setSortMode: (v: SortMode) => void;
   hideInOutreach: boolean;
   setHideInOutreach: (v: boolean) => void;
   inOutreachCount: number;
@@ -143,6 +145,15 @@ export function TeacherFilterBar(p: Props) {
             <SelectItem value="creator">Has creator signal</SelectItem>
             <SelectItem value="secondary">Has side-business signal</SelectItem>
             <SelectItem value="has_phone">Has phone number</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={p.sortMode} onValueChange={(v) => p.setSortMode(v as SortMode)}>
+          <SelectTrigger className={selectClass}>
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent className="bg-white">
+            <SelectItem value="recent">Newest first</SelectItem>
+            <SelectItem value="best">Best prospects first</SelectItem>
           </SelectContent>
         </Select>
       </div>

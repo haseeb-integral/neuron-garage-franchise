@@ -58,6 +58,8 @@ const TeacherProspects = () => {
   const sourceFilter = useTeacherProspectsStore((s) => s.sourceFilter);
   const setSourceFilter = useTeacherProspectsStore((s) => s.setSourceFilter);
   const signalFilter = useTeacherProspectsStore((s) => s.signalFilter);
+  const sortMode = useTeacherProspectsStore((s) => s.sortMode);
+  const setSortMode = useTeacherProspectsStore((s) => s.setSortMode);
   const setSignalFilter = useTeacherProspectsStore((s) => s.setSignalFilter);
   const hideInOutreach = useTeacherProspectsStore((s) => s.hideInOutreach);
   const setHideInOutreach = useTeacherProspectsStore((s) => s.setHideInOutreach);
@@ -76,7 +78,7 @@ const TeacherProspects = () => {
     useTeacherOutreachStatus(prospectsForOutreach);
 
   const data = useTeacherProspectsData({
-    page, pageSize, cityFilters, debouncedSearch, sourceFilter, signalFilter, hideInOutreach, allPromotedIds,
+    page, pageSize, cityFilters, debouncedSearch, sourceFilter, signalFilter, sortMode, hideInOutreach, allPromotedIds,
   });
   const {
     prospects, setProspects, totalCount, stats, statsError, cities,
@@ -446,6 +448,8 @@ const TeacherProspects = () => {
               sourceFilter={sourceFilter}
               setSourceFilter={setSourceFilter}
             signalFilter={signalFilter}
+            sortMode={sortMode}
+            setSortMode={setSortMode}
             setSignalFilter={setSignalFilter}
               search={search}
               setSearch={setSearch}

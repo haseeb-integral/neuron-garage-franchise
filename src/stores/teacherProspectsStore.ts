@@ -5,6 +5,9 @@ import type { SourceFilter } from "@/lib/teacherSourceLabels";
 /** Manus enrichment signal filter. */
 export type SignalFilter = "all" | "tier1" | "tier2" | "medium_plus" | "creator" | "secondary" | "has_phone";
 
+/** List ordering. "recent" = newest first, "best" = strongest signals first. */
+export type SortMode = "recent" | "best";
+
 interface TeacherProspectsState {
   search: string;
   /** Empty array = "All cities". Length ≥ 1 = active multi-select. */
@@ -12,6 +15,7 @@ interface TeacherProspectsState {
   sourceFilter: SourceFilter;
   /** Manus signal filter: all | creator | secondary | has_phone */
   signalFilter: SignalFilter;
+  sortMode: SortMode;
   hideInOutreach: boolean;
   page: number;
   pageSize: number;
@@ -23,6 +27,7 @@ interface TeacherProspectsState {
   clearCityFilters: () => void;
   setSourceFilter: (v: SourceFilter) => void;
   setSignalFilter: (v: SignalFilter) => void;
+  setSortMode: (v: SortMode) => void;
   setHideInOutreach: (v: boolean) => void;
   setPage: (n: number) => void;
   setPageSize: (n: number) => void;
@@ -35,6 +40,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
       cityFilters: [],
       sourceFilter: "all",
       signalFilter: "all",
+      sortMode: "recent",
       hideInOutreach: false,
       page: 1,
       pageSize: 25,
@@ -47,6 +53,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
       clearCityFilters: () => set({ cityFilters: [], page: 1 }),
       setSourceFilter: (v) => set({ sourceFilter: v, page: 1 }),
       setSignalFilter: (v) => set({ signalFilter: v, page: 1 }),
+      setSortMode: (v) => set({ sortMode: v, page: 1 }),
       setHideInOutreach: (v) => set({ hideInOutreach: v, page: 1 }),
       setPage: (n) => set({ page: n }),
       setPageSize: (n) => set({ pageSize: n, page: 1 }),
@@ -75,6 +82,7 @@ export const useTeacherProspectsStore = create<TeacherProspectsState>()(
         // cityFilters intentionally NOT persisted — Teacher Search should start with no city scope.
         sourceFilter: s.sourceFilter,
         signalFilter: s.signalFilter,
+        sortMode: s.sortMode,
         hideInOutreach: s.hideInOutreach,
         pageSize: s.pageSize,
       }),

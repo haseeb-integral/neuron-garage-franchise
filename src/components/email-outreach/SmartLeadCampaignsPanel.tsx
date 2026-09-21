@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Mail, ExternalLink, AlertCircle, Play, Pause, Square } from "lucide-react";
+import { Loader2, RefreshCw, Mail, ExternalLink, AlertCircle, Play, Pause, Square, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
+import { sequencesMissingUnsubscribe } from "@/lib/canSpam";
+
+// Compliance cache: campaign id -> { compliant, checkedAt }. SmartLead allows
+// ~10 requests / 2s, so we batch and reuse results for 10 minutes.
+const COMPLIANCE_TTL_MS = 10 * 60 * 1000;
+const complianceCache = new Map<string, { compliant: boolean; checkedAt: number }>();
+
+async function fetchCompliance(id: string): Promise<boolean> {
+  const cached = complianceCache.get(id);
+  if (cached && Date.now() - cached.checkedAt < COMPLIANCE_TTL_MS) return cached.compliant;
+  const res = await callSmartLeadProxy(`/campaigns/${id}/sequences`, "GET");
+  const list = Array.isArray(res) ? res : ((res as { data?: unknown })?.data ?? []);
+  const compliant = !sequencesMissingUnsubscribe(list);
+  complianceCache.set(id, { compliant, checkedAt: Date.now() });
+  return compliant;
+}
 
 interface SLCampaign {
   id: number | string;
@@ -26,13 +42,38 @@ export function SmartLeadCampaignsPanel() {
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
+  const [compliance, setCompliance] = useState<Record<string, boolean>>({});
+
+  // Check each campaign's sequences for the unsubscribe tag, 5 at a time.
+  const loadCompliance = async (list: SLCampaign[]) => {
+    for (let i = 0; i < list.length; i += 5) {
+      const batch = list.slice(i, i + 5);
+      const results = await Promise.all(
+        batch.map(async (c) => {
+          try {
+            return [String(c.id), await fetchCompliance(String(c.id))] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setCompliance((prev) => {
+        const next = { ...prev };
+        for (const r of results) if (r) next[r[0]] = r[1];
+        return next;
+      });
+      if (i + 5 < list.length) await new Promise((r) => setTimeout(r, 1200));
+    }
+  };
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await callSmartLeadProxy("campaigns/");
-      setCampaigns(Array.isArray(res) ? res : []);
+      const list = Array.isArray(res) ? res : [];
+      setCampaigns(list);
+      void loadCompliance(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -81,6 +122,22 @@ export function SmartLeadCampaignsPanel() {
     setActing(actionKey);
     try {
       if (status === "START") {
+        // CAN-SPAM pre-flight: every email step needs the unsubscribe tag.
+        complianceCache.delete(String(c.id));
+        let compliant = false;
+        try {
+          compliant = await fetchCompliance(String(c.id));
+        } catch {
+          throw new Error("Could not read this campaign's email steps to check the unsubscribe link. Try again.");
+        }
+        setCompliance((prev) => ({ ...prev, [String(c.id)]: compliant }));
+        if (!compliant) {
+          toast.error(
+            "Cannot activate: one or more email steps are missing the {{unsubscribe}} tag. CAN-SPAM requires an unsubscribe link in every outgoing email.",
+          );
+          setActing(null);
+          return;
+        }
         await applyDefaultLaunchSetup(c.id);
       }
       await callSmartLeadProxy(`/campaigns/${c.id}/status`, "POST", { status });
@@ -158,6 +215,16 @@ export function SmartLeadCampaignsPanel() {
                     <td className="px-3 py-1">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <span className="truncate font-medium text-[#07142f]">{c.name ?? `Campaign ${c.id}`}</span>
+                        {compliance[String(c.id)] === true && (
+                          <ShieldCheck size={12} className="shrink-0 text-emerald-600" aria-label="Compliant">
+                            <title>Compliant</title>
+                          </ShieldCheck>
+                        )}
+                        {compliance[String(c.id)] === false && (
+                          <ShieldAlert size={12} className="shrink-0 text-red-600" aria-label="Missing unsubscribe">
+                            <title>Missing unsubscribe</title>
+                          </ShieldAlert>
+                        )}
                         {isTest && <span className="rounded bg-amber-100 px-1 text-[9px] font-bold leading-4 text-amber-800">TEST</span>}
                         <span className="text-[10px] text-[#8794ab]">· {c.id}</span>
                       </div>

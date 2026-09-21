@@ -20,6 +20,25 @@ interface PushBody {
   dry_run?: boolean;
 }
 
+const hasUnsubscribeTag = (text: string) => /\{\{\s*unsubscribe\s*\}\}/i.test(text);
+
+function sequenceBodyText(seq: unknown): string {
+  if (!seq || typeof seq !== "object") return "";
+  const s = seq as Record<string, unknown>;
+  const variants = Array.isArray(s.seq_variants) ? s.seq_variants : [];
+  const variantText = variants
+    .map((v) => (v && typeof v === "object" ? String((v as Record<string, unknown>).email_body ?? "") : ""))
+    .join("\n");
+  return [s.email_body, s.body, s.seq_delay_details_body, variantText]
+    .map((v) => (typeof v === "string" ? v : ""))
+    .join("\n");
+}
+
+function sequencesMissingUnsubscribe(sequences: unknown): boolean {
+  if (!Array.isArray(sequences) || sequences.length === 0) return true;
+  return sequences.some((s) => !hasUnsubscribeTag(sequenceBodyText(s)));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -42,6 +61,30 @@ Deno.serve(async (req) => {
 
     const body = (await req.json().catch(() => ({}))) as PushBody;
     if (!body.campaign_id) return json({ error: "campaign_id is required" }, 400);
+
+    // CAN-SPAM gate: never push leads into a campaign whose email steps are
+    // missing the unsubscribe tag. Runs for dry runs too.
+    {
+      const seqRes = await fetch(
+        `${SMARTLEAD_BASE}/campaigns/${body.campaign_id}/sequences?api_key=${apiKey}`,
+        { headers: { "Content-Type": "application/json" } },
+      );
+      const seqText = await seqRes.text();
+      if (!seqRes.ok) {
+        return json({ error: `Could not read campaign sequences (${seqRes.status}). ${seqText.slice(0, 200)}` }, 400);
+      }
+      let seqParsed: unknown = [];
+      try { seqParsed = JSON.parse(seqText); } catch { /* keep */ }
+      const sequences = Array.isArray(seqParsed)
+        ? seqParsed
+        : ((seqParsed as { data?: unknown })?.data ?? []);
+      if (sequencesMissingUnsubscribe(sequences)) {
+        return json({
+          error:
+            "Campaign sequences are missing {{unsubscribe}} tag. Add an unsubscribe link to all email steps before pushing leads. This is required for CAN-SPAM compliance.",
+        }, 400);
+      }
+    }
 
     // Build query: verified (+ optionally catch_all) prospects with valid emails
     // that are NOT already in outreach_queue for this campaign.

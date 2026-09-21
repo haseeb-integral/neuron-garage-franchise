@@ -68,18 +68,46 @@ Deno.serve(async (req) => {
       .eq("campaign_id", String(body.campaign_id))
       .in("teacher_prospect_id", prospects.map((p) => p.id));
     const alreadyIn = new Set((existing ?? []).map((r) => r.teacher_prospect_id));
-    const toPush = prospects.filter((p) => !alreadyIn.has(p.id));
+
+    // CAN-SPAM: never push anyone on our own do-not-email list
+    // (unsubscribes, bounces, complaints). Checked in chunks to keep URLs short.
+    const emails = prospects
+      .map((p) => (p.email ?? "").toLowerCase().trim())
+      .filter((e) => e.length > 0);
+    const suppressedSet = new Set<string>();
+    for (let i = 0; i < emails.length; i += 500) {
+      const slice = emails.slice(i, i + 500);
+      const { data: sup, error: supErr } = await supabase
+        .from("suppressed_emails")
+        .select("email")
+        .in("email", slice);
+      if (supErr) return json({ error: `suppression check failed: ${supErr.message}` }, 500);
+      for (const row of sup ?? []) suppressedSet.add(String(row.email).toLowerCase().trim());
+    }
+
+    const notQueued = prospects.filter((p) => !alreadyIn.has(p.id));
+    const toPush = notQueued.filter((p) => !suppressedSet.has((p.email ?? "").toLowerCase().trim()));
+    const suppressedCount = notQueued.length - toPush.length;
 
     if (body.dry_run) {
       return json({
         candidates: prospects.length,
         already_in_campaign: alreadyIn.size,
+        suppressed: suppressedCount,
         would_push: toPush.length,
         dry_run: true,
       });
     }
     if (toPush.length === 0) {
-      return json({ pushed: 0, skipped: prospects.length, candidates: prospects.length, message: "All already in this campaign" });
+      return json({
+        pushed: 0,
+        skipped: prospects.length,
+        suppressed: suppressedCount,
+        candidates: prospects.length,
+        message: suppressedCount > 0
+          ? `Nothing to push: ${alreadyIn.size} already in this campaign, ${suppressedCount} on the do-not-email list`
+          : "All already in this campaign",
+      });
     }
 
     // SmartLead requires lead_list — push in chunks of 100
@@ -149,7 +177,9 @@ Deno.serve(async (req) => {
 
     return json({
       pushed,
-      skipped: alreadyIn.size,
+      skipped: alreadyIn.size + suppressedCount,
+      already_in_campaign: alreadyIn.size,
+      suppressed: suppressedCount,
       candidates: prospects.length,
       errors: errors.length ? errors : undefined,
     });

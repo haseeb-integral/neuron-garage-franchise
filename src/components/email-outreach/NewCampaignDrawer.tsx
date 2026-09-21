@@ -3,8 +3,17 @@ import { X, Loader2, Check, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
+import { canSpamFooter, checkCanSpam, UNSUBSCRIBE_TAG } from "@/lib/canSpam";
 
 type SequenceStep = { day: number; subject: string; body: string };
+
+const FOOTER = canSpamFooter();
+
+const DEFAULT_SEQUENCES = (): SequenceStep[] => [
+  { day: 1, subject: "Quick question, {{first_name}}", body: `Hi {{first_name}},\n\n…${FOOTER}` },
+  { day: 3, subject: "Following up", body: `Just wanted to bump this.${FOOTER}` },
+  { day: 7, subject: "Last note", body: `Closing the loop.${FOOTER}` },
+];
 
 export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: () => void }) {
   const { user, profile } = useAuth();
@@ -127,11 +136,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [trackClicks, setTrackClicks] = useState(true);
   const [stopOnReply, setStopOnReply] = useState(true);
   // Step 4
-  const [sequences, setSequences] = useState<SequenceStep[]>([
-    { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },
-    { day: 3, subject: "Following up", body: "Just wanted to bump this." },
-    { day: 7, subject: "Last note", body: "Closing the loop." },
-  ]);
+  const [sequences, setSequences] = useState<SequenceStep[]>(DEFAULT_SEQUENCES);
 
   const profileEmail = profile?.email ?? user?.email ?? "";
   const effectiveTestRecipient = testOverride.trim() || profileEmail;
@@ -145,11 +150,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
       setTimezone(detectedTz); setStartHour("09:00"); setEndHour("18:00");
       setDays(["1", "2", "3", "4", "5"]); setDailyCap(200); setMinGapMinutes(1);
       setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);
-      setSequences([
-        { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },
-        { day: 3, subject: "Following up", body: "Just wanted to bump this." },
-        { day: 7, subject: "Last note", body: "Closing the loop." },
-      ]);
+      setSequences(DEFAULT_SEQUENCES());
     }
   }, [open]);
 
@@ -166,7 +167,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     return hours * 60 + minutes;
   };
 
-  const validate = () => {
+  const validate = (launch = false) => {
     if (!name.trim()) return "Campaign name required.";
     if (testMode && !effectiveTestRecipient) return "Test mode needs a recipient email.";
     if (!days.length) return "Pick at least one sending day.";
@@ -180,11 +181,17 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
     if (badStep) return "Each sequence step needs a valid day, subject, and body.";
+    // CAN-SPAM: no campaign goes live without an unsubscribe link, and no real
+    // (non-test) campaign goes live without a physical mailing address.
+    if (launch) {
+      const legal = checkCanSpam(sequences.map((s) => s.body), { requireAddress: !testMode });
+      if (legal) return legal;
+    }
     return null;
   };
 
   const submit = async (launch: boolean) => {
-    const error = validate();
+    const error = validate(launch);
     if (error) {
       setValidationError(error);
       toast.error(error);
@@ -477,6 +484,10 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
           {step === 4 && (
             <div className="space-y-3">
               <h3 className="text-base font-black">4. Sequences</h3>
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+                Every step must end with <code className="font-bold">{UNSUBSCRIBE_TAG}</code> and a real
+                physical mailing address. The law requires both. Launch is blocked until they are there.
+              </p>
               {sequences.map((s, i) => (
                 <div key={i} className="rounded-lg border border-[#dbe4f2] p-3">
                   <div className="mb-2 flex items-center gap-2">
@@ -487,7 +498,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                   <textarea value={s.body} onChange={(e) => setSequences((prev) => prev.map((x, idx) => idx === i ? { ...x, body: e.target.value } : x))} placeholder="Email body" className="min-h-[80px] w-full rounded-lg border border-[#dbe4f2] p-3 text-sm" />
                 </div>
               ))}
-              <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: "" }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>
+              <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: FOOTER }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>
             </div>
           )}
         </div>

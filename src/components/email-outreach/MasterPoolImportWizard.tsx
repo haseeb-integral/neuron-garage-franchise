@@ -469,7 +469,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       // enriched instead of being rejected later as duplicate rows.
       let matchMapLive = matchMap;
       if (enrichEnabled) {
-        const uniqueKeys = Array.from(new Set(prepared.map((p) => p.key)));
+        const uniqueKeys = Array.from(new Set(
+          prepared.flatMap((p) => (p.altKey ? [p.key, p.altKey] : [p.key])),
+        ));
         const { data: freshDedupe, error: freshErr } = await supabase.functions.invoke(
           "teacher-prospects-dedupe-count",
           { body: { dedupe_keys: uniqueKeys, with_matches: true } },
@@ -483,6 +485,11 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         setMatchMap(fresh);
       }
 
+      // A Manus key that we have never stored still has to find the teacher by
+      // email or name+city+state, otherwise the row looks brand new.
+      const resolveMatch = (p: Prepared): MatchInfo | undefined =>
+        matchMapLive.get(p.key) ?? (p.altKey ? matchMapLive.get(p.altKey) : undefined);
+
       const seenKeys = new Set<string>();
       const newRows: Array<Record<string, unknown>> = [];
       const toEnrich: Prepared[] = [];
@@ -490,9 +497,11 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       let skippedExisting = 0;
 
       for (const p of prepared) {
-        if (seenKeys.has(p.key)) { skippedInBatch++; continue; }
-        seenKeys.add(p.key);
-        const match = matchMapLive.get(p.key);
+        const match = resolveMatch(p);
+        // Same teacher twice inside one file: keep the first row only.
+        const identity = match ? `id:${match.id}` : p.key;
+        if (seenKeys.has(identity)) { skippedInBatch++; continue; }
+        seenKeys.add(identity);
         if (match) {
           if (enrichEnabled) toEnrich.push(p);
           else skippedExisting++;

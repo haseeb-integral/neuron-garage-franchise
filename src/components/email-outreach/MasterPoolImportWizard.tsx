@@ -91,7 +91,7 @@ const overallSecondaryConfidence = (v: string | null | undefined): string | null
 };
 
 type EvidenceRow = {
-  evidence_class: "verified_creator" | "secondary";
+  evidence_class: "verified_creator" | "secondary" | "verified_fact";
   signal_type: string | null;
   summary: string | null;
   source_url: string | null;

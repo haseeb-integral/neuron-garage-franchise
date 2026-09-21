@@ -126,7 +126,12 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   // Step 3
-  const [qa, setQa] = useState<{ total: number; withEmail: number; validEmail: number; inBatchDupes: number; existingInMaster: number; missingRequired: number; fieldsToFill: number } | null>(null);
+  const [qa, setQa] = useState<{
+    total: number; withEmail: number; validEmail: number; inBatchDupes: number;
+    existingInMaster: number; missingRequired: number; fieldsToFill: number;
+    rowsVerifiedFacts: number; rowsCreatorSignals: number; rowsSecMedium: number;
+    rowsSecLow: number; evidenceLinks: number;
+  } | null>(null);
   const [matchMap, setMatchMap] = useState<Map<string, MatchInfo>>(new Map());
   const [qaLoading, setQaLoading] = useState(false);
   const [qaPhase, setQaPhase] = useState<string>("");
@@ -215,6 +220,18 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     };
     const manus = get("dedupe_key");
     if (manus) return `manus:${manus}`;
+    return fallbackKeyForRow(row);
+  };
+
+  // Second-chance key: what teacher_prospects.dedupe_key itself is built from.
+  // A Manus key only matches teachers we already imported with that key, so a
+  // row keyed by Manus must also be checked by email / name+city+state or we
+  // would treat an existing teacher as brand new and lose their signals.
+  const fallbackKeyForRow = (row: Record<string, string>): string => {
+    const get = (f: TargetField) => {
+      const col = mapping[f];
+      return col ? (row[col] ?? "").trim() : "";
+    };
     const email = get("email").toLowerCase();
     if (email) return `email:${email}`;
     const cityV = (mapping.city ? get("city") : defaultCity).trim().toLowerCase();
@@ -240,6 +257,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
   type Prepared = {
     key: string;
+    altKey: string | null;             // second-chance match key (email / name+city+state)
     values: Record<string, unknown>;   // DB column → value (only what the CSV has)
     evidence: EvidenceRow[];
     rawUnmapped: Record<string, string>;
@@ -325,7 +343,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       });
     }
 
-    return { key: dedupeKeyForRow(r), values, evidence, rawUnmapped, email };
+    const key = dedupeKeyForRow(r);
+    const fallback = fallbackKeyForRow(r);
+    return { key, altKey: fallback !== key ? fallback : null, values, evidence, rawUnmapped, email };
   };
 
 
@@ -352,7 +372,24 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           if (seen.has(email)) inBatchDupes++; else seen.add(email);
         }
         dedupeKeys.push(dedupeKeyForRow(row));
+        const alt = fallbackKeyForRow(row);
+        if (alt) dedupeKeys.push(alt);
       }
+
+      // Honest signal counts read straight from the file.
+      const preparedAll = csvRows.map(buildRow).filter(Boolean) as Prepared[];
+      let rowsVerifiedFacts = 0, rowsCreatorSignals = 0, rowsSecMedium = 0, rowsSecLow = 0, evidenceLinks = 0;
+      for (const p of preparedAll) {
+        if (Number(p.values.verified_enrichment_fact_count ?? 0) > 0) rowsVerifiedFacts++;
+        if (Number(p.values.verified_creator_signal_count ?? 0) > 0) rowsCreatorSignals++;
+        const conf = String(p.values.secondary_signal_confidence ?? "").toUpperCase();
+        if (Number(p.values.secondary_signal_count ?? 0) > 0) {
+          if (conf === "MEDIUM") rowsSecMedium++;
+          else if (conf === "LOW") rowsSecLow++;
+        }
+        evidenceLinks += p.evidence.length;
+      }
+
       const unique = Array.from(new Set(dedupeKeys));
       setQaPhase("Checking existing records in Master Pool");
       toast.loading(`Checking existing records in Master Pool…`, { id: tId });
@@ -362,7 +399,6 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       });
       if (dedupeError) throw new Error(`Dedupe check failed: ${dedupeError.message}`);
       const payload = dedupeData as { existing_count?: number; matches?: MatchInfo[] } | null;
-      const existingInMaster = Number(payload?.existing_count ?? 0);
 
       const map = new Map<string, MatchInfo>();
       for (const m of payload?.matches ?? []) map.set(m.dedupe_key, m);
@@ -370,12 +406,12 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
       // How many individual cells would actually be written on existing rows.
       let fieldsToFill = 0;
+      const matchedIds = new Set<string>();
       if (wantMatches && map.size) {
-        for (const row of csvRows) {
-          const match = map.get(dedupeKeyForRow(row));
+        for (const p of preparedAll) {
+          const match = map.get(p.key) ?? (p.altKey ? map.get(p.altKey) : undefined);
           if (!match) continue;
-          const p = buildRow(row);
-          if (!p) continue;
+          matchedIds.add(match.id);
           for (const f of ENRICHABLE) {
             const v = p.values[f];
             if (v === null || v === undefined || v === "") continue;
@@ -387,9 +423,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           }
         }
       }
+      const existingInMaster = wantMatches ? matchedIds.size : Number(payload?.existing_count ?? 0);
 
 
-      setQa({ total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill });
+      setQa({
+        total: csvRows.length, withEmail, validEmail, inBatchDupes, existingInMaster, missingRequired, fieldsToFill,
+        rowsVerifiedFacts, rowsCreatorSignals, rowsSecMedium, rowsSecLow, evidenceLinks,
+      });
       toast.success(`QA complete — ${csvRows.length.toLocaleString()} rows analyzed.`, { id: tId });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -429,7 +469,9 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       // enriched instead of being rejected later as duplicate rows.
       let matchMapLive = matchMap;
       if (enrichEnabled) {
-        const uniqueKeys = Array.from(new Set(prepared.map((p) => p.key)));
+        const uniqueKeys = Array.from(new Set(
+          prepared.flatMap((p) => (p.altKey ? [p.key, p.altKey] : [p.key])),
+        ));
         const { data: freshDedupe, error: freshErr } = await supabase.functions.invoke(
           "teacher-prospects-dedupe-count",
           { body: { dedupe_keys: uniqueKeys, with_matches: true } },
@@ -443,6 +485,11 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         setMatchMap(fresh);
       }
 
+      // A Manus key that we have never stored still has to find the teacher by
+      // email or name+city+state, otherwise the row looks brand new.
+      const resolveMatch = (p: Prepared): MatchInfo | undefined =>
+        matchMapLive.get(p.key) ?? (p.altKey ? matchMapLive.get(p.altKey) : undefined);
+
       const seenKeys = new Set<string>();
       const newRows: Array<Record<string, unknown>> = [];
       const toEnrich: Prepared[] = [];
@@ -450,9 +497,11 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       let skippedExisting = 0;
 
       for (const p of prepared) {
-        if (seenKeys.has(p.key)) { skippedInBatch++; continue; }
-        seenKeys.add(p.key);
-        const match = matchMapLive.get(p.key);
+        const match = resolveMatch(p);
+        // Same teacher twice inside one file: keep the first row only.
+        const identity = match ? `id:${match.id}` : p.key;
+        if (seenKeys.has(identity)) { skippedInBatch++; continue; }
+        seenKeys.add(identity);
         if (match) {
           if (enrichEnabled) toEnrich.push(p);
           else skippedExisting++;
@@ -533,7 +582,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         if (toEnrich.length) {
           const existingRaws = new Map<string, Record<string, unknown> | null>();
           const ID_CHUNK = 500;
-          const ids = toEnrich.map((p) => matchMapLive.get(p.key)!.id);
+          const ids = toEnrich.map((p) => resolveMatch(p)!.id);
           for (let i = 0; i < ids.length; i += ID_CHUNK) {
             const { data: rawRows } = await supabase
               .from("teacher_prospects").select("id, raw").in("id", ids.slice(i, i + ID_CHUNK));
@@ -542,7 +591,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
           for (let i = 0; i < toEnrich.length; i++) {
             const p = toEnrich[i];
-            const match = matchMapLive.get(p.key)!;
+            const match = resolveMatch(p)!;
             const patch: Record<string, unknown> = {};
             const before: Record<string, unknown> = {};
             for (const f of ENRICHABLE) {
@@ -592,11 +641,14 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           const evidenceByKey = new Map<string, EvidenceRow[]>();
           for (const p of withEvidence) if (!evidenceByKey.has(p.key)) evidenceByKey.set(p.key, p.evidence);
 
-          // teacher id per key: enriched rows are known, new rows are read back.
+          // Teacher id per key. Every matched row counts here — not just the ones
+          // we enriched — so evidence is never dropped for a skipped row.
           const idByKey = new Map<string, string>();
-          for (const p of toEnrich) {
-            const m = matchMapLive.get(p.key);
-            if (m) idByKey.set(p.key, m.id);
+          for (const p of prepared) {
+            const m = resolveMatch(p);
+            if (!m) continue;
+            if (!idByKey.has(p.key)) idByKey.set(p.key, m.id);
+            if (p.altKey && !idByKey.has(p.altKey)) idByKey.set(p.altKey, m.id);
           }
           if (inserted > 0) {
             const { data: freshRows } = await supabase
@@ -879,6 +931,22 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                     : <QaCard label="Fields to fill" value={qa.fieldsToFill} tone={qa.fieldsToFill > 0 ? "good" : undefined} />}
                   <QaCard label="In-batch dupes" value={qa.inBatchDupes} tone={qa.inBatchDupes > 0 ? "warn" : undefined} />
                   <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[11px] font-semibold text-[#526078]">Signals found in this file</div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <QaCard label="Rows with verified facts" value={qa.rowsVerifiedFacts} tone={qa.rowsVerifiedFacts > 0 ? "good" : "warn"} />
+                    <QaCard label="Rows with creator signals" value={qa.rowsCreatorSignals} tone={qa.rowsCreatorSignals > 0 ? "good" : undefined} />
+                    <QaCard label="Secondary — MEDIUM" value={qa.rowsSecMedium} />
+                    <QaCard label="Secondary — LOW" value={qa.rowsSecLow} />
+                    <QaCard label="Evidence links" value={qa.evidenceLinks} tone={qa.evidenceLinks > 0 ? "good" : "warn"} />
+                  </div>
+                  {qa.rowsVerifiedFacts === 0 && qa.rowsCreatorSignals === 0 && qa.evidenceLinks === 0 && (
+                    <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                      No signal data was read from this file. Go Back to Step 2 and check the signal columns are mapped — importing now will only update names and schools.
+                    </div>
+                  )}
                 </div>
 
                 {qa.existingInMaster > 0 && (

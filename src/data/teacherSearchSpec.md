@@ -189,6 +189,7 @@ Clicking **Promote** in the table or the detail panel creates a row in `candidat
 | Table | Status | Key fields |
 |---|---|---|
 | `teacher_prospects` | Active | `id, name, email, phone, city, state, school, school_nces_id, fit_score, status, teacher_type, subject, segment, linkedin_url, tags[], enrichment_source, last_enriched_at, needs_email_enrichment, verification_status, dedupe_key, last_pushed_at, apify_run_id, teacher_import_batch_id, raw jsonb` |
+| `teacher_evidence` | Active | Per-teacher enrichment evidence: `teacher_id, signal_type, label, detail, source_name, source_url, confidence, match_basis, is_verified`. |
 | `teacher_saved_lists` | Active | Per-user named filter sets. |
 | `public_schools` | Active | NCES-anchored school directory (referenced by `school_nces_id`). |
 | `candidates` | Active | Downstream table Promote writes into. |

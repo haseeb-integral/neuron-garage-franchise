@@ -189,6 +189,30 @@ Deno.serve(async (req) => {
     });
 
     if (error) console.error("smartlead-webhook insert error", error);
+
+    // CAN-SPAM: unsubscribes, bounces and spam complaints coming back from
+    // SmartLead go straight onto our own do-not-email list so no future push
+    // can email them again. Append-only table, unique on email.
+    const evt = String(eventType).toUpperCase();
+    const suppressReason =
+      evt === "LEAD_UNSUBSCRIBED" || evt === "EMAIL_UNSUBSCRIBED" ? "unsubscribe"
+      : evt === "EMAIL_BOUNCED" || evt === "LEAD_BOUNCED" ? "bounce"
+      : evt === "SPAM_COMPLAINT" || evt === "EMAIL_MARKED_SPAM" ? "complaint"
+      : null;
+    if (suppressReason && leadEmail) {
+      const normalized = String(leadEmail).toLowerCase().trim();
+      const { error: supErr } = await supabase
+        .from("suppressed_emails")
+        .upsert(
+          {
+            email: normalized,
+            reason: suppressReason,
+            metadata: { source: "smartlead_webhook", event_type: evt, campaign_id: campaignId ? String(campaignId) : null },
+          },
+          { onConflict: "email", ignoreDuplicates: true },
+        );
+      if (supErr) console.error("smartlead-webhook suppression error", supErr);
+    }
   } catch (err) {
     console.error("smartlead-webhook error", err);
   }

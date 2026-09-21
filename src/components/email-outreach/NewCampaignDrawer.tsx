@@ -150,11 +150,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
       setTimezone(detectedTz); setStartHour("09:00"); setEndHour("18:00");
       setDays(["1", "2", "3", "4", "5"]); setDailyCap(200); setMinGapMinutes(1);
       setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);
-      setSequences([
-        { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },
-        { day: 3, subject: "Following up", body: "Just wanted to bump this." },
-        { day: 7, subject: "Last note", body: "Closing the loop." },
-      ]);
+      setSequences(DEFAULT_SEQUENCES());
     }
   }, [open]);
 

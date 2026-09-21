@@ -22,6 +22,13 @@
       "when": 1790018626567,
       "tag": "0002_teacher_prospects_search_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790018654207,
+      "tag": "0003_teacher_prospects_search_cleanup",
+      "breakpoints": true
     }
   ]
 }

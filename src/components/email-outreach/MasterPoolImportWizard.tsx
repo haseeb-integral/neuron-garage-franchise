@@ -884,6 +884,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               </label>
             ) : (
               <>
+                {looksLikeSignalSprintFile && (
+                  <div className="rounded-md border border-[#fde9b8] bg-[#fffbef] p-2 text-[11px] text-[#7c5a08]">
+                    <b>Check this file.</b> It looks like the one-row-per-signal sprint export, not the standard City/Metro teacher export.
+                    Importing it here would create duplicate teacher records. Use the City/Metro file (it has a
+                    <code className="mx-1">dedupe_key</code> and <code className="mx-1">verified_enrichment_fact_count</code> column).
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-[#526078]">{csvRows.length.toLocaleString()} rows · {csvHeaders.length} columns</div>
                   {aiLoading ? (

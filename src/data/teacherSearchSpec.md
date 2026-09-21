@@ -1,7 +1,9 @@
 # Teacher Search — Feature Spec
 
-**Version:** v1.1 · **Date:** 2026-07-24 · **Owner:** Neuron Garage / Lovable
-**Status:** Shipped, evolving. **Source of truth:** this page + the Teacher Search Methodology doc + the current chat.
+**Version:** v1.2 · **Date:** 2026-09-21 · **Owner:** Neuron Garage / Lovable
+**Status:** Shipped, evolving. **Source of truth:** this page + the Teacher Search Methodology doc + the Teacher Record Enrichment doc + the current chat.
+
+**Changed since v1.1 (2026-09-21):** added the prospect tier system (Tier 1 entrepreneurial signal, Tier 2 outreach hook, Tier 3 verified contact), the Enrichment & Signals evidence panel on the teacher record, the Signals filter and "best prospects first" sort, the name-search fix (security-definer RPC), and the locked 27-column Manus import contract.
 
 **Changed since v1.0 (2026-07-24):** corrected source-filter values, clarified that Fit Score is stored but not auto-computed today, noted `MasterPoolImportWizard` is shared with Email Outreach, and flagged which status transitions are actually wired in the UI.
 

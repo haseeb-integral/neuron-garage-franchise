@@ -120,6 +120,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [defaultState, setDefaultState] = useState("");
   // Step 2
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  // Manus also ships a "one row per signal" sprint export. That file must not
+  // go into the teacher pool — it would duplicate teachers.
+  const looksLikeSignalSprintFile = (() => {
+    if (!csvHeaders.length) return false;
+    const h = csvHeaders.map(norm);
+    const hasMetroShape = h.includes(norm("dedupe_key")) || h.includes(norm("verified_enrichment_fact_count"));
+    const hasPerSignalShape = h.includes(norm("signal_type")) || h.includes(norm("signal_summary")) || h.includes(norm("signal_source_url"));
+    return hasPerSignalShape && !hasMetroShape;
+  })();
   const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Mapping>({});
   const [unmapped, setUnmapped] = useState<string[]>([]);

@@ -5,8 +5,9 @@
 export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — Product Specification
 
 > Detailed specification of the Neuron Garage Franchise Acquisition System.
-> **Document version 1.6 · Updated September 21, 2026** · For internal review.
+> **Document version 1.7 · Updated September 21, 2026** · For internal review.
 > Live URL: neuron-garage-franchise.lovable.app
+> **What's new in v1.7:** CAN-SPAM unsubscribe enforcement is live across Email Outreach — the campaign editor warns per step, the Launch button runs a pre-flight check on the campaign's real sequences, \`smartlead-push-leads\` refuses to push (dry run included) when any step is missing \`{{unsubscribe}}\`, and the campaign list shows a green/red compliance shield. Our own \`suppressed_emails\` list is checked on every push and SmartLead bounce/unsubscribe/complaint events are written back to it. Readiness blockers 1 and 2 are closed; 3–7 remain open. Still in mailbox **warm-up** — no teacher sends yet.
 > **What's new since v1.5:** see §22 Recent Changes for the v1.5 → v1.6 delta. Highlights: teacher **entrepreneurial signals** are now first-class (evidence rebuilt from raw import data, Tier 1 / Tier 2 prospect tiers, per-signal evidence cards, signal filters, "Best prospects first" sort), the Manus 27-column enrichment CSV is supported end-to-end, Teacher Search name search moved to a server-side RPC with a true result count, the methodology page was rewritten to v2.0 (Houston + Austin two-city proof), and the master pool reached **311,924** records. Email Outreach remains in mailbox **warm-up** with hard blockers open (§8 Known caveats) — no teacher sends yet.
 
 ---
@@ -36,7 +37,7 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 19. [Backend & Edge Functions](#19-backend--edge-functions)
 20. [Third-Party APIs](#20-third-party-apis)
 21. [Phase 2 Roadmap](#21-phase-2-roadmap)
-22. [Recent Changes (v1.5 → v1.6)](#22-recent-changes-v15--v16)
+22. [Recent Changes (v1.6 → v1.7)](#22-recent-changes-v16--v17)
 
 ---
 
@@ -348,7 +349,7 @@ Apify plus Manus city files are the sourcing path. **Apollo, Clay and Hunter are
 
 **Purpose:** maintain Neuron Garage's owned teacher recruiting database **and** run AI-personalized outbound campaigns to that database via **SmartLead** (Kaylie's branding: "Integral Leads"). End-to-end live since May 21, 2026.
 
-> ⚠️ **Current phase: mailbox WARM-UP.** SmartLead is sending to internal staff + a warm-up pool to season our domains. **No teachers are being emailed yet.** The Email Outreach UI is phase-aware so warm-up traffic is never confused with live teacher outreach. Live outreach is gated on (a) warm-up completion and (b) the \`{{unsubscribe}}\` merge tag landing in the sequence body (CAN-SPAM).
+> ⚠️ **Current phase: mailbox WARM-UP.** SmartLead is sending to internal staff + a warm-up pool to season our domains. **No teachers are being emailed yet.** The Email Outreach UI is phase-aware so warm-up traffic is never confused with live teacher outreach. Live outreach is gated on warm-up completion. The CAN-SPAM gate is now **enforced in code** (see *Compliance enforcement* below): a campaign cannot be activated and leads cannot be pushed unless every email step contains \`{{unsubscribe}}\`.
 
 ### Two-pool architecture (v1.2/v1.3)
 
@@ -425,10 +426,26 @@ A separate transactional rail (independent of SmartLead) handles internal notifi
 
 Templates live in \`supabase/functions/_shared/transactional-email-templates/\` (React Email JSX).
 
+### CAN-SPAM compliance enforcement (v1.7)
+
+Every outgoing cold email must carry an unsubscribe link and a physical mailing address. This is enforced in four places; the shared helpers live in \`src/lib/canSpam.ts\` (\`UNSUBSCRIBE_TAG\`, \`canSpamFooter\`, \`hasUnsubscribeTag\`, \`checkCanSpam\`, \`sequenceBodyText\`, \`sequencesMissingUnsubscribe\`).
+
+| Gate | Where | Behaviour |
+|---|---|---|
+| Default copy | \`NewCampaignDrawer.tsx\` | Every new step (and "+ Add step") ships with the CAN-SPAM footer: \`{{unsubscribe}}\` + mailing address. |
+| Per-step editor check | \`NewCampaignDrawer.tsx\` | Grey hint under each body box; while the tag is missing, an amber warning: *"CAN-SPAM requires an unsubscribe link. Add \`{{unsubscribe}}\` to this email step."* **Drafts still save** — only launch and push are blocked. |
+| Launch pre-flight | \`SmartLeadCampaignsPanel.tsx\` | Before \`POST /campaigns/{id}/status {"status":"START"}\`, the panel re-reads \`GET /campaigns/{id}/sequences\` through \`smartlead-proxy\`. Any step without the tag → activation refused with a toast, no status call made. A campaign with **zero** steps counts as non-compliant. |
+| Push gate | \`smartlead-push-leads\` | Before any lead work, the function reads the campaign's sequences and returns **400** with *"Campaign sequences are missing {{unsubscribe}} tag…"* if any step lacks it. Runs for \`dry_run: true\` as well, so the preview surfaces the problem. |
+
+**Compliance shield:** each row in the campaign list carries a green \`ShieldCheck\` ("Compliant") or red \`ShieldAlert\` ("Missing unsubscribe"); no shield while the check is still running. Results are cached in a module-level \`Map\` for 10 minutes and fetched in batches of 5 with a ~1.2 s pause, to respect SmartLead's 10 req / 2 s limit. Launching a campaign always busts its cache entry first.
+
+**Suppression (Phase A, still in force):** \`smartlead-push-leads\` checks every candidate address against \`suppressed_emails\` in chunks of 500 and reports a \`suppressed\` count; \`smartlead-webhook\` upserts \`EMAIL_BOUNCED\`/\`LEAD_BOUNCED\` → \`bounce\`, \`LEAD_UNSUBSCRIBED\`/\`EMAIL_UNSUBSCRIBED\` → \`unsubscribe\`, \`SPAM_COMPLAINT\`/\`EMAIL_MARKED_SPAM\` → \`complaint\`. Pushes also send \`ignore_global_block_list: false\` and \`ignore_unsubscribe_list: false\`, so SmartLead's own block list applies too.
+
 ### Known caveats
 
 - **Open Rate inflation:** Gmail's image proxy and Apple Mail Privacy Protection pre-fetch tracking pixels on delivery. Trust **clicks** and **replies** as real engagement.
-- **\`{{unsubscribe}}\` merge tag** is not yet in the sequence body, and nothing blocks activation without it. Real teacher sends must not launch until this lands (CAN-SPAM).
+- **Mailing address placeholder:** the footer ships with \`[ADD MAILING ADDRESS]\` until the real business postal address is supplied. Activation of a non-test campaign is blocked while the placeholder is there — by design.
+- **Compliance shield accuracy:** the badge reflects what SmartLead returns for \`GET /campaigns/{id}/sequences\`, cached for 10 minutes. Edit a sequence directly in SmartLead and the badge can lag until refresh; the Launch pre-flight always re-reads live, so it cannot be fooled.
 
 ### Cold-outreach readiness audit (September 21, 2026)
 
@@ -436,8 +453,8 @@ Audited against the GTPA handoff v1.0, the SmartLead technical spec and the live
 
 | # | Blocker | Evidence |
 |---|---|---|
-| 1 | No \`{{unsubscribe}}\` tag and no postal address in the default sequence bodies; no validation on activation | \`NewCampaignDrawer.tsx\` default steps |
-| 2 | Our own suppression list is ignored on push, and SmartLead bounce/unsubscribe events are never written back to it | \`smartlead-push-leads\` has no \`suppressed_emails\` check; \`smartlead-webhook\` only inserts events; \`suppressed_emails\` = 0 rows |
+| 1 | ~~No \`{{unsubscribe}}\` tag / no postal address / no validation on activation~~ **CLOSED (Sept 21, 2026)** — default footer, per-step warnings, Launch pre-flight and push gate all shipped | \`canSpam.ts\`, \`NewCampaignDrawer.tsx\`, \`SmartLeadCampaignsPanel.tsx\`, \`smartlead-push-leads\` |
+| 2 | ~~Suppression list ignored on push; bounce/unsubscribe events never written back~~ **CLOSED (Sept 21, 2026)** — push filters \`suppressed_emails\`; webhook upserts bounce / unsubscribe / complaint | \`smartlead-push-leads\`, \`smartlead-webhook\` |
 | 3 | Mailable universe is ~3,922 verified addresses, not 311,924 | \`verification_status = 'valid'\`; Apollo/Hunter not wired |
 | 4 | \`smartlead-webhook\` is public with no shared-secret check — forged replies could promote fake candidates into the pipeline | \`verify_jwt = false\`, no signature validation |
 | 5 | Push chunks 100 leads back-to-back with no pacing and no retry against a 10-req/2-s limit | \`smartlead-push-leads\` loop |
@@ -893,7 +910,25 @@ Explicitly out of scope: Google / Microsoft / SSO login, multi-tenancy, mobile a
 
 ---
 
-## 22. Recent Changes (v1.5 → v1.6)
+## 22. Recent Changes (v1.6 → v1.7)
+
+What shipped on **September 21, 2026** — Email Outreach compliance.
+
+**CAN-SPAM enforcement (§8)**
+- Shared helpers in \`src/lib/canSpam.ts\`: footer builder, \`hasUnsubscribeTag\`, \`checkCanSpam\`, and new \`sequenceBodyText\` / \`sequencesMissingUnsubscribe\` (reads \`email_body\`, \`body\`, \`seq_variants[].email_body\`).
+- Campaign editor: hint plus amber warning under every email step missing \`{{unsubscribe}}\`; drafts still save.
+- Launch pre-flight on the Campaigns panel: live read of the campaign's sequences before the \`START\` call; refuses with a toast when any step lacks the tag.
+- \`smartlead-push-leads\`: new pre-push gate returning 400 for non-compliant campaigns, on dry runs and live pushes alike; all existing behaviour (suppression filter, chunking, \`outreach_queue\` writes, source stamping) unchanged.
+- Campaign list compliance shields (green / red), 10-minute cache, batches of 5 to respect the rate limit.
+- Readiness blockers **1 and 2 are closed**; 3–7 remain open.
+
+**Phase A (same week)**
+- Default sequences carry the CAN-SPAM footer; push filters \`suppressed_emails\`; \`smartlead-webhook\` writes bounces, unsubscribes and spam complaints back to \`suppressed_emails\`.
+- Outstanding: the real business mailing address, which still blocks activation of any non-test campaign.
+
+---
+
+### Earlier: v1.5 → v1.6
 
 What shipped between **September 14 → September 21, 2026**.
 

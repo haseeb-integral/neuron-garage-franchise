@@ -181,6 +181,26 @@ At the top of the Email Outreach page is a SmartLead Connection panel that shows
 
 If the API Status pill goes gray or red, the connection needs to be re-tested. Click the "Test Connection" button to diagnose.
 
+**Unsubscribe Rules — Read This Before You Launch (updated September 21, 2026\)**
+
+The law (CAN-SPAM) says every cold email must give the reader a way to opt out and must show a real postal address. The app now checks this for you, so a non-compliant campaign simply cannot go out.
+
+**What you must put in every email step:** the tag {{unsubscribe}} and the mailing address. New campaigns already come with both at the bottom of each step — do not delete them.
+
+**Where the app checks:**
+
+* **While you write —** if a step has no {{unsubscribe}}, an amber warning appears under that step: "CAN-SPAM requires an unsubscribe link. Add {{unsubscribe}} to this email step." You can still save the draft.
+
+* **When you press Launch —** the app reads the campaign's real email steps from SmartLead first. If even one step is missing the tag, it refuses to start the campaign and tells you why. A campaign with no steps at all also counts as not compliant.
+
+* **When you push leads —** the push refuses with a compliance error if the tag is missing. The dry-run preview refuses too, so you see the problem before sending anything.
+
+* **On the campaign list —** a small shield next to each campaign name: green shield \= all steps have the link, red shield \= one is missing. No shield yet means the check is still running. The result is remembered for 10 minutes, and pressing Launch always re-checks live.
+
+**Our own do-not-email list:** before any push, the app removes anyone on our suppressed list (people who unsubscribed, bounced, or marked us as spam) and tells you how many were skipped. When SmartLead reports a bounce, an unsubscribe, or a spam complaint, that address is added to the list automatically and is never emailed again.
+
+**Still needed:** the real business postal address. Until it is entered, the footer shows a placeholder and no real campaign can be launched. Test campaigns to your own inbox still work.
+
 **What SmartLead Does Automatically (No Action Needed)**
 
 Once a campaign is active and leads are imported, SmartLead handles all of this without any manual intervention:
@@ -219,7 +239,9 @@ Once a campaign is active and leads are imported, SmartLead handles all of this 
 
 **Webhook Receiver:** smartlead-webhook Edge Function receives real-time events from SmartLead. Events are stored in the smartlead\_events table with intent classification applied on insert.
 
-**Rate Limit:** 10 requests per 2 seconds. The proxy implements exponential backoff on 429 responses. Lead imports are chunked at 400 leads per request with 500ms gaps.
+**Rate Limit:** 10 requests per 2 seconds. The proxy implements exponential backoff on 429 responses. Lead pushes from the Master Pool are chunked at 100 leads per request (smartlead-push-leads). Compliance checks on the campaign list are batched 5 at a time with a ~1.2s pause and cached for 10 minutes.
+
+**Compliance gate:** GET /campaigns/{id}/sequences is read before campaign activation (browser, via smartlead-proxy) and before any lead push (smartlead-push-leads, dry run included). If any step body is missing {{unsubscribe}}, the action is refused. Shared helpers: src/lib/canSpam.ts.
 
 **Key Supabase Tables:**
 
@@ -250,5 +272,7 @@ Once a campaign is active and leads are imported, SmartLead handles all of this 
 
 **Critical API Gotcha:** Campaign status activation uses "START" not "ACTIVE". Track settings use negative flags: DONT\_TRACK\_EMAIL\_OPEN, DONT\_TRACK\_LINK\_CLICK — not positive flags.
 
-*This document covers the SmartLead integration as built in Phases 1–5 (completed May 18, 2026).*  
+*This document covers the SmartLead integration as built in Phases 1–5 (completed May 18, 2026), plus the CAN-SPAM compliance update of September 21, 2026.*
+
+*Two known stale spots in the older sections above: the reply classifier now has 7 buckets (INTERESTED, MEETING\_REQUEST, INFO\_REQUEST, SOFT\_NO, WRONG\_PERSON, NOT\_INTERESTED, OOO), not the 4 badges described, and there is no prospect\_batches table — imports are recorded in teacher\_import\_batches.*  
 *Neuron Garage Prospecting App — Built by Integral Outbound*

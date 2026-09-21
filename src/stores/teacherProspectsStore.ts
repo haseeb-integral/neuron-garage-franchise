@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { SourceFilter } from "@/lib/teacherSourceLabels";
 
 /** Manus enrichment signal filter. */
-export type SignalFilter = "all" | "creator" | "secondary" | "has_phone";
+export type SignalFilter = "all" | "tier1" | "tier2" | "medium_plus" | "creator" | "secondary" | "has_phone";
 
 interface TeacherProspectsState {
   search: string;

@@ -32,6 +32,47 @@ const TARGET_FIELDS = [
   "secondary_signal_source_urls", "secondary_signal_confidence", "secondary_signal_match_basis",
 ] as const;
 type TargetField = (typeof TARGET_FIELDS)[number];
+type Mapping = Partial<Record<TargetField, string | null>>;
+
+const STANDARD_MANUS_HEADERS = [
+  "first_name", "last_name", "full_name", "work_email", "phone", "school", "district",
+  "city", "state", "grade_level", "subject", "linkedin_url", "record_added_at",
+  "outreach_status", "notes", "dedupe_key", "verified_enrichment_fact_count",
+  "verified_enrichment_signal_types", "verified_creator_signal_count", "verified_creator_summary",
+  "verified_creator_source_urls", "secondary_signal_count", "secondary_signal_sources",
+  "secondary_signal_details", "secondary_signal_source_urls", "secondary_signal_confidence",
+  "secondary_signal_match_basis",
+] as const;
+
+const STANDARD_MANUS_MAPPING: Mapping = {
+  first_name: "first_name",
+  last_name: "last_name",
+  name: "full_name",
+  email: "work_email",
+  phone: "phone",
+  school: "school",
+  district: "district",
+  city: "city",
+  state: "state",
+  grade: "grade_level",
+  subject: "subject",
+  linkedin_url: "linkedin_url",
+  record_added_at: "record_added_at",
+  outreach_status: "outreach_status",
+  notes: "notes",
+  dedupe_key: "dedupe_key",
+  verified_enrichment_fact_count: "verified_enrichment_fact_count",
+  verified_enrichment_signal_types: "verified_enrichment_signal_types",
+  verified_creator_signal_count: "verified_creator_signal_count",
+  verified_creator_summary: "verified_creator_summary",
+  verified_creator_source_urls: "verified_creator_source_urls",
+  secondary_signal_count: "secondary_signal_count",
+  secondary_signal_sources: "secondary_signal_sources",
+  secondary_signal_details: "secondary_signal_details",
+  secondary_signal_source_urls: "secondary_signal_source_urls",
+  secondary_signal_confidence: "secondary_signal_confidence",
+  secondary_signal_match_basis: "secondary_signal_match_basis",
+};
 
 /** Split a Manus pipe-delimited cell into trimmed parts. */
 /** Keep select strings out of the type-level parser (build speed). */
@@ -40,6 +81,14 @@ const sel = (s: string): string => s;
 const pipeList = (v: string | null | undefined): string[] =>
 
   (v ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+
+/** The teacher row stores one overall review level. Mixed evidence stays LOW. */
+const overallSecondaryConfidence = (v: string | null | undefined): string | null => {
+  const levels = pipeList(v).map((level) => level.toUpperCase());
+  if (levels.includes("LOW")) return "LOW";
+  if (levels.includes("MEDIUM")) return "MEDIUM";
+  return null;
+};
 
 type EvidenceRow = {
   evidence_class: "verified_creator" | "secondary";
@@ -53,8 +102,6 @@ type EvidenceRow = {
 
 
 const REQUIRED: TargetField[] = ["state", "city"]; // teacher_prospects requires city+state NOT NULL
-
-type Mapping = Partial<Record<TargetField, string | null>>;
 
 interface SLCampaign { id: string; name: string; status?: string }
 
@@ -120,6 +167,16 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [defaultState, setDefaultState] = useState("");
   // Step 2
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const normalizedHeaders = csvHeaders.map((header) => header.replace(/^\uFEFF/, "").trim());
+  const isStandardManusFile = normalizedHeaders.length === STANDARD_MANUS_HEADERS.length
+    && STANDARD_MANUS_HEADERS.every((header, index) => normalizedHeaders[index] === header);
+  const standardHeadersPresent = STANDARD_MANUS_HEADERS.filter((header) => normalizedHeaders.includes(header));
+  const looksLikeChangedManusFile = !isStandardManusFile
+    && standardHeadersPresent.length >= 10
+    && normalizedHeaders.includes("dedupe_key")
+    && normalizedHeaders.some((header) => header.startsWith("verified_") || header.startsWith("secondary_signal_"));
+  const missingStandardHeaders = STANDARD_MANUS_HEADERS.filter((header) => !normalizedHeaders.includes(header));
+  const unexpectedStandardHeaders = normalizedHeaders.filter((header) => !STANDARD_MANUS_HEADERS.includes(header as typeof STANDARD_MANUS_HEADERS[number]));
   // Manus also ships a "one row per signal" sprint export. That file must not
   // go into the teacher pool — it would duplicate teachers.
   const looksLikeSignalSprintFile = (() => {
@@ -153,6 +210,29 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [includeCatchAll, setIncludeCatchAll] = useState(false);
   const [pushing, setPushing] = useState(false);
 
+  const standardFileSummary = useMemo(() => {
+    if (!isStandardManusFile) return null;
+    let verifiedFacts = 0;
+    let creatorSignals = 0;
+    let secondarySignals = 0;
+    let evidenceLinks = 0;
+    for (const row of csvRows) {
+      if (Number.parseInt(row.verified_enrichment_fact_count ?? "0", 10) > 0) verifiedFacts++;
+      if (Number.parseInt(row.verified_creator_signal_count ?? "0", 10) > 0) creatorSignals++;
+      if (Number.parseInt(row.secondary_signal_count ?? "0", 10) > 0) secondarySignals++;
+      evidenceLinks += Math.max(
+        pipeList(row.verified_creator_summary).length,
+        pipeList(row.verified_creator_source_urls).length,
+      );
+      evidenceLinks += Math.max(
+        pipeList(row.secondary_signal_sources).length,
+        pipeList(row.secondary_signal_details).length,
+        pipeList(row.secondary_signal_source_urls).length,
+      );
+    }
+    return { verifiedFacts, creatorSignals, secondarySignals, evidenceLinks };
+  }, [csvRows, isStandardManusFile]);
+
   useEffect(() => {
     if (!open) {
       setStep(1); setBatchName(""); setSource("Manus"); setDestination("master_only");
@@ -180,6 +260,16 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         const headers = res.meta.fields ?? [];
         setCsvHeaders(headers);
         setCsvRows(res.data);
+        const cleanedHeaders = headers.map((header) => header.replace(/^\uFEFF/, "").trim());
+        const standard = cleanedHeaders.length === STANDARD_MANUS_HEADERS.length
+          && STANDARD_MANUS_HEADERS.every((header, index) => cleanedHeaders[index] === header);
+        if (standard) {
+          setMapping(STANDARD_MANUS_MAPPING);
+          setUnmapped([]);
+          setAiReasoning("");
+          setAiLoading(false);
+          return;
+        }
         // Deterministic alias auto-map first (works offline, no AI needed)
         const naive = aliasMap(headers);
         setMapping(naive);
@@ -318,7 +408,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         : null,
       verified_creator_signal_count: num("verified_creator_signal_count"),
       secondary_signal_count: num("secondary_signal_count"),
-      secondary_signal_confidence: get("secondary_signal_confidence"),
+      secondary_signal_confidence: overallSecondaryConfidence(get("secondary_signal_confidence")),
       secondary_signal_match_basis: get("secondary_signal_match_basis"),
     };
 
@@ -357,6 +447,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     const secSources = pipeList(get("secondary_signal_sources"));
     const secDetails = pipeList(get("secondary_signal_details"));
     const secUrls = pipeList(get("secondary_signal_source_urls"));
+    const secConfidences = pipeList(get("secondary_signal_confidence"));
     const secLen = Math.max(secSources.length, secDetails.length, secUrls.length);
     for (let i = 0; i < secLen; i++) {
       evidence.push({
@@ -365,7 +456,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         summary: secDetails[i] ?? null,
         source_url: secUrls[i] ?? null,
         source_label: secSources[i] ?? null,
-        confidence: get("secondary_signal_confidence"),
+        confidence: secConfidences[i] ?? overallSecondaryConfidence(get("secondary_signal_confidence")),
         match_basis: get("secondary_signal_match_basis"),
       });
     }
@@ -616,48 +707,53 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
             for (const r of rawRows ?? []) existingRaws.set(String(r.id), (r.raw ?? null) as Record<string, unknown> | null);
           }
 
-          for (let i = 0; i < toEnrich.length; i++) {
-            const p = toEnrich[i];
-            const match = resolveMatch(p)!;
-            const patch: Record<string, unknown> = {};
-            const before: Record<string, unknown> = {};
-            for (const f of ENRICHABLE) {
-              const v = p.values[f];
-              if (v === null || v === undefined || v === "") continue;
-              const isEmptyOnRecord = match.empty_fields.includes(f);
-              if (conflictMode === "fill_blanks" && !isEmptyOnRecord) continue;
-              patch[f] = v;
-              if (!isEmptyOnRecord) before[f] = "(overwritten)";
-            }
-            // Manus-owned columns are always refreshed from the file.
-            for (const f of ALWAYS_WRITE) {
-              const v = p.values[f];
-              if (v === null || v === undefined || v === "") continue;
-              patch[f] = v;
-            }
+          const ENRICH_CONCURRENCY = 12;
+          for (let start = 0; start < toEnrich.length; start += ENRICH_CONCURRENCY) {
+            const group = toEnrich.slice(start, start + ENRICH_CONCURRENCY);
+            const results = await Promise.all(group.map(async (p) => {
+              const match = resolveMatch(p);
+              if (!match) return false;
+              const patch: Record<string, unknown> = {};
+              const before: Record<string, unknown> = {};
+              for (const f of ENRICHABLE) {
+                const v = p.values[f];
+                if (v === null || v === undefined || v === "") continue;
+                const isEmptyOnRecord = match.empty_fields.includes(f);
+                if (conflictMode === "fill_blanks" && !isEmptyOnRecord) continue;
+                patch[f] = v;
+                if (!isEmptyOnRecord) before[f] = "(overwritten)";
+              }
+              // Manus-owned columns are always refreshed from the file.
+              for (const f of ALWAYS_WRITE) {
+                const v = p.values[f];
+                if (v === null || v === undefined || v === "") continue;
+                patch[f] = v;
+              }
 
-            const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
-            const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
-            const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
-            mergedRaw.enrichment_history = [
-              ...history,
-              { batch_id: batch.id, at: new Date().toISOString(), mode: conflictMode, fields: Object.keys(patch), overwritten: Object.keys(before) },
-            ];
+              const prevRaw = (existingRaws.get(match.id) ?? {}) as Record<string, unknown>;
+              const mergedRaw: Record<string, unknown> = { ...prevRaw, ...p.rawUnmapped };
+              const history = Array.isArray(prevRaw.enrichment_history) ? prevRaw.enrichment_history as unknown[] : [];
+              mergedRaw.enrichment_history = [
+                ...history,
+                { batch_id: batch.id, at: new Date().toISOString(), mode: conflictMode, fields: Object.keys(patch), overwritten: Object.keys(before) },
+              ];
 
-            if (Object.keys(patch).length === 0 && !Object.keys(p.rawUnmapped).length) continue;
+              if (Object.keys(patch).length === 0 && !Object.keys(p.rawUnmapped).length) return false;
 
-            const { error: upErr } = await supabase.from("teacher_prospects")
-              .update({
-                ...patch,
-                raw: mergedRaw as never,
-                last_enriched_at: new Date().toISOString(),
-                import_batch_id: batch.id,
-                ...(patch.email ? { needs_email_enrichment: false } : {}),
-              } as never)
-              .eq("id", match.id);
-            if (upErr) throw new Error(`enrich failed on ${match.id}: ${upErr.message}`);
-            enriched++;
-            if (i % 100 === 0) toast.loading(`Enriching existing records… ${enriched.toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
+              const { error: upErr } = await supabase.from("teacher_prospects")
+                .update({
+                  ...patch,
+                  raw: mergedRaw as never,
+                  last_enriched_at: new Date().toISOString(),
+                  import_batch_id: batch.id,
+                  ...(patch.email ? { needs_email_enrichment: false } : {}),
+                } as never)
+                .eq("id", match.id);
+              if (upErr) throw new Error(`enrich failed on ${match.id}: ${upErr.message}`);
+              return true;
+            }));
+            enriched += results.filter(Boolean).length;
+            toast.loading(`Enriching existing records… ${Math.min(start + group.length, toEnrich.length).toLocaleString()}/${toEnrich.length.toLocaleString()}`, { id: tId });
           }
         }
 
@@ -808,7 +904,8 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
   /* ---------- Render ---------- */
   const canNext2 = csvRows.length > 0;
-  const canNext3 = !!mapping.email || (!!defaultCity && !!defaultState); // at minimum geo OR email
+  const canNext3 = !looksLikeSignalSprintFile && !looksLikeChangedManusFile
+    && (!!mapping.email || (!!defaultCity && !!defaultState)); // at minimum geo OR email
   const canNext4 = !!qa;
   const canImport = qa && qa.total > 0 && qa.missingRequired < qa.total;
 
@@ -902,14 +999,45 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                 )}
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-[#526078]">{csvRows.length.toLocaleString()} rows · {csvHeaders.length} columns</div>
-                  {aiLoading ? (
+                  {isStandardManusFile ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-[#16a34a]"><CheckCircle2 size={12} /> Standard Manus file</span>
+                  ) : aiLoading ? (
                     <span className="inline-flex items-center gap-1 text-[11px] text-[#174be8]"><Loader2 size={12} className="animate-spin" /> AI mapping…</span>
                   ) : aiReasoning ? (
                     <span className="inline-flex items-center gap-1 text-[11px] text-[#16a34a]"><Sparkles size={12} /> AI mapped</span>
                   ) : null}
                 </div>
-                {aiReasoning && <div className="rounded-md bg-[#eef4ff] p-2 text-[11px] italic text-[#0d3aa8]">{aiReasoning}</div>}
-                <div className="max-h-72 overflow-auto rounded-lg border border-[#e7edf5]">
+                {isStandardManusFile && standardFileSummary ? (
+                  <div className="space-y-3 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-4">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-[#16a34a]" />
+                      <div>
+                        <div className="font-bold text-[#07142f]">Standard Manus City/Metro file recognized</div>
+                        <div className="mt-0.5 text-xs text-[#526078]">All 27 columns are matched. You do not need to map anything.</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                      <QaCard label="Teacher rows" value={csvRows.length} />
+                      <QaCard label="Verified facts" value={standardFileSummary.verifiedFacts} tone={standardFileSummary.verifiedFacts > 0 ? "good" : undefined} />
+                      <QaCard label="Creator signals" value={standardFileSummary.creatorSignals} />
+                      <QaCard label="Secondary signals" value={standardFileSummary.secondarySignals} />
+                      <QaCard label="Evidence records" value={standardFileSummary.evidenceLinks} tone={standardFileSummary.evidenceLinks > 0 ? "good" : undefined} />
+                    </div>
+                  </div>
+                ) : looksLikeChangedManusFile ? (
+                  <div className="rounded-lg border border-[#fed7aa] bg-[#fff7ed] p-3 text-xs text-[#9a3412]">
+                    <div className="font-bold">This Manus file does not match the approved 27-column format.</div>
+                    {missingStandardHeaders.length > 0 && <div className="mt-1">Missing: {missingStandardHeaders.join(", ")}</div>}
+                    {unexpectedStandardHeaders.length > 0 && <div className="mt-1">Unexpected: {unexpectedStandardHeaders.join(", ")}</div>}
+                    {missingStandardHeaders.length === 0 && unexpectedStandardHeaders.length === 0 && (
+                      <div className="mt-1">The columns are in a different order.</div>
+                    )}
+                    <div className="mt-1">Ask Manus for the standard City/Metro export. This file cannot continue.</div>
+                  </div>
+                ) : (
+                  <>
+                    {aiReasoning && <div className="rounded-md bg-[#eef4ff] p-2 text-[11px] italic text-[#0d3aa8]">{aiReasoning}</div>}
+                    <div className="max-h-72 overflow-auto rounded-lg border border-[#e7edf5]">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-[#f7faff]">
                       <tr><th className="p-2 text-left font-bold">Target field</th><th className="p-2 text-left font-bold">CSV column</th></tr>
@@ -931,13 +1059,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                       ))}
                     </tbody>
                   </table>
-                </div>
-                {unmapped.length > 0 && (
-                  <div className="rounded-md border border-[#dbe4f2] bg-white p-2 text-[11px]">
-                    <span className="font-bold">{unmapped.length} unmapped column{unmapped.length === 1 ? "" : "s"}:</span>{" "}
-                    <span className="text-[#526078]">{unmapped.join(", ")}</span>
-                    <div className="mt-1 text-[10px] text-[#8794ab]">These will be saved to the row's raw JSON field.</div>
-                  </div>
+                    </div>
+                    {unmapped.length > 0 && (
+                      <div className="rounded-md border border-[#dbe4f2] bg-white p-2 text-[11px]">
+                        <span className="font-bold">{unmapped.length} unmapped column{unmapped.length === 1 ? "" : "s"}:</span>{" "}
+                        <span className="text-[#526078]">{unmapped.join(", ")}</span>
+                        <div className="mt-1 text-[10px] text-[#8794ab]">These will be saved to the row's raw JSON field.</div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

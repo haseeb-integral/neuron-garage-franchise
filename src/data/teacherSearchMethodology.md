@@ -97,10 +97,10 @@ You can change a teacher's status from the table or from the detail panel.
 - **Market Context Banner.** Shows the score and tier of the city you picked. It tells you: "Is this a strong market to be prospecting in?"
 - **Next Best Action.** A single suggestion for what to do next (for example: "Push 12 verified teachers to SmartLead").
 - **Funnel Widget.** Four numbers side by side: **Total → With Email → Verified → In SmartLead**. This tells you how full each stage of the pipeline is.
-- **Filter Bar.** Search, a **source filter** with four choices — *All Sources*, *SmartLead Enriched*, *LinkedIn Import*, *Needs Email Enrichment* — and a switch to hide teachers who are already in outreach. The source filter groups rows by where the email came from and whether it is verified, not by how the teacher was first discovered.
-- **Teacher Table.** The main list. You can sort, select rows, and act on them.
+- **Filter Bar.** Search, a **source filter** with four choices — *All Sources*, *SmartLead Enriched*, *LinkedIn Import*, *Needs Email Enrichment* — a **Signals filter** (Tier 1 / Tier 2 / needs-verification matches), and a switch to hide teachers who are already in outreach. The source filter groups rows by where the email came from and whether it is verified, not by how the teacher was first discovered.
+- **Teacher Table.** The main list. Sorted **best prospects first** by default (Tier 1, then Tier 2, then everyone else). You can sort, select rows, and act on them.
 - **Bulk Action Bar.** Appears when you select rows. Lets you tag, promote, add to a campaign, or export.
-- **Detail Panel.** Opens when you click a row. Shows the full profile.
+- **Detail Panel.** Opens when you click a row. Shows the full profile plus the **Enrichment & Signals** panel described in section 3A.
 - **AI Panel (right).** A chat assistant that can answer questions about what's on screen.
 
 ---

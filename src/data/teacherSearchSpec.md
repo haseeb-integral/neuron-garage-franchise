@@ -1,7 +1,9 @@
 # Teacher Search — Feature Spec
 
-**Version:** v1.1 · **Date:** 2026-07-24 · **Owner:** Neuron Garage / Lovable
-**Status:** Shipped, evolving. **Source of truth:** this page + the Teacher Search Methodology doc + the current chat.
+**Version:** v1.2 · **Date:** 2026-09-21 · **Owner:** Neuron Garage / Lovable
+**Status:** Shipped, evolving. **Source of truth:** this page + the Teacher Search Methodology doc + the Teacher Record Enrichment doc + the current chat.
+
+**Changed since v1.1 (2026-09-21):** added the prospect tier system (Tier 1 entrepreneurial signal, Tier 2 outreach hook, Tier 3 verified contact), the Enrichment & Signals evidence panel on the teacher record, the Signals filter and "best prospects first" sort, the name-search fix (security-definer RPC), and the locked 27-column Manus import contract.
 
 **Changed since v1.0 (2026-07-24):** corrected source-filter values, clarified that Fit Score is stored but not auto-computed today, noted `MasterPoolImportWizard` is shared with Email Outreach, and flagged which status transitions are actually wired in the UI.
 
@@ -59,6 +61,18 @@ merged into `raw`, and an audit entry appended to `raw.enrichment_history`
 (batch id, timestamp, mode, fields written, fields overwritten). The batch row in
 `teacher_import_batches` stores inserted / enriched / skipped counts in `dedupe_stats`.
 
+### The 27-column Manus import contract (locked)
+
+City exports produced by the Manus enrichment pipeline follow a fixed 27-column format. When the wizard sees that standard header, column mapping is **automatic** — no manual mapping step. Manual mapping only appears for non-standard files.
+
+Import rules:
+
+- A blank CSV cell never overwrites a value already stored.
+- Full signal text (`" | "`-separated) is preserved; nothing is truncated to a count.
+- The separate one-row-per-signal "sprint" file is blocked from the main import (it would duplicate teacher rows).
+- Matching uses `dedupe_key` first, then email — never name alone.
+- Re-importing the same file never duplicates evidence rows.
+
 
 ---
 
@@ -80,6 +94,22 @@ The tag is the default sort key in the table and the ranking signal the AI co-pi
 - **Teacher type** — active / retired / camp_enrichment.
 - **Summer availability heuristic.**
 - **Subject match** — enrichment / STEM adjacency (Segment 4).
+
+---
+
+## 3A. Prospect tiers & evidence (added 2026-09-21)
+
+Teachers enriched by the Manus pipeline (see the **Teacher Record Enrichment** doc) are placed in one of three tiers, derived from their evidence rows — never entered by hand:
+
+| Tier | Meaning | UI signal |
+|---|---|---|
+| **Tier 1 — Entrepreneurial signal** | A side business / second licence matches the teacher's name + city | Amber **Side business** chip with confidence |
+| **Tier 2 — Outreach hook** | A verified project, grant, award or leadership fact | Green hook chip in plain words |
+| **Tier 3 — Verified contact** | Name, email, school, district confirmed | No chip |
+
+The teacher detail panel includes a **TeacherEvidenceSection** ("Enrichment & Signals") showing: a tier banner; one evidence card per entrepreneurial signal (licence detail, source, confidence pill with a plain-words explanation, match basis, clickable source link); and verified facts listed separately underneath. Verified HIGH facts and secondary MEDIUM/LOW signals are kept visually separate and are **never combined into a single score**.
+
+Evidence lives in `teacher_evidence` (rebuilt 2026-09 from each teacher's `raw` jsonb after a bug left it empty: 2,482 verified-fact rows + 100 side-business records). Confidence levels come from the Manus confidence system: HIGH (auto-merge), MEDIUM (flagged, verify before outreach), LOW (discarded / context only).
 
 ---
 
@@ -125,7 +155,9 @@ Modals: `FindProspectsModal`, `TeacherImportWizard`, `MasterPoolImportWizard` (l
 The store (`useTeacherProspectsStore`) is the single source of truth for filters and paging. Filters:
 
 - `cityFilters: string[]` — multi-city. Serialized as `?city=austin,denver`.
-- `search: string` — debounced 350ms across name, school, city, specialization.
+- `search: string` — debounced 350ms across name, school, city, specialization. Name search runs through a security-definer RPC so it searches the full pool and returns a true total count (fixed 2026-09: a plain table query could miss rows and misreport counts).
+- `signalsFilter` — **All / Tier 1 (entrepreneurial signal) / Tier 2 (outreach hook) / MEDIUM-confidence matches**. Filters by the teacher's evidence rows, not by a stored flag.
+- Default sort is **best prospects first**: Tier 1 → Tier 2 → verified contact, then Fit Score.
 - `sourceFilter` — one of `all` · `smartlead` · `linkedin` · `needs_email`. Shown in the UI as **All Sources**, **SmartLead Enriched**, **LinkedIn Import**, **Needs Email Enrichment**. These are *bucketed* labels derived from `enrichment_source` + `verification_status` + email presence in `src/lib/teacherSourceLabels.ts` — not the raw ingest channel.
 - `hideInOutreach: boolean` — hides rows whose `id` appears in `email_campaign_recipients`.
 - Paging: `page`, `pageSize`.
@@ -157,6 +189,7 @@ Clicking **Promote** in the table or the detail panel creates a row in `candidat
 | Table | Status | Key fields |
 |---|---|---|
 | `teacher_prospects` | Active | `id, name, email, phone, city, state, school, school_nces_id, fit_score, status, teacher_type, subject, segment, linkedin_url, tags[], enrichment_source, last_enriched_at, needs_email_enrichment, verification_status, dedupe_key, last_pushed_at, apify_run_id, teacher_import_batch_id, raw jsonb` |
+| `teacher_evidence` | Active | Per-teacher enrichment evidence: `teacher_id, signal_type, label, detail, source_name, source_url, confidence, match_basis, is_verified`. |
 | `teacher_saved_lists` | Active | Per-user named filter sets. |
 | `public_schools` | Active | NCES-anchored school directory (referenced by `school_nces_id`). |
 | `candidates` | Active | Downstream table Promote writes into. |

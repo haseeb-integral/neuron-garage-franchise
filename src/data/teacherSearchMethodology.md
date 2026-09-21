@@ -1,6 +1,8 @@
 # Teacher Search — Methodology (Plain English)
 
-**Version:** v1.1 · **Date:** 2026-07-24 · **Audience:** Admin users
+**Version:** v1.2 · **Date:** 2026-09-21 · **Audience:** Admin users
+
+*Changed since v1.1: added the enrichment layer — prospect tiers, the evidence panel on each teacher, the Signals filter, and how confidence levels (HIGH / MEDIUM / LOW) work. Full detail lives in the **Teacher Record Enrichment** doc.*
 
 *Changed since v1.0: corrected the source filter options, and clarified that the Fit Score is not automatically calculated today — it is entered by hand or left blank until a scoring rule is wired up.*
 
@@ -55,6 +57,26 @@ The tag is what shows up as a colored pill in the table.
 
 ---
 
+## 3A. The enrichment layer — how we spot the best prospects (new, September 2026)
+
+For Houston and Austin, a separate research pipeline (run with a tool called **Manus**) checked each teacher against public records — business licences, DonorsChoose classroom projects, education grants, awards, tutoring profiles. The results are stored on each teacher as **evidence**, and every enriched teacher falls into one of three tiers:
+
+- **Tier 1 — Entrepreneurial signal.** We found a side business or second professional licence matching the teacher's name and city (for example an insurance or real-estate licence). These are the strongest prospects — call them first.
+- **Tier 2 — Outreach hook.** No business signal, but we found a verified fact you can open an email with — "you ran a funded DonorsChoose project", "you won a district grant". 
+- **Tier 3 — Verified contact.** Name, email, school and district confirmed. Good for normal outreach.
+
+In the table, Tier 1 teachers show an amber **Side business** chip and Tier 2 teachers show a green chip with the hook in plain words. The list sorts **best prospects first** by default, and the **Signals** filter lets you show only Tier 1, only Tier 2, or only the matches that still need a quick verification.
+
+Click a teacher and the **Enrichment & Signals** panel shows each signal as its own card: what was found, the source, a clickable link to the original public record, and a **confidence** badge:
+
+- **HIGH** — strong match (for example an official email match). Safe to use.
+- **MEDIUM** — name + city match. Real, but worth a quick check before you write.
+- **LOW** — weak match. Context only.
+
+Verified facts and lower-confidence signals are always shown **separately** and are never merged into one score — they are context to help the recruiter, not an automatic judgement.
+
+---
+
 ## 4. What each teacher's status means
 
 Every teacher has a status that tells you where they are in our process:
@@ -75,10 +97,10 @@ You can change a teacher's status from the table or from the detail panel.
 - **Market Context Banner.** Shows the score and tier of the city you picked. It tells you: "Is this a strong market to be prospecting in?"
 - **Next Best Action.** A single suggestion for what to do next (for example: "Push 12 verified teachers to SmartLead").
 - **Funnel Widget.** Four numbers side by side: **Total → With Email → Verified → In SmartLead**. This tells you how full each stage of the pipeline is.
-- **Filter Bar.** Search, a **source filter** with four choices — *All Sources*, *SmartLead Enriched*, *LinkedIn Import*, *Needs Email Enrichment* — and a switch to hide teachers who are already in outreach. The source filter groups rows by where the email came from and whether it is verified, not by how the teacher was first discovered.
-- **Teacher Table.** The main list. You can sort, select rows, and act on them.
+- **Filter Bar.** Search, a **source filter** with four choices — *All Sources*, *SmartLead Enriched*, *LinkedIn Import*, *Needs Email Enrichment* — a **Signals filter** (Tier 1 / Tier 2 / needs-verification matches), and a switch to hide teachers who are already in outreach. The source filter groups rows by where the email came from and whether it is verified, not by how the teacher was first discovered.
+- **Teacher Table.** The main list. Sorted **best prospects first** by default (Tier 1, then Tier 2, then everyone else). You can sort, select rows, and act on them.
 - **Bulk Action Bar.** Appears when you select rows. Lets you tag, promote, add to a campaign, or export.
-- **Detail Panel.** Opens when you click a row. Shows the full profile.
+- **Detail Panel.** Opens when you click a row. Shows the full profile plus the **Enrichment & Signals** panel described in section 3A.
 - **AI Panel (right).** A chat assistant that can answer questions about what's on screen.
 
 ---
@@ -142,4 +164,4 @@ Everything is stored in the Neuron Garage backend. Admins can trace any teacher 
 
 ---
 
-If you find something in the tool that does not match this doc, please tell the team — we keep this page in sync with the shipped behavior. Latest update: **2026-07-21**.
+If you find something in the tool that does not match this doc, please tell the team — we keep this page in sync with the shipped behavior. Latest update: **2026-09-21**.

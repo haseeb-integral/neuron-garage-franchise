@@ -329,11 +329,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
     const evidence: EvidenceRow[] = [];
     const creatorSummaries = pipeList(get("verified_creator_summary"));
     const creatorUrls = pipeList(get("verified_creator_source_urls"));
+    const creatorTypes = pipeList(get("verified_enrichment_signal_types"));
     const creatorLen = Math.max(creatorSummaries.length, creatorUrls.length);
     for (let i = 0; i < creatorLen; i++) {
       evidence.push({
         evidence_class: "verified_creator",
-        signal_type: get("verified_enrichment_signal_types"),
+        // One label per summary when the lists line up, else the whole string.
+        signal_type: creatorTypes.length === creatorLen
+          ? (creatorTypes[i] ?? null)
+          : get("verified_enrichment_signal_types"),
         summary: creatorSummaries[i] ?? null,
         source_url: creatorUrls[i] ?? null,
         source_label: null,

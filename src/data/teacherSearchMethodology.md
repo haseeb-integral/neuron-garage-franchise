@@ -164,4 +164,4 @@ Everything is stored in the Neuron Garage backend. Admins can trace any teacher 
 
 ---
 
-If you find something in the tool that does not match this doc, please tell the team — we keep this page in sync with the shipped behavior. Latest update: **2026-07-21**.
+If you find something in the tool that does not match this doc, please tell the team — we keep this page in sync with the shipped behavior. Latest update: **2026-09-21**.

@@ -136,11 +136,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [trackClicks, setTrackClicks] = useState(true);
   const [stopOnReply, setStopOnReply] = useState(true);
   // Step 4
-  const [sequences, setSequences] = useState<SequenceStep[]>([
-    { day: 1, subject: "Quick question, {{first_name}}", body: "Hi {{first_name}},\n\n…" },
-    { day: 3, subject: "Following up", body: "Just wanted to bump this." },
-    { day: 7, subject: "Last note", body: "Closing the loop." },
-  ]);
+  const [sequences, setSequences] = useState<SequenceStep[]>(DEFAULT_SEQUENCES);
 
   const profileEmail = profile?.email ?? user?.email ?? "";
   const effectiveTestRecipient = testOverride.trim() || profileEmail;

@@ -14,7 +14,6 @@ type Step = 1 | 2 | 3 | 4;
 type Destination = "master_only" | "master_and_smartlead";
 type ImportMode = "add_only" | "add_and_enrich" | "enrich_only";
 type ConflictMode = "fill_blanks" | "overwrite";
-type Mapping = Partial<Record<TargetField, string | null>>;
 
 type MatchInfo = { dedupe_key: string; id: string; empty_fields: string[] };
 
@@ -33,6 +32,7 @@ const TARGET_FIELDS = [
   "secondary_signal_source_urls", "secondary_signal_confidence", "secondary_signal_match_basis",
 ] as const;
 type TargetField = (typeof TARGET_FIELDS)[number];
+type Mapping = Partial<Record<TargetField, string | null>>;
 
 const STANDARD_MANUS_HEADERS = [
   "first_name", "last_name", "full_name", "work_email", "phone", "school", "district",

@@ -8,6 +8,13 @@
       "when": 1789152709733,
       "tag": "0000_add_step1_questions_to_candidate_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790015262742,
+      "tag": "0001_rebuild_teacher_evidence_from_raw",
+      "breakpoints": true
     }
   ]
 }

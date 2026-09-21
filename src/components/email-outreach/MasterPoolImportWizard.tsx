@@ -582,7 +582,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
         if (toEnrich.length) {
           const existingRaws = new Map<string, Record<string, unknown> | null>();
           const ID_CHUNK = 500;
-          const ids = toEnrich.map((p) => matchMapLive.get(p.key)!.id);
+          const ids = toEnrich.map((p) => resolveMatch(p)!.id);
           for (let i = 0; i < ids.length; i += ID_CHUNK) {
             const { data: rawRows } = await supabase
               .from("teacher_prospects").select("id, raw").in("id", ids.slice(i, i + ID_CHUNK));
@@ -591,7 +591,7 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
 
           for (let i = 0; i < toEnrich.length; i++) {
             const p = toEnrich[i];
-            const match = matchMapLive.get(p.key)!;
+            const match = resolveMatch(p)!;
             const patch: Record<string, unknown> = {};
             const before: Record<string, unknown> = {};
             for (const f of ENRICHABLE) {
@@ -641,11 +641,14 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
           const evidenceByKey = new Map<string, EvidenceRow[]>();
           for (const p of withEvidence) if (!evidenceByKey.has(p.key)) evidenceByKey.set(p.key, p.evidence);
 
-          // teacher id per key: enriched rows are known, new rows are read back.
+          // Teacher id per key. Every matched row counts here — not just the ones
+          // we enriched — so evidence is never dropped for a skipped row.
           const idByKey = new Map<string, string>();
-          for (const p of toEnrich) {
-            const m = matchMapLive.get(p.key);
-            if (m) idByKey.set(p.key, m.id);
+          for (const p of prepared) {
+            const m = resolveMatch(p);
+            if (!m) continue;
+            if (!idByKey.has(p.key)) idByKey.set(p.key, m.id);
+            if (p.altKey && !idByKey.has(p.altKey)) idByKey.set(p.altKey, m.id);
           }
           if (inserted > 0) {
             const { data: freshRows } = await supabase

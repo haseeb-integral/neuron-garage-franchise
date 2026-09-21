@@ -97,6 +97,22 @@ The tag is the default sort key in the table and the ranking signal the AI co-pi
 
 ---
 
+## 3A. Prospect tiers & evidence (added 2026-09-21)
+
+Teachers enriched by the Manus pipeline (see the **Teacher Record Enrichment** doc) are placed in one of three tiers, derived from their evidence rows — never entered by hand:
+
+| Tier | Meaning | UI signal |
+|---|---|---|
+| **Tier 1 — Entrepreneurial signal** | A side business / second licence matches the teacher's name + city | Amber **Side business** chip with confidence |
+| **Tier 2 — Outreach hook** | A verified project, grant, award or leadership fact | Green hook chip in plain words |
+| **Tier 3 — Verified contact** | Name, email, school, district confirmed | No chip |
+
+The teacher detail panel includes a **TeacherEvidenceSection** ("Enrichment & Signals") showing: a tier banner; one evidence card per entrepreneurial signal (licence detail, source, confidence pill with a plain-words explanation, match basis, clickable source link); and verified facts listed separately underneath. Verified HIGH facts and secondary MEDIUM/LOW signals are kept visually separate and are **never combined into a single score**.
+
+Evidence lives in `teacher_evidence` (rebuilt 2026-09 from each teacher's `raw` jsonb after a bug left it empty: 2,482 verified-fact rows + 100 side-business records). Confidence levels come from the Manus confidence system: HIGH (auto-merge), MEDIUM (flagged, verify before outreach), LOW (discarded / context only).
+
+---
+
 ## 4. Statuses
 
 `teacher_prospects.status` values used by the UI:

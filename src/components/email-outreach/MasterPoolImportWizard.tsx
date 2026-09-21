@@ -933,6 +933,22 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
                   <QaCard label="Missing city/state" value={qa.missingRequired} tone={qa.missingRequired > 0 ? "warn" : undefined} />
                 </div>
 
+                <div className="space-y-1">
+                  <div className="text-[11px] font-semibold text-[#526078]">Signals found in this file</div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <QaCard label="Rows with verified facts" value={qa.rowsVerifiedFacts} tone={qa.rowsVerifiedFacts > 0 ? "good" : "warn"} />
+                    <QaCard label="Rows with creator signals" value={qa.rowsCreatorSignals} tone={qa.rowsCreatorSignals > 0 ? "good" : undefined} />
+                    <QaCard label="Secondary — MEDIUM" value={qa.rowsSecMedium} />
+                    <QaCard label="Secondary — LOW" value={qa.rowsSecLow} />
+                    <QaCard label="Evidence links" value={qa.evidenceLinks} tone={qa.evidenceLinks > 0 ? "good" : "warn"} />
+                  </div>
+                  {qa.rowsVerifiedFacts === 0 && qa.rowsCreatorSignals === 0 && qa.evidenceLinks === 0 && (
+                    <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">
+                      No signal data was read from this file. Go Back to Step 2 and check the signal columns are mapped — importing now will only update names and schools.
+                    </div>
+                  )}
+                </div>
+
                 {qa.existingInMaster > 0 && (
                   importMode === "add_only" ? (
                     <div className="rounded-md border border-[#fed7aa] bg-[#fff7ed] p-2 text-[11px] text-[#9a3412]">

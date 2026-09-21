@@ -428,7 +428,25 @@ Templates live in \`supabase/functions/_shared/transactional-email-templates/\` 
 ### Known caveats
 
 - **Open Rate inflation:** Gmail's image proxy and Apple Mail Privacy Protection pre-fetch tracking pixels on delivery. Trust **clicks** and **replies** as real engagement.
-- **\`{{unsubscribe}}\` merge tag** is not yet in the sequence body. Real teacher sends should not launch until this lands (CAN-SPAM).
+- **\`{{unsubscribe}}\` merge tag** is not yet in the sequence body, and nothing blocks activation without it. Real teacher sends must not launch until this lands (CAN-SPAM).
+
+### Cold-outreach readiness audit (September 21, 2026)
+
+Audited against the GTPA handoff v1.0, the SmartLead technical spec and the live code/DB. **Verdict: not ready for live teacher sends.** Open items, in order:
+
+| # | Blocker | Evidence |
+|---|---|---|
+| 1 | No \`{{unsubscribe}}\` tag and no postal address in the default sequence bodies; no validation on activation | \`NewCampaignDrawer.tsx\` default steps |
+| 2 | Our own suppression list is ignored on push, and SmartLead bounce/unsubscribe events are never written back to it | \`smartlead-push-leads\` has no \`suppressed_emails\` check; \`smartlead-webhook\` only inserts events; \`suppressed_emails\` = 0 rows |
+| 3 | Mailable universe is ~3,922 verified addresses, not 311,924 | \`verification_status = 'valid'\`; Apollo/Hunter not wired |
+| 4 | \`smartlead-webhook\` is public with no shared-secret check — forged replies could promote fake candidates into the pipeline | \`verify_jwt = false\`, no signature validation |
+| 5 | Push chunks 100 leads back-to-back with no pacing and no retry against a 10-req/2-s limit | \`smartlead-push-leads\` loop |
+| 6 | \`SMARTLEAD_PHASE\` still \`"warmup"\`; mailboxes at 15 sends/day | \`ScopeSwitcher.tsx\` |
+| 7 | \`campaign_cache\` stale (last full sync June 11) and full of \`[TEST]\` campaigns; analytics overview returns all zeros | \`campaign_cache\` rows |
+
+### Documentation accuracy note
+
+The **GTPA Handoff v1.0** and this spec match the code. The older **SmartLead technical spec** and **"How It Works" guide** (May 2026) are stale in four ways: they describe the 4-badge reply classifier (now 7 buckets), list a \`prospect_batches\` table that does not exist, give \`smartlead_events\` columns that no longer match (\`reply_message\`, \`reply_message_id\`, \`reply_intent_confidence\`, \`reply_intent_reason\`, \`payload\` are the real ones), and state 400-lead chunks with a 500 ms gap where the code pushes 100 with no gap.
 
 ---
 
@@ -616,13 +634,15 @@ The sidebar's "Methodology & Docs" group exposes the reference surface:
 | \`/handover\` | Account/credential handover sheet. |
 | \`/system-overview\` | Architecture diagram + boundaries. |
 | \`/scoring-method\` | City Search scoring math, end-to-end. |
-
 | \`/demographics-methodology\` | Census / NCES sourcing decisions. |
 | \`/apis-and-data-sources\` | Live registry of every API + secret. |
 | \`/prompts-and-ai-workflows\` | System prompts for every AI workflow. |
 | \`/guardrails\` | Hard rules the system enforces. |
 | \`/email-outreach-docs\` | End-to-end outreach playbook. |
 | \`/smartlead-spec\` | SmartLead integration spec. |
+| \`/teacher-search-methodology\` | How teachers are sourced and scored. |
+| \`/expanding-teacher-search-methodology\` | **v2.0** — Houston + Austin enrichment proof, the three signal layers, confidence system, per-city retooling checklist, cost model. |
+| \`/candidate-pipeline-methodology\` | Qualification process and scoring rules. |
 | \`/observability-spec\` / \`/observability-guide\` | DB Health spec + reader guide. |
 | \`/team-members\` | Admin user management. |
 | \`/unsubscribe\` | Public unsubscribe landing page. |

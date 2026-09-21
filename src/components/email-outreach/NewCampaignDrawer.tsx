@@ -3,8 +3,17 @@ import { X, Loader2, Check, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
+import { canSpamFooter, checkCanSpam, UNSUBSCRIBE_TAG } from "@/lib/canSpam";
 
 type SequenceStep = { day: number; subject: string; body: string };
+
+const FOOTER = canSpamFooter();
+
+const DEFAULT_SEQUENCES = (): SequenceStep[] => [
+  { day: 1, subject: "Quick question, {{first_name}}", body: `Hi {{first_name}},\n\n…${FOOTER}` },
+  { day: 3, subject: "Following up", body: `Just wanted to bump this.${FOOTER}` },
+  { day: 7, subject: "Last note", body: `Closing the loop.${FOOTER}` },
+];
 
 export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: () => void }) {
   const { user, profile } = useAuth();

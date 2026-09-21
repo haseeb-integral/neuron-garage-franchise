@@ -120,6 +120,15 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
   const [defaultState, setDefaultState] = useState("");
   // Step 2
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  // Manus also ships a "one row per signal" sprint export. That file must not
+  // go into the teacher pool — it would duplicate teachers.
+  const looksLikeSignalSprintFile = (() => {
+    if (!csvHeaders.length) return false;
+    const h = csvHeaders.map(norm);
+    const hasMetroShape = h.includes(norm("dedupe_key")) || h.includes(norm("verified_enrichment_fact_count"));
+    const hasPerSignalShape = h.includes(norm("signal_type")) || h.includes(norm("signal_summary")) || h.includes(norm("signal_source_url"));
+    return hasPerSignalShape && !hasMetroShape;
+  })();
   const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Mapping>({});
   const [unmapped, setUnmapped] = useState<string[]>([]);
@@ -301,25 +310,43 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
       manus_dedupe_key: get("dedupe_key"),
       outreach_status_source: get("outreach_status"),
       record_added_at: addedAt && !Number.isNaN(Date.parse(addedAt)) ? new Date(addedAt).toISOString() : null,
-      verified_enrichment_fact_count: num("verified_enrichment_fact_count") ?? 0,
+      // Blank count cells stay null so we never wipe a real number on an
+      // existing teacher. The insert path coerces null to 0 (NOT NULL columns).
+      verified_enrichment_fact_count: num("verified_enrichment_fact_count"),
       verified_enrichment_signal_types: pipeList(get("verified_enrichment_signal_types")).length
         ? pipeList(get("verified_enrichment_signal_types"))
         : null,
-      verified_creator_signal_count: num("verified_creator_signal_count") ?? 0,
-      secondary_signal_count: num("secondary_signal_count") ?? 0,
+      verified_creator_signal_count: num("verified_creator_signal_count"),
+      secondary_signal_count: num("secondary_signal_count"),
       secondary_signal_confidence: get("secondary_signal_confidence"),
       secondary_signal_match_basis: get("secondary_signal_match_basis"),
     };
+
+    // Keep the original " | " strings verbatim on the record (raw jsonb) so no
+    // detail is lost even if the lists are uneven when we split them.
+    const RAW_SIGNAL_FIELDS: TargetField[] = [
+      "verified_enrichment_signal_types", "verified_creator_summary", "verified_creator_source_urls",
+      "secondary_signal_sources", "secondary_signal_details", "secondary_signal_source_urls",
+      "secondary_signal_confidence", "secondary_signal_match_basis",
+    ];
+    for (const f of RAW_SIGNAL_FIELDS) {
+      const v = get(f);
+      if (v) rawUnmapped[f] = v;
+    }
 
     // ---- Evidence rows (kept out of the flat record on purpose) ----
     const evidence: EvidenceRow[] = [];
     const creatorSummaries = pipeList(get("verified_creator_summary"));
     const creatorUrls = pipeList(get("verified_creator_source_urls"));
+    const creatorTypes = pipeList(get("verified_enrichment_signal_types"));
     const creatorLen = Math.max(creatorSummaries.length, creatorUrls.length);
     for (let i = 0; i < creatorLen; i++) {
       evidence.push({
         evidence_class: "verified_creator",
-        signal_type: get("verified_enrichment_signal_types"),
+        // One label per summary when the lists line up, else the whole string.
+        signal_type: creatorTypes.length === creatorLen
+          ? (creatorTypes[i] ?? null)
+          : get("verified_enrichment_signal_types"),
         summary: creatorSummaries[i] ?? null,
         source_url: creatorUrls[i] ?? null,
         source_label: null,
@@ -866,6 +893,13 @@ export function MasterPoolImportWizard({ open, onClose, onComplete }: { open: bo
               </label>
             ) : (
               <>
+                {looksLikeSignalSprintFile && (
+                  <div className="rounded-md border border-[#fde9b8] bg-[#fffbef] p-2 text-[11px] text-[#7c5a08]">
+                    <b>Check this file.</b> It looks like the one-row-per-signal sprint export, not the standard City/Metro teacher export.
+                    Importing it here would create duplicate teacher records. Use the City/Metro file (it has a
+                    <code className="mx-1">dedupe_key</code> and <code className="mx-1">verified_enrichment_fact_count</code> column).
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-[#526078]">{csvRows.length.toLocaleString()} rows · {csvHeaders.length} columns</div>
                   {aiLoading ? (

@@ -104,6 +104,7 @@ export interface UseTeacherProspectsDataArgs {
   debouncedSearch: string;
   sourceFilter: string;
   signalFilter?: string;
+  sortMode?: string;
   hideInOutreach: boolean;
   allPromotedIds: string[];
 }
@@ -157,6 +158,7 @@ function applySignalFilter<T>(q: T, signalFilter: string): T {
 export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
   const { page, pageSize, cityFilters, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds } = args;
   const signalFilter = args.signalFilter ?? "all";
+  const sortMode = args.sortMode ?? "recent";
 
   const [prospects, setProspects] = useState<TeacherProspect[]>([]);
   const [totalCount, setTotalCount] = useState(0);

@@ -484,6 +484,10 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
           {step === 4 && (
             <div className="space-y-3">
               <h3 className="text-base font-black">4. Sequences</h3>
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+                Every step must end with <code className="font-bold">{UNSUBSCRIBE_TAG}</code> and a real
+                physical mailing address. The law requires both. Launch is blocked until they are there.
+              </p>
               {sequences.map((s, i) => (
                 <div key={i} className="rounded-lg border border-[#dbe4f2] p-3">
                   <div className="mb-2 flex items-center gap-2">

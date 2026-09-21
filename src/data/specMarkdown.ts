@@ -5,9 +5,9 @@
 export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — Product Specification
 
 > Detailed specification of the Neuron Garage Franchise Acquisition System.
-> **Document version 1.5 · Updated September 14, 2026** · For internal review.
+> **Document version 1.6 · Updated September 21, 2026** · For internal review.
 > Live URL: neuron-garage-franchise.lovable.app
-> **What's new since v1.4:** see §22 Recent Changes for the v1.4 → v1.5 delta. Highlights: Market Validation (MVS 1A) and Site Analysis (SAS 1B) shipped as live surfaces (§6A, §6B), one shared operator watchlist as the single source of truth for brand classification, "TAM" renamed to **Operator & Venue Supply** everywhere, price extraction v2 with unit awareness, a fully rebuilt Candidate Pipeline (Qualification Process tab, signals & red flags, references, FDD compliance trail, calendar, table view, CSV import/export), inbound lead capture via \`submit-application\` with realtime board updates, teacher master pool at 310,084 records with enrichment-mode imports.
+> **What's new since v1.5:** see §22 Recent Changes for the v1.5 → v1.6 delta. Highlights: teacher **entrepreneurial signals** are now first-class (evidence rebuilt from raw import data, Tier 1 / Tier 2 prospect tiers, per-signal evidence cards, signal filters, "Best prospects first" sort), the Manus 27-column enrichment CSV is supported end-to-end, Teacher Search name search moved to a server-side RPC with a true result count, the methodology page was rewritten to v2.0 (Houston + Austin two-city proof), and the master pool reached **311,924** records. Email Outreach remains in mailbox **warm-up** with hard blockers open (§8 Known caveats) — no teacher sends yet.
 
 ---
 
@@ -36,7 +36,7 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 19. [Backend & Edge Functions](#19-backend--edge-functions)
 20. [Third-Party APIs](#20-third-party-apis)
 21. [Phase 2 Roadmap](#21-phase-2-roadmap)
-22. [Recent Changes (v1.4 → v1.5)](#22-recent-changes-v14--v15)
+22. [Recent Changes (v1.5 → v1.6)](#22-recent-changes-v15--v16)
 
 ---
 
@@ -54,11 +54,13 @@ export const SPEC_MARKDOWN = `# Neuron Garage Franchise Acquisition System — P
 
 The product is a React + TypeScript single-page app, backed by Lovable Cloud (managed Supabase: Postgres + Auth + Edge Functions + Storage + Realtime).
 
-### Key numbers (September 14, 2026)
+### Key numbers (September 21, 2026)
 
 - **817 U.S. cities** pre-scored in \`us_cities_scored\` (population ≥ 50,000).
 - **61,199 public K–12 schools** in \`public_schools\` (NCES CCD).
-- **310,084 teacher records** in the master pool (\`teacher_prospects\`).
+- **311,924 teacher records** in the master pool (\`teacher_prospects\`).
+- **26,936 teachers with an email address**; **3,922** verified \`valid\` — the only records the SmartLead push currently accepts.
+- **2,582 evidence rows** in \`teacher_evidence\`: 2,482 verified facts (2,303 distinct teachers) + 100 secondary entrepreneurial signals (86 teachers, 69 MEDIUM / 31 LOW).
 - **6,213 discovered camp/enrichment providers** in \`mvs_providers\`; **24 brands** on the shared operator watchlist.
 - **12 live SOW metrics** across 3 categories (Demand · Operator & Venue Supply · Competitive Opportunity).
 - **47 deployed edge functions** (§19).
@@ -301,7 +303,32 @@ Routes: \`/market-validation\` (city list + scores), \`/market-validation/rollou
 - **Bulk Action Bar** — bulk-promote, bulk-tag, bulk-push-to-campaign, export.
 - **Saved Lists menu** — per-user named lists (\`teacher_saved_lists\`).
 - **Teacher AI Panel** — sidekick assistant scoped to the current filter (\`teacher-search-ai\` edge function).
-- **Detail panel** — full profile (bio, contact, school, signals, activity log).
+- **Detail panel** — full profile (bio, contact, school, enrichment evidence, activity log).
+
+### Enrichment signals & prospect tiers (v1.6)
+
+Manus enriches each city's teacher file in three layers. The app surfaces them as one plain-English story per record (\`src/lib/teacherSignals.ts\`, \`TeacherEvidenceSection.tsx\`).
+
+| Tier | Meaning | Source |
+|---|---|---|
+| **Tier 1 — entrepreneurial signal** | Teacher already runs something on the side (real-estate / insurance / occupational license, registered side business, creator income) | \`secondary_signal_count\` or \`verified_creator_signal_count\` > 0 |
+| **Tier 2 — outreach hook** | A verified fact worth opening with (coaching, club sponsor, grant, award, published curriculum) | \`verified_enrichment_signal_types\` contains a hook fact |
+| **Tier 3 — verified contact** | Contact details confirmed, no signal yet | everything else |
+
+- Each signal renders as its own **evidence card**: plain-English label, the detail text, the match basis, a confidence pill (HIGH / MEDIUM / LOW), and a "view source" link.
+- **Verified facts** and **secondary signals** stay visibly separate and are never combined into a single score.
+- **Signals filter** in the filter bar: All · Tier 1 · Tier 2 · MEDIUM confidence only · Has creator signal · Has side-business signal · Has phone number.
+- **Sort:** *Newest first* (default) or **Best prospects first** — Tier 1, then Tier 2 by hook count, then verified facts.
+- Row chips in the table: "Side business" (with confidence), "Hook", or "Verified contact".
+- \`teacher_evidence\` was rebuilt from each record's stored raw import jsonb after an importer bug dropped every row; the dedupe index now includes \`md5(summary)\` so two signals sharing one source URL no longer collide.
+
+### Manus 27-column import contract (locked)
+
+One teachers table, no per-city tables. Upsert on \`dedupe_key\` (never on \`full_name\`). City / state / district / school preserved exactly. Blank cells never overwrite an existing value, and blank counts never write 0 over a real number. Pipe-delimited signal strings are stored whole — no splitting, no extra rows. Every \`verified_enrichment_signal_types\` entry gets its own \`verified_fact\` evidence row; secondary signals are mapped to a signal-type code with the original source label kept. The one-row-per-signal sprint file must never be imported here — the wizard warns on it.
+
+### Search performance (v1.6)
+
+Free-text search runs through a security-definer RPC (\`teacher_prospects_search\`) instead of a client-side \`ilike\` chain. The old path hit the 8-second statement timeout on two-word names because the RLS staff check is not leakproof and forced a sequential scan over 311k rows. The RPC also returns the **true** filtered count, so the footer no longer shows an estimate.
 
 ### Fit Score (0–100)
 
@@ -313,7 +340,7 @@ Clicking **Promote** creates a row in \`candidates\` at the **New Lead** stage. 
 
 ### Today's limitation
 
-Apify is the primary scraping source. Apollo and purchased vendor lists are not yet wired (Phase 2 decision pending). \`teacher_prospects_master\` (a planned multi-source pool) is not yet built.
+Apify plus Manus city files are the sourcing path. **Apollo, Clay and Hunter are not wired**, so only 26,936 of 311,924 records have any email and only 3,922 are verified \`valid\`. \`teacher_prospects_master\` (a planned multi-source pool) is not yet built. Houston's records carry no entrepreneurial signals — that CSV shipped without signal columns; a re-import of the 27-column file is required.
 
 ---
 
@@ -401,7 +428,25 @@ Templates live in \`supabase/functions/_shared/transactional-email-templates/\` 
 ### Known caveats
 
 - **Open Rate inflation:** Gmail's image proxy and Apple Mail Privacy Protection pre-fetch tracking pixels on delivery. Trust **clicks** and **replies** as real engagement.
-- **\`{{unsubscribe}}\` merge tag** is not yet in the sequence body. Real teacher sends should not launch until this lands (CAN-SPAM).
+- **\`{{unsubscribe}}\` merge tag** is not yet in the sequence body, and nothing blocks activation without it. Real teacher sends must not launch until this lands (CAN-SPAM).
+
+### Cold-outreach readiness audit (September 21, 2026)
+
+Audited against the GTPA handoff v1.0, the SmartLead technical spec and the live code/DB. **Verdict: not ready for live teacher sends.** Open items, in order:
+
+| # | Blocker | Evidence |
+|---|---|---|
+| 1 | No \`{{unsubscribe}}\` tag and no postal address in the default sequence bodies; no validation on activation | \`NewCampaignDrawer.tsx\` default steps |
+| 2 | Our own suppression list is ignored on push, and SmartLead bounce/unsubscribe events are never written back to it | \`smartlead-push-leads\` has no \`suppressed_emails\` check; \`smartlead-webhook\` only inserts events; \`suppressed_emails\` = 0 rows |
+| 3 | Mailable universe is ~3,922 verified addresses, not 311,924 | \`verification_status = 'valid'\`; Apollo/Hunter not wired |
+| 4 | \`smartlead-webhook\` is public with no shared-secret check — forged replies could promote fake candidates into the pipeline | \`verify_jwt = false\`, no signature validation |
+| 5 | Push chunks 100 leads back-to-back with no pacing and no retry against a 10-req/2-s limit | \`smartlead-push-leads\` loop |
+| 6 | \`SMARTLEAD_PHASE\` still \`"warmup"\`; mailboxes at 15 sends/day | \`ScopeSwitcher.tsx\` |
+| 7 | \`campaign_cache\` stale (last full sync June 11) and full of \`[TEST]\` campaigns; analytics overview returns all zeros | \`campaign_cache\` rows |
+
+### Documentation accuracy note
+
+The **GTPA Handoff v1.0** and this spec match the code. The older **SmartLead technical spec** and **"How It Works" guide** (May 2026) are stale in four ways: they describe the 4-badge reply classifier (now 7 buckets), list a \`prospect_batches\` table that does not exist, give \`smartlead_events\` columns that no longer match (\`reply_message\`, \`reply_message_id\`, \`reply_intent_confidence\`, \`reply_intent_reason\`, \`payload\` are the real ones), and state 400-lead chunks with a 500 ms gap where the code pushes 100 with no gap.
 
 ---
 
@@ -589,13 +634,15 @@ The sidebar's "Methodology & Docs" group exposes the reference surface:
 | \`/handover\` | Account/credential handover sheet. |
 | \`/system-overview\` | Architecture diagram + boundaries. |
 | \`/scoring-method\` | City Search scoring math, end-to-end. |
-
 | \`/demographics-methodology\` | Census / NCES sourcing decisions. |
 | \`/apis-and-data-sources\` | Live registry of every API + secret. |
 | \`/prompts-and-ai-workflows\` | System prompts for every AI workflow. |
 | \`/guardrails\` | Hard rules the system enforces. |
 | \`/email-outreach-docs\` | End-to-end outreach playbook. |
 | \`/smartlead-spec\` | SmartLead integration spec. |
+| \`/teacher-search-methodology\` | How teachers are sourced and scored. |
+| \`/expanding-teacher-search-methodology\` | **v2.0** — Houston + Austin enrichment proof, the three signal layers, confidence system, per-city retooling checklist, cost model. |
+| \`/candidate-pipeline-methodology\` | Qualification process and scoring rules. |
 | \`/observability-spec\` / \`/observability-guide\` | DB Health spec + reader guide. |
 | \`/team-members\` | Admin user management. |
 | \`/unsubscribe\` | Public unsubscribe landing page. |
@@ -653,9 +700,11 @@ All tables have RLS enabled. Source of truth = generated \`src/integrations/supa
 
 ### Teachers
 
-- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, enrichment_source, last_enriched_at\`. v1.2 extensions: \`status\` (\`new\` | \`in_smartlead\` | \`suppressed\` | …), \`last_pushed_at\`, \`needs_email_enrichment\`, \`verification_status\` (\`valid\` | \`catch_all\` | \`invalid\` | null), \`dedupe_key\` (generated), \`raw\` (jsonb of unmapped CSV columns), \`teacher_import_batch_id\` (FK).
+- \`teacher_prospects\` — \`city, state, school, fit_score, status, apify_run_id, teacher_type (active|retired|camp_enrichment), subject, segment, linkedin_url, enrichment_source, last_enriched_at\`. v1.2 extensions: \`status\` (\`new\` | \`in_smartlead\` | \`suppressed\` | …), \`last_pushed_at\`, \`needs_email_enrichment\`, \`verification_status\` (\`valid\` | \`catch_all\` | \`invalid\` | null), \`dedupe_key\` (generated), \`raw\` (jsonb of unmapped CSV columns), \`teacher_import_batch_id\` (FK). v1.6 enrichment columns: \`verified_enrichment_fact_count\`, \`verified_enrichment_signal_types\` (array), \`verified_creator_signal_count\`, \`secondary_signal_count\`, \`secondary_signal_confidence\`.
+- \`teacher_evidence\` — one row per signal or verified fact: \`teacher_prospect_id\`, \`evidence_class\` (\`verified_creator\` | \`secondary\` | \`verified_fact\`), \`signal_type\`, \`source_label\`, \`summary\`, \`source_url\`, \`match_basis\`, \`confidence\` (\`HIGH\` | \`MEDIUM\` | \`LOW\`, null for verified facts). Dedupe index includes \`md5(summary)\`.
 - \`teacher_prospects_cities\` — per-city aggregate snapshot.
 - \`teacher_prospects_stats\` — cached counters powering the funnel widget.
+- \`teacher_prospects_search\` — security-definer RPC backing free-text search (server-side \`ilike\` + true count).
 - \`teacher_saved_lists\` — per-user named teacher lists.
 - \`teacher_import_batches\` — one row per CSV import (\`source\`, \`destination\`, \`row_count\`, \`column_mapping\`, \`unmapped_columns\`, \`created_by\`).
 - \`imports\` — generic import job audit.
@@ -844,7 +893,34 @@ Explicitly out of scope: Google / Microsoft / SSO login, multi-tenancy, mobile a
 
 ---
 
-## 22. Recent Changes (v1.4 → v1.5)
+## 22. Recent Changes (v1.5 → v1.6)
+
+What shipped between **September 14 → September 21, 2026**.
+
+**Teacher Search — enrichment signals made first-class**
+- \`teacher_evidence\` was found empty despite imports reporting saved evidence; 100 side-business records and 2,482 verified facts were rebuilt from each teacher's stored raw jsonb. The \`evidence_class\` check now allows \`verified_fact\`, \`confidence\` allows \`HIGH\` (null for facts), and the dedupe index includes \`md5(summary)\`.
+- New \`src/lib/teacherSignals.ts\`: prospect tiers, hook facts, plain-English signal labels, confidence blurbs.
+- Detail panel rewritten: tier banner, per-signal evidence cards with confidence pill, detail text, match basis and source link; entrepreneurial signals and verified facts shown as separate blocks.
+- Table chips ("Side business" / "Hook" / "Verified contact"), a **Signals** filter (Tier 1, Tier 2, MEDIUM-only, creator, side-business, has phone) and a **Best prospects first** sort.
+- Importer hardened for the next city: correct \`HIGH\` confidence on creator evidence, keyword-mapped secondary signal types with the source label kept, a \`verified_fact\` row per verified signal type, and a dedupe key that includes \`signal_type\` so re-imports never duplicate.
+
+**Teacher Search — data & performance**
+- Master pool at **311,924** after the Austin import (1,840 new, 2,896 enriched, no duplicates).
+- Full 27-column Manus contract supported: blank counts no longer overwrite real numbers, full pipe-delimited signal text preserved, sprint-file upload warned against.
+- Two-word name search used to time out and report "No prospects match"; it now runs through the \`teacher_prospects_search\` RPC in about a second and the footer shows a true count instead of an estimate.
+
+**Documentation**
+- \`/expanding-teacher-search-methodology\` rewritten to **v2.0**: Houston + Austin two-city proof, the three enrichment layers, confidence system, 7-step per-city retooling checklist, cost model, how signals appear in the app, lessons learned.
+
+**Email Outreach**
+- Cold-outreach readiness audit completed (§8). Seven open items; still in warm-up, no teacher sends. Two older SmartLead documents identified as stale.
+
+**Candidate Pipeline**
+- Step-1 questions (experience with children, interest in Neuron Garage, educational philosophy) now round-trip through the CSV download and import.
+
+---
+
+### Earlier: v1.4 → v1.5
 
 What shipped between **May 31 → September 14, 2026**.
 

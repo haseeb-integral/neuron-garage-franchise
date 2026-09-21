@@ -181,11 +181,17 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
     if (badStep) return "Each sequence step needs a valid day, subject, and body.";
+    // CAN-SPAM: no campaign goes live without an unsubscribe link, and no real
+    // (non-test) campaign goes live without a physical mailing address.
+    if (launch) {
+      const legal = checkCanSpam(sequences.map((s) => s.body), { requireAddress: !testMode });
+      if (legal) return legal;
+    }
     return null;
   };
 
   const submit = async (launch: boolean) => {
-    const error = validate();
+    const error = validate(launch);
     if (error) {
       setValidationError(error);
       toast.error(error);

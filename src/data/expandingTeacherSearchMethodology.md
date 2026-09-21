@@ -1,171 +1,204 @@
-# **Teacher Prospect Enrichment — Methodology**
+# **Expanding Teacher Search and Enrichment — Methodology**
 
-**Version 1.4 · The Definitive Document**  
-**Date:** July 24, 2026 · **Prepared by:** Brett Thomas, Integral Associates  
-**For:** Sam Reed and Kaylie Reed, Neuron Garage  
-**Status:** Current and complete. Supersedes all prior methodology versions. Reflects confirmed database counts as of end of day July 24, 2026\.
+**Version 2.0 · Two-City Proof (Houston + Austin)**
+**Date:** September 21, 2026 · **Prepared by:** Brett Thomas, Integral Associates, with Manus
+**For:** Sam Reed, Kaylie Reed and Skyler, Neuron Garage
+**Status:** Current. Supersedes version 1.4 (July 24, 2026). Reflects the Houston and Austin enrichment runs and how the results now appear inside the Lovable app.
 
-## ---
+---
 
-**Executive Summary**
+## **Executive Summary**
 
-Finding a teacher's name is easy. Knowing whether that teacher is worth recruiting as a franchisee is the hard part. This document describes how we solve the hard part: a system that builds a complete picture of each teacher prospect, using mostly free public data, spending money only on the prospects who earn it.  
-**How the system works.** Two platforms, two jobs. The Manus engine finds teachers and proves which data sources we can trust. The Lovable app is where your team holds, scores, and works those teachers: shortlisting, promoting, and launching outreach. Records flow one direction, from Manus into Lovable, which holds the single teacher database. Every enrichment question gets answered across three layers: can we reach them (verified email), are they proven (years of experience from state certification records), and will they invest (evidence of entrepreneurial behavior).  
-**The headline results, by the numbers (confirmed in the database, exportable today):**
+Finding a teacher's name is easy. Knowing whether that teacher is worth recruiting as a franchisee is the hard part. The system now does both, in three layers, for under **$1 of data cost per city**.
 
-| Win | The Number |
+| Combined result, two cities | Total |
 | :---- | :---- |
-| Texas teachers in the database today | **8,073** |
-| Of those, with confirmed email addresses | **6,351 (79%)** |
-| Largest single source: Cy-Fair ISD, all with verified @cfisd.net emails from published directory pages | **6,251** |
-| Houston ISD names with derived emails (firstname.lastname pattern) | **1,272** |
-| Additional verified records expected as the Fort Bend scrape completes (running in the background now) | **3,000-5,000** |
-| Houston metro trajectory: teachers with usable emails | **11,000-13,000** |
-| Raw teacher names banked from state salary records across ten-plus states (future-city raw material) | **\~505,000** |
-| Total spent on paid data experiments to learn all of the above | **\~$40** |
+| K-6 teacher records | **15,684** |
+| Verified contacts with work email | **14,258** |
+| Teachers with outreach hooks or project evidence | **~573** |
+| Teachers with entrepreneurial signal flags | **~297** |
+| Total data cost across both cities | **under $2** |
 
-**The key insight of the cycle.** The bottleneck is not finding teachers. It is finding the correct URL pattern for each district's staff directory. Once that pattern is confirmed, scraping is fast, free, and produces verified institutional emails. That reframes market expansion: opening Austin is not a research project, it is four URL-pattern hunts (Austin ISD, Round Rock, Leander, Pflugerville), and everything downstream is nearly automatic.  
-**What the experiments ruled out, cheaply.** Three paid tools were tested and rejected for about $40 combined: a coaching-staff database that advertised 800,000+ staff records but returned only school-level data with no individual names, Teachers Pay Teachers scrapers that were blocked by anti-scraping defenses and returned product listings rather than seller profiles, and LinkedIn actors rejected on cost and terms-of-service grounds. Each rejection came with a documented reason and a small receipt. That is the discipline: test with small money, keep what proves out, discard what does not.  
-**What is decided.** The scoring formula (six inputs, weights locked), the spending rule (paid enrichment only above a Fit Score of 50), the outreach rule (both personal and school email available, recruiter chooses), and the ethical lines (public data only, no data brokers, no skip-trace tools, ever). The Lovable upgrade is fully designed and deliberately unbuilt: two final validation tests are running now, and once those numbers land, the build goes to development with evidence behind every choice.  
-**The bottom line:** Manus finds them and proves the data. Lovable holds them and works them. Over eight thousand Texas teachers in the database, sixty-three hundred with confirmed emails, Fort Bend adding thousands more in the background, roughly forty dollars spent, and every number in the system can show its math.
+Manus finds and proves the data. Lovable holds it, shows it, and works it. Records flow one direction: Manus → Lovable.
 
-## ---
+---
 
-**1\. What Enrichment Means for Us**
+## **1. The Three Layers**
 
-Most people hear enrichment and think "find the email." That is the smallest piece. For our purposes, enrichment means building a complete picture of a person across three layers:
+**Layer 1 — Contact verification.** Crawl official district staff directories to confirm name, work email, school, district, grade and job title. One directory gives thousands of verified records in a single pass. Cost: $0.
 
-> * **Reachability.** Can we contact them, and on which channel?  
-> * **Capability.** Are they actually a strong, experienced teacher with the skills to run a camp?  
-> * **Capacity and intent.** Do they have the money, the time, and the appetite to invest in a franchise?
+**Layer 2 — Outreach hooks.** Pull DonorsChoose project pages, district newsroom recognition articles, education-foundation grant lists and campus club rosters. These give the recruiter a personal opening line. Cost: $0.
 
-A name with a verified email but no story is a cold call. A name with a verified email, twelve years of K-6 experience, a Teachers Pay Teachers store, and a robotics team they coach is a warm conversation waiting to happen. That second profile is what this methodology produces.
+**Layer 3 — Qualification signals.** Screen the roster against state licensing databases, curriculum seller platforms, tutoring marketplaces and business filings to find teachers already building something on the side. Cost: $0 to $100 per city.
 
-## **2\. The Governing Principle: Spend Follows Score**
+> **Layer 3 is where the value lives. Layers 1 and 2 are prerequisites, not the deliverable.**
 
-> * **Free and near-free enrichment** runs on everybody.  
-> * **Cheap paid enrichment** runs only on prospects with a Fit Score of 50 or above (the locked threshold, admin-adjustable).  
-> * **Deep enrichment**, the expensive per-person research, runs only on the small group we are about to contact or who have shown interest.
+---
 
-This is exactly how expensive tools like Clay work internally. We rebuilt that logic with tools we already pay for, and the Houston results prove the economics: the free tier alone has already produced more than six thousand confirmed addresses.
+## **2. Results: Two-City Proof**
 
-## **3\. Layer 1 — Reachability**
+### Houston (completed August 2026)
 
-### **3.1 The sourcing win that changed the plan: directory-first**
+| Metric | Result |
+| :---- | :---- |
+| Total elementary teacher records | **10,755** |
+| Verified contacts (name + email + school + district) | **9,366** |
+| Teachers with confirmed role and grade | **3,012** |
+| Teachers with outreach hooks | **~150** |
+| Teachers flagged with entrepreneurial signals | **209** |
+| Data cost | **< $1** |
 
-The single biggest finding of the cycle. Some districts publish complete staff directories with every teacher's email on the page. When they do, we get names AND verified addresses in one free pass. Confirmed database counts:
+### Austin (completed September 2026)
 
-| District | Records in DB | Email Status | Status |
+| Metric | Result |
+| :---- | :---- |
+| Audited K-6 teacher records | **4,929** |
+| Verified contacts | **4,892 (99.2%)** |
+| Export-ready deduplicated contacts | **4,736** |
+| Teachers with any verified enrichment fact | **2,303** |
+| Source-cited evidence facts | **3,069** |
+| HIGH verified outreach hooks | **665 facts / 423 teachers** |
+| DonorsChoose teachers with verified projects | **270** |
+| Entrepreneurial signal flags (insurance + real estate) | **102 flags / 88 teachers** |
+| Data cost | **< $1** |
+
+---
+
+## **3. Source Performance Across Both Cities**
+
+| Source | Houston | Austin | Verdict |
 | :---- | :---- | :---- | :---- |
-| Cy-Fair ISD (79 campuses) | 6,251 | All with verified @cfisd.net addresses from published mailto links | **Done. Best source found anywhere.** |
-| Houston ISD (\~280 schools) | 1,272 | Derived @houstonisd.org emails (firstname.lastname pattern, \~80% derivation confidence, flagged as derived, waterfall verification pending) | Done; verification next |
-| Katy ISD | \~98 | Derivable (flastname@katyisd.org, \~75% confidence) | Partial; scraper fix queued |
-| YES Prep, Clear Creek ISD, others | \~452 | Mixed | Done |
-| **Total Texas in database** | **8,073** | **6,351 with confirmed emails (79%)** | Exportable today |
-| Fort Bend ISD (60 schools) | 3,000-5,000 est. | \~100% on the pages (Firecrawl for JavaScript rendering, \~$0.02-0.05 per school) | **Scraping now, in background** |
-| Spring, Pasadena, Humble ISDs | — | Unknown | **URL-pattern hunts running now** |
-| Conroe, Pearland, Alvin ISDs | — | Unknown | Queued; directory check first |
+| District directories | 9,366 contacts | 4,892 contacts | Best source. Free. Proven twice. |
+| DonorsChoose | 39 (50-school pilot) | 480 facts / 270 teachers (full 118-school pass) | Strongest hook source. Always run the full pass. |
+| TDI insurance licences | 208 flags | 32 flags | Top entrepreneurial signal. Free, statewide. |
+| TREC real estate | 1 flag | 70 flags | Strong in Austin. Re-filter by county. |
+| Education foundation grants | 3 recipients | 46 recipients | City-specific. Find the local foundations. |
+| Awards and recognition | 84 facts | 131 facts | Hooks, not qualification signals. |
+| Teachers Pay Teachers | 3 sellers | 0 | Market dependent. Test, do not rely on. |
+| Wyzant / Superprof | 125+ found | 0 matched | Market dependent. |
+| TDLR occupational licences | — | 0 of 49,846 rows | Documented zero-yield source. |
 
-**The rule this produces:** in every new market, check for published directories with emails before anything else. They are the cheapest teachers we will ever acquire. Austin metro (Austin ISD, Round Rock, Leander, Pflugerville) is the next repeat of this playbook.
+---
 
-### **3.2 The email waterfall (validated, with one refinement)**
+## **4. The Confidence System**
 
-For teachers whose emails are not published, three steps, cheapest first:
+### Directory sources (Layer 1)
 
-> 1. **Pattern guess.** District emails follow predictable formats, but the format is district-specific: Cy-Fair, Fort Bend, and Houston ISD use firstname.lastname, while Katy uses first-initial-lastname (flastname@katyisd.org). That is exactly why step one exists: one Hunter Domain Search per district discovers that district's pattern before we generate anything. Derivation confidence runs about 75-80% (hyphenated names, accents, and middle names cause the misses).  
-> 2. **Verify.** Every generated guess runs through Hunter's Verifier before it is trusted. Derived emails are flagged as derived in the database and are never used for outreach unverified. The 1,272 derived HISD addresses are in this queue now.  
-> 3. **Apollo fallback.** For misses, Apollo's people-match by name plus school. Apollo is also our path to personal emails, LinkedIn URLs, and phone numbers (taken as free byproducts, never a separate workstream).
+- **HIGH** — official district email match, or full name + exact school + district. Auto-merge.
+- **MEDIUM** — full name + school/city, or full name + district + role. Review queue.
+- **LOW** — name + city only. Discard.
 
-### **3.3 Which email gets the pitch**
+### Non-directory sources (Layers 2 and 3)
 
-**Both are available; the recruiter chooses.** Personal and school email each surface in the teacher's profile as contact options, selectable per campaign or per prospect. District inboxes filter cold email hard and a franchise decision is made at the kitchen table, so personal will often be the better choice, but the judgment belongs to the recruiter, not the system.
+Licences, tutoring profiles and seller pages happen outside the school system, so they structurally cannot confirm a school assignment. Requiring a school-level bridge guarantees zero results. This was proven in Houston, where 208 valid insurance matches were first thrown away, and again in Austin, where a hardcoded Houston city filter produced a false zero.
 
-## **4\. Layer 2 — Capability**
+- **HIGH MEDIUM** — first + last name + metro city match, surname not in the top-20 most common. Import as flagged.
+- **LOW MEDIUM** — same match, but a common surname. Import as flagged; verify with an automated LinkedIn check ($0.004 per profile) before outreach.
+- **LOW** — last name only, or a city outside the approved metro list. Discard.
 
-Teachers are one of the most publicly documented professions in America. Most of what we need is free.
+For any MEDIUM match with a high-value signal (registered LLC, active TpT store), the LinkedIn check promotes it to HIGH automatically. This replaces human review at scale.
 
-### **4.1 State certification databases (validation in progress)**
+---
 
-Nearly every state runs a public certification lookup returning certificate type, subject endorsements, grade bands, original issue date, and status. **The issue date alone gives us years of experience.** This is the single richest free source for the "experienced with a track record" requirement, and almost nobody in recruiting uses it systematically. Texas is the pilot: a 50-record hand-check of Houston teachers against the TEA lookup is running now to confirm the match rate before we build at scale. The TEA site requires browser navigation, so scale runs happen in Manus as batch jobs.
+## **5. City-to-City Retooling (the critical lesson)**
 
-### **4.2 Public salary and payroll records (505,000 names banked)**
+Layer 1 transfers cleanly between cities. **Layer 3 does not.** Run this 7-step checklist before the signal layer launches in any new city. Total time: 3 to 5 hours.
 
-Teacher salaries are public record in most states. One record confirms current employment, maps salary steps to tenure, and provides a real income figure for the capacity assessment. State salary files have already seeded roughly 505,000 teacher names across ten-plus states (FL, NY, IN, IL, MI, KS, GA, OH, WA, and others) into the Manus pool. No emails, but that is the raw material bank for every future city: when we open a new market, we already hold its teachers' names.
+1. Update the approved metro city list for every city-filtered source.
+2. Re-filter state licence data (TDI, TREC, TDLR) for the new metro counties.
+3. Re-run seller and marketplace searches with new city parameters.
+4. Run new Apify searches (Wyzant, Superprof) for the new city.
+5. Run the DonorsChoose **full** school pass, not a pilot.
+6. Rebuild the local news allowlist and find city-specific institutional sources (education foundations, grant programmes).
+7. Confirm the MEDIUM confidence standard is active (name + city = flagged, no school bridge for non-directory sources).
 
-### **4.3 LinkedIn (tested and demoted)**
+---
 
-Testing overturned our early assumption. As a discovery channel LinkedIn failed: a live test returned just 48 usable records, elementary teachers barely use the platform, search precision for K-6 is poor, terms-of-service risk is real, and cost per usable record is high next to free directory scraping. LinkedIn is now shortlist-tier enrichment only, used sparingly to verify employment or career history on prospects who already scored well, starting with Apollo's employment fields that come free with matches we already pay for.
+## **6. Operational Sequence per City**
 
-### **4.4 Recognition records**
+| Phase | Timeline | Work | Deliverable |
+| :---- | :---- | :---- | :---- |
+| Phase 1 | Days 1-3 | Directory crawl, Source Atlas recipes, certification lookup, dedupe | Verified contact list |
+| Phase 2 | Days 3-5 | DonorsChoose full pass, newsrooms, campus crawl, foundation grants | Outreach hooks |
+| Retooling | Day 5 (3-5 hrs) | The 7-step checklist above | Layer 3 ready |
+| Phase 3 | Days 5-7 | Licence screening, marketplaces, business filings, LinkedIn verification | Entrepreneurial flags |
 
-Award pages, National Board Certification, grants, and local news mentions are public, crawlable, and double as outreach personalization ("Congratulations on the 2024 district award" is a first line that gets replies). These run as research steps inside the AI dossier for shortlisted prospects, not as standalone pipelines. School-quality ratings on our existing NCES anchor are deferred until the new Fit Score has run on real data.
+---
 
-## **5\. Layer 3 — Capacity and Intent**
+## **7. Cost Model**
 
-This is where we go beyond anything an off-the-shelf tool provides.
-
-### **5.1 Teachers Pay Teachers (tested and reclassified)**
-
-The test settled a key question. TpT's anti-scraping defenses blocked profile scrapers, returned product listings rather than seller profiles, and only about a quarter of sellers use their real name as their store name with no location data. So TpT cannot *find* us new teachers, but it can *confirm* entrepreneurial behavior on teachers we already have: store existence, product count, follower and rating volume. A seller with 400 products and 10,000 followers is running a real business. This check runs at the shortlist tier, and scraping is paused until a better tool for seller profiles emerges. Outschool and tutoring platforms are queued behind it as similar signal checks.
-
-### **5.2 DonorsChoose (tested; supplementary signal)**
-
-Free public API returning real teacher names tied to real schools, and a teacher with funded STEM or maker projects has demonstrated initiative, grant-writing ability, and subject alignment with Neuron Garage. Field testing tempered the initial enthusiasm: coverage is sparse because most teachers never post projects, and API rate limits restrict bulk collection. **Verdict: a valuable supplementary signal and Fit Score input, not a primary discovery source.**
-
-### **5.3 The coaching-staff database (tested and rejected, cheaply)**
-
-A paid database advertising 800,000+ school staff records was tested three ways. Every run returned school-level records only: names of schools, addresses, mascots, athletic conferences. No individual staff, despite the product's claims. Rejected, and a good illustration of why we test with small money before committing budget.
-
-### **5.4 Business registrations**
-
-Secretary of State searches are free and public. A teacher who has registered an LLC has already crossed the biggest psychological line in entrepreneurship. Checked at the shortlist tier inside the dossier.
-
-### **5.5 Financial capacity, handled carefully**
-
-Two coarse, honest proxies only: the public salary record and years of service. Used internally to prioritize, never to exclude, and never shown to the prospect. No consumer data brokers, no credit or property data, ever.
-
-### **5.6 Behavioral intent, once outreach starts**
-
-Opens, clicks, replies, and landing-page visits are the cheapest and most accurate signal of all. Anyone who engages is bumped into the deep-enrichment tier automatically. Intent beats every static signal.
-
-## **6\. The Fit Score (weights locked July 24\)**
-
-Every layer above feeds one number: a 0-to-100 score with six inputs.
-
-| Input | Weight | Source |
+| Item | Cost | Note |
 | :---- | :---- | :---- |
-| Grade match (K-6 weighted heavily) | 25 | Existing |
-| Teacher type (active / retired / camp-enrichment) | 20 | Existing |
-| Subject match (STEM / art / enrichment adjacency) | 15 | Existing |
-| Summer availability | 10 | Existing |
-| Years of experience | 15 | New: certification issue date |
-| Certification status | 15 | New: state cert lookup |
+| Layer 1 directory crawl | $0 | Public pages |
+| Layer 2 hooks | $0 to $10 | Firecrawl + Google Maps |
+| Layer 3 licence re-filtering | $0 | Statewide data, just re-filter |
+| Layer 3 business filings | $1 one-time | Covers all cities in the state |
+| Layer 3 Apify searches | $5 to $15 | Per-city |
+| LinkedIn verification | $2 to $5 | $0.004 per profile |
+| Optional email gap-fill | $50-60/mo | Covers all cities |
 
-Tags are unchanged: 80+ is High Potential, 50-79 is Follow-Up, below 50 is Not a Fit. Every input stays visible in Show Formula. Entrepreneurial signals (TpT, DonorsChoose, LLC, coaching roles) are deliberately held for the next scoring revision, after the signal experiments show which of them reliably exist in the data; scoring on data we do not dependably have would drag scores down with empty zeros.
+Proven across two cities: under $2 total. Projected per city with the full stack: $10 to $100.
 
-## **7\. The AI Research Dossier**
+---
 
-For the small group that gets shortlisted or promoted, an AI agent researches the prospect across the open web: certification record, salary record, TpT store, LinkedIn public page, LLC search, local news. It returns structured fields plus a three-sentence plain-English summary a recruiter reads in ten seconds, every field carrying its source link. Cost runs $0.15 to $0.30 per dossier, which is exactly why it runs only at the top of the funnel. This is our Clay replacement, executed as a Manus background job because a five-source research pass takes minutes, not seconds.
+## **8. How This Shows Up in the App**
 
-## **8\. Rules That Govern Everything**
+Every enriched teacher is placed in one of three tiers on the Teacher Search screen. The tier is worked out from the signals on the record, not entered by hand.
 
-> * **Waterfall everything.** Cheapest source first; paid sources only on misses; never pay twice for the same field.  
-> * **Test with small money before committing budget.** Roughly $40 of experiments this cycle ruled out three paid tools and validated the free playbook. That ratio is the model.  
-> * **Provenance on every field.** Every enriched fact stores where it came from and when. Derived emails are flagged as derived.  
-> * **Confidence over volume.** Nothing unverified ever reaches outreach.  
-> * **Freshness windows.** Contact data older than 18 months is treated as stale and re-checked.  
-> * **Enrich on trigger, never on schedule.** Status changes fire enrichment. Idle records cost nothing.  
-> * **One record per human.** Cross-source matches merge into the existing row; duplicates poison outreach.  
-> * **Public data only, used respectfully.** No login-gated scraping. No consumer data brokers. No skip-trace or people-finder tools, permanently. No LinkedIn bulk sourcing. Financial proxies stay internal and coarse. Scores and dossiers are never shown to prospects. We are building a brand teachers will trust with their savings; the data practices have to match.
+| Tier | Meaning | How to use it |
+| :---- | :---- | :---- |
+| **Tier 1 — Entrepreneurial signal** | A second professional licence or side business matches this teacher's name and city | Call first, most personalised message |
+| **Tier 2 — Outreach hook** | A verified project, grant, award or leadership fact | Open the email with the specific detail |
+| **Tier 3 — Verified contact** | Name, email, school, district and grade confirmed | Professional outreach, segment by school and grade |
 
-## **9\. Where Things Stand and What Runs Next**
+On the teacher list, each row shows an amber **Side business** chip (with its confidence) and a green hook chip in plain words, for example "Ran a funded classroom project (DonorsChoose)". The **Signals** filter lets the team show only Tier 1, only Tier 2, or only MEDIUM-confidence matches.
 
-| Track | Status |
-| :---- | :---- |
-| Houston directory sourcing (Manus) | **Running in the background, ahead of expectations.** 8,073 Texas teachers in the database, 6,351 with confirmed emails, fully exportable. Fort Bend scraping now (3,000-5,000 more expected). Spring, Pasadena, and Humble URL-pattern hunts underway. Katy fix, then Conroe, Pearland, Alvin, directory check first in each. Trajectory: 11,000-13,000 Houston teachers with usable emails at near-zero cost. |
-| Validation tests (Manus) | **Running.** TEA certification match rate (50 Houston records, by hand) and Hunter email-pattern checks on Houston-area districts. These two numbers gate the Lovable build. HISD's 1,272 derived emails also queue for waterfall verification. |
-| Next market | **Queued: Austin metro** (Austin ISD, Round Rock, Leander, Pflugerville), repeating the directory-first playbook Houston proved. Four URL-pattern hunts, not a research project. |
-| Lovable Teacher Search upgrade | **Designed, deliberately unbuilt.** Once validation numbers land: build brief goes to development. Order: email waterfall first, then certification enrichment and the new Fit Score, then dossier and trigger wiring. The current feature stays at v1.0 until then. Prove the data first, upgrade once, on evidence. |
-| Outreach | **Gated.** SmartLead remains in mailbox warm-up. No teacher receives an email until warm-up completes, compliance requirements land, and their record carries a verified address. |
+Open a teacher and the **Enrichment & Signals** panel shows:
 
-*Neuron Garage Franchise Development · Teacher Prospect Enrichment Methodology v1.4 · July 24, 2026 · Prepared by Integral Associates · Supersedes v1.0 through v1.3.*
+- the tier banner and what it means,
+- each entrepreneurial signal as its own card — what it is, the licence detail, the source, a confidence badge, what that confidence means in plain words, the match basis, and a clickable source link,
+- verified facts listed in plain English underneath, kept visually separate.
+
+**Verified evidence and secondary (MEDIUM/LOW) signals are never combined into one number and never turned into an automatic franchise score.** They are review context for the recruiter.
+
+### Import rules the app follows
+
+- One teacher list for every city. Austin, Houston and future cities go into the same pool.
+- `dedupe_key` from Manus is the unique import key; matching falls back to email, then name + city + state. Never name alone.
+- The standard 27-column City/Metro export is recognised automatically — no manual column mapping.
+- A blank cell never erases a value we already hold.
+- Signal detail, source link, confidence and match basis are written to the evidence store per signal, so nothing is flattened into a count.
+- The separate one-row-per-signal sprint file is blocked from the main import, because it would duplicate teacher rows.
+
+---
+
+## **9. Lessons Learned**
+
+**From Houston (the laboratory)**
+
+1. District directories are the best free source. Find the URL pattern and the whole district opens up.
+2. Per-teacher searching is low yield. Source-first population pulls are far more efficient.
+3. The strict identity standard threw away 208 valid licence matches. Name + city = MEDIUM flagged must be the starting standard everywhere.
+4. Awards are outreach hooks, not qualification signals.
+5. The free TDI insurance database was the single most productive signal source.
+
+**From Austin (the first replication)**
+
+6. Layer 1 replicated cleanly: 4,929 records at 99.2% email coverage.
+7. Layer 3 did not replicate. A hardcoded Houston city filter produced a false zero, Apify searches were not re-run, and the confidence standard reverted to strict. All three had to be caught by hand.
+8. Local education foundations produced 46 named grant recipients versus Houston's 3. Thirty minutes of discovery, very high value.
+9. DonorsChoose as a full pass beat the pilot 12 to 1.
+
+---
+
+## **10. Next Steps**
+
+**Immediate.** Run LinkedIn verification ($0.004 per profile) on the 297 combined Houston and Austin flags. Re-run the Houston signal layer — the Houston file we imported carried no signal data, so those 209 flags are not yet in the app.
+
+**This month.** Secretary of State business filing searches across all Texas cities. A teacher who registered an LLC is the strongest franchise-fit signal available.
+
+**Next two weeks.** Apply the full three-layer methodology to San Antonio using the retooling checklist from day one. Begin Phoenix and Charlotte district discovery.
+
+**Cold email.** Launch outbound using the three-tier structure and measure reply rate by tier to validate the enrichment investment.
+
+**October.** Scale to all ten target cities.

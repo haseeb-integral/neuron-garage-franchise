@@ -123,6 +123,37 @@ export interface UseTeacherProspectsDataResult {
   buildFilteredQuery: () => ReturnType<typeof supabase.from>;
 }
 
+/** Hook-type verified facts, kept in sync with src/lib/teacherSignals.ts */
+const HOOK_FACT_CODES = [
+  "teacher_project_lead",
+  "recognition_award",
+  "teacher_grant_recipient",
+  "teacher_award_finalist",
+  "teacher_grant_author",
+  "teacher_of_year",
+  "teacher_program_lead",
+  "teacher_team_lead",
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applySignalFilter<T>(q: T, signalFilter: string): T {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const b = q as any;
+  if (signalFilter === "tier1") {
+    return b.or("secondary_signal_count.gt.0,verified_creator_signal_count.gt.0");
+  }
+  if (signalFilter === "tier2") {
+    return b.overlaps("verified_enrichment_signal_types", HOOK_FACT_CODES);
+  }
+  if (signalFilter === "medium_plus") {
+    return b.eq("secondary_signal_confidence", "MEDIUM");
+  }
+  if (signalFilter === "creator") return b.gt("verified_creator_signal_count", 0);
+  if (signalFilter === "secondary") return b.gt("secondary_signal_count", 0);
+  if (signalFilter === "has_phone") return b.not("phone", "is", null);
+  return b;
+}
+
 export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
   const { page, pageSize, cityFilters, debouncedSearch, sourceFilter, hideInOutreach, allPromotedIds } = args;
   const signalFilter = args.signalFilter ?? "all";
@@ -157,15 +188,13 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
       .order("created_at", { ascending: false });
     if (cityFilters.length > 0) q = q.in("city", cityFilters);
     if (debouncedSearch?.trim()) {
-      const s = debouncedSearch.trim().replace(/[%_]/g, "");
-      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,state.ilike.%${s}%,email.ilike.%${s}%`);
+      const s = debouncedSearch.trim().replace(/[%_",]/g, "");
+      q = q.or(`name.ilike."%${s}%",school.ilike."%${s}%",city.ilike."%${s}%",state.ilike."%${s}%",email.ilike."%${s}%"`);
     }
     if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
     else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
-    if (signalFilter === "creator") q = q.gt("verified_creator_signal_count", 0);
-    else if (signalFilter === "secondary") q = q.gt("secondary_signal_count", 0);
-    else if (signalFilter === "has_phone") q = q.not("phone", "is", null);
+    q = applySignalFilter(q, signalFilter);
     return q;
   }, [cityFilters, debouncedSearch, sourceFilter, signalFilter]);
 
@@ -183,16 +212,14 @@ export function useTeacherProspectsData(args: UseTeacherProspectsDataArgs) {
 
     if (cityFilters.length > 0) q = q.in("city", cityFilters);
     if (debouncedSearch?.trim()) {
-      const s = debouncedSearch.trim().replace(/[%_]/g, "");
-      q = q.or(`name.ilike.%${s}%,school.ilike.%${s}%,city.ilike.%${s}%,state.ilike.%${s}%,email.ilike.%${s}%`);
+      const s = debouncedSearch.trim().replace(/[%_",]/g, "");
+      q = q.or(`name.ilike."%${s}%",school.ilike."%${s}%",city.ilike."%${s}%",state.ilike."%${s}%",email.ilike."%${s}%"`);
     }
     if (sourceFilter === "smartlead") q = q.in("enrichment_source", ["smartlead_csv"]);
     else if (sourceFilter === "linkedin") q = q.in("enrichment_source", ["linkedin_danish"]);
     else if (sourceFilter === "needs_email") q = q.eq("needs_email_enrichment", true);
 
-    if (signalFilter === "creator") q = q.gt("verified_creator_signal_count", 0);
-    else if (signalFilter === "secondary") q = q.gt("secondary_signal_count", 0);
-    else if (signalFilter === "has_phone") q = q.not("phone", "is", null);
+    q = applySignalFilter(q, signalFilter);
 
     if (hideInOutreach && allPromotedIds.length > 0 && allPromotedIds.length <= 2000) {
       q = q.not("id", "in", `(${allPromotedIds.join(",")})`);

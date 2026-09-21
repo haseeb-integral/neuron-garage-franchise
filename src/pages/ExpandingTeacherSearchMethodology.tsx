@@ -25,7 +25,7 @@ const ExpandingTeacherSearchMethodology = () => {
       eyebrow="Methodology · Plain English"
       eyebrowIcon={GraduationCap}
       title={<>Expanding Teacher Search and Enrichment — Methodology</>}
-      subtitle="How the Manus enrichment experiment works, what has been proven in Houston, and what the future Lovable upgrade will look like. Reference doc — nothing new is being built in Lovable yet."
+      subtitle="How the Manus enrichment system works, what Houston and Austin proved, the confidence rules, the per-city retooling checklist, and how every signal now appears on a teacher record in this app."
       action={
         <Button
           onClick={handleDownload}

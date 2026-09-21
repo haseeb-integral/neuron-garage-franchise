@@ -893,7 +893,34 @@ Explicitly out of scope: Google / Microsoft / SSO login, multi-tenancy, mobile a
 
 ---
 
-## 22. Recent Changes (v1.4 → v1.5)
+## 22. Recent Changes (v1.5 → v1.6)
+
+What shipped between **September 14 → September 21, 2026**.
+
+**Teacher Search — enrichment signals made first-class**
+- \`teacher_evidence\` was found empty despite imports reporting saved evidence; 100 side-business records and 2,482 verified facts were rebuilt from each teacher's stored raw jsonb. The \`evidence_class\` check now allows \`verified_fact\`, \`confidence\` allows \`HIGH\` (null for facts), and the dedupe index includes \`md5(summary)\`.
+- New \`src/lib/teacherSignals.ts\`: prospect tiers, hook facts, plain-English signal labels, confidence blurbs.
+- Detail panel rewritten: tier banner, per-signal evidence cards with confidence pill, detail text, match basis and source link; entrepreneurial signals and verified facts shown as separate blocks.
+- Table chips ("Side business" / "Hook" / "Verified contact"), a **Signals** filter (Tier 1, Tier 2, MEDIUM-only, creator, side-business, has phone) and a **Best prospects first** sort.
+- Importer hardened for the next city: correct \`HIGH\` confidence on creator evidence, keyword-mapped secondary signal types with the source label kept, a \`verified_fact\` row per verified signal type, and a dedupe key that includes \`signal_type\` so re-imports never duplicate.
+
+**Teacher Search — data & performance**
+- Master pool at **311,924** after the Austin import (1,840 new, 2,896 enriched, no duplicates).
+- Full 27-column Manus contract supported: blank counts no longer overwrite real numbers, full pipe-delimited signal text preserved, sprint-file upload warned against.
+- Two-word name search used to time out and report "No prospects match"; it now runs through the \`teacher_prospects_search\` RPC in about a second and the footer shows a true count instead of an estimate.
+
+**Documentation**
+- \`/expanding-teacher-search-methodology\` rewritten to **v2.0**: Houston + Austin two-city proof, the three enrichment layers, confidence system, 7-step per-city retooling checklist, cost model, how signals appear in the app, lessons learned.
+
+**Email Outreach**
+- Cold-outreach readiness audit completed (§8). Seven open items; still in warm-up, no teacher sends. Two older SmartLead documents identified as stale.
+
+**Candidate Pipeline**
+- Step-1 questions (experience with children, interest in Neuron Garage, educational philosophy) now round-trip through the CSV download and import.
+
+---
+
+### Earlier: v1.4 → v1.5
 
 What shipped between **May 31 → September 14, 2026**.
 

@@ -99,7 +99,15 @@ Deno.serve(async (req) => {
       });
     }
     if (toPush.length === 0) {
-      return json({ pushed: 0, skipped: prospects.length, candidates: prospects.length, message: "All already in this campaign" });
+      return json({
+        pushed: 0,
+        skipped: prospects.length,
+        suppressed: suppressedCount,
+        candidates: prospects.length,
+        message: suppressedCount > 0
+          ? `Nothing to push: ${alreadyIn.size} already in this campaign, ${suppressedCount} on the do-not-email list`
+          : "All already in this campaign",
+      });
     }
 
     // SmartLead requires lead_list — push in chunks of 100

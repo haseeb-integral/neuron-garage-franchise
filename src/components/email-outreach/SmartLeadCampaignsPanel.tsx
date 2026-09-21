@@ -42,13 +42,38 @@ export function SmartLeadCampaignsPanel() {
   const [campaigns, setCampaigns] = useState<SLCampaign[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
+  const [compliance, setCompliance] = useState<Record<string, boolean>>({});
+
+  // Check each campaign's sequences for the unsubscribe tag, 5 at a time.
+  const loadCompliance = async (list: SLCampaign[]) => {
+    for (let i = 0; i < list.length; i += 5) {
+      const batch = list.slice(i, i + 5);
+      const results = await Promise.all(
+        batch.map(async (c) => {
+          try {
+            return [String(c.id), await fetchCompliance(String(c.id))] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setCompliance((prev) => {
+        const next = { ...prev };
+        for (const r of results) if (r) next[r[0]] = r[1];
+        return next;
+      });
+      if (i + 5 < list.length) await new Promise((r) => setTimeout(r, 1200));
+    }
+  };
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await callSmartLeadProxy("campaigns/");
-      setCampaigns(Array.isArray(res) ? res : []);
+      const list = Array.isArray(res) ? res : [];
+      setCampaigns(list);
+      void loadCompliance(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

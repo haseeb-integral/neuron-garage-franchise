@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { toast } from "sonner";
-import { ContactIntakeSection, LeadSourceCard, MailingAddressCard } from "./step1/ContactIntakeSection";
+import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
@@ -86,12 +86,13 @@ export const QUALIFICATION_STEPS: StepDef[] = [
   {
     num: 2,
     title: "Business Overview Call and FDD Review",
-    goal: "Provide a deeper understanding of the business and unit economics. Review the financial forecast, background and credit results, FDD, and key agreement terms. Background results should be reviewed for recency, decency, frequency, and whether the candidate learned from the event. Credit shows the ability to run a personal business; the national average is 683 and the target is 720+. Exceptions may include divorce or catastrophic health events.",
+    goal: "Provide a deeper understanding of the business and camp. Review the FDD, and key Franchise Agreement terms.",
     trialClose: true,
     postCall: [
       { key: "mvs_site_run", label: "Ran Market Validation and Site Analysis on desired location — INTERNAL ONLY" },
       { key: "sent_bg_auth", label: "Run Background and Credit Check" },
       { key: "sent_rfc_part2", label: "Sent Request for Consideration – Part 2: Financial" },
+      { key: "sent_personality_profile_invite", label: "Send invite to personality profile assessment" },
       { key: "sent_fdd", label: "Sent FDD and saved/uploaded proof of date sent" },
     ],
     homework: [
@@ -100,8 +101,8 @@ export const QUALIFICATION_STEPS: StepDef[] = [
       { key: "personality_profile", label: "Complete personality profile assessment" },
     ],
     fields: [
-      { key: "credit_score", label: "Credit score", type: "number", hint: "Target 720+ (national avg 683)" },
-      { key: "background_result", label: "Background check summary", type: "textarea" },
+      { key: "credit_score", label: "Credit score", type: "number", hint: "Credit shows the ability to run a personal business; the national average is 683 and the target is 720+. Exceptions may include divorce or catastrophic health events." },
+      { key: "background_result", label: "Background check summary", type: "textarea", hint: "Background results should be reviewed for recency, decency, frequency, and whether the candidate learned from the event." },
     ],
   },
   {
@@ -115,7 +116,6 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     ],
     homework: [
       { key: "facility_form", label: "Facility prospect form — primary + backup locations (attach to contact card)" },
-      { key: "marketing_plan", label: "Local marketing plan summary (attach to contact card)" },
     ],
   },
   {
@@ -438,11 +438,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
-                {step.num === 2 && (
-                  <MailingAddressCard candidate={candidate} onSave={onSaveProfile} />
-                )}
-
-                {step.num === 1 && (
+                {[1, 3, 4].includes(step.num) && (
                   <div className="mt-4">
                     <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
                     <Textarea
@@ -547,7 +543,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
-                {step.num !== 1 && (
+                {[2, 5].includes(step.num) && (
                   <div className="mt-4">
                     <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
                     <Textarea

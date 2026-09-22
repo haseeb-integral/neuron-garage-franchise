@@ -14,6 +14,8 @@ interface Props {
   candidate: Candidate;
 }
 
+type StartTiming = "this_summer" | "next_summer" | "other" | "";
+
 interface ProfileForm {
   // existing
   background: string;
@@ -132,6 +134,7 @@ export function LeadSheetSection({ candidate }: Props) {
   const [snapshot, setSnapshot] = useState<ProfileForm>(empty);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [startTiming, setStartTiming] = useState<StartTiming>("");
   const [partnerFirst, setPartnerFirst] = useState("");
   const [partnerLast, setPartnerLast] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
@@ -187,6 +190,15 @@ export function LeadSheetSection({ candidate }: Props) {
         };
         setForm(loaded);
         setSnapshot(loaded);
+        setStartTiming(
+          loaded.timeline === "This coming Summer"
+            ? "this_summer"
+            : loaded.timeline === "Next Summer"
+              ? "next_summer"
+              : loaded.timeline
+                ? "other"
+                : "",
+        );
       } else {
         const loaded = { ...empty, partner_involved: !!candidateData?.partner_involved };
         setForm(loaded);
@@ -395,23 +407,15 @@ export function LeadSheetSection({ candidate }: Props) {
       <div className="space-y-2">
         <Label>If this was a fit, when would they ideally like to begin?</Label>
         <Select
-          value={
-            form.timeline === "This coming Summer"
-              ? "this_summer"
-              : form.timeline === "Next Summer"
-                ? "next_summer"
-                : form.timeline
-                  ? "other"
-                  : undefined
-          }
+          value={startTiming || undefined}
           onValueChange={(value) => {
-            const timeline = value === "this_summer"
+            const nextTiming = value as StartTiming;
+            setStartTiming(nextTiming);
+            const timeline = nextTiming === "this_summer"
               ? "This coming Summer"
-              : value === "next_summer"
+              : nextTiming === "next_summer"
                 ? "Next Summer"
-                : form.timeline === "This coming Summer" || form.timeline === "Next Summer"
-                  ? ""
-                  : form.timeline;
+                : "";
             updateAndSave("timeline", timeline);
           }}
         >
@@ -424,7 +428,7 @@ export function LeadSheetSection({ candidate }: Props) {
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
-        {form.timeline !== "" && form.timeline !== "This coming Summer" && form.timeline !== "Next Summer" && (
+        {startTiming === "other" && (
           <Input
             aria-label="Other ideal start time"
             value={form.timeline}

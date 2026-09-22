@@ -116,4 +116,14 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
     expect((screen.getByLabelText(/What other opportunities for summer income/i) as HTMLTextAreaElement).value).toBe("Summer camp director");
     expect((screen.getByLabelText(/Other ideal start time/i) as HTMLInputElement).value).toBe("A later summer");
   });
+
+  it("opens a fill-in field when Other is selected", async () => {
+    render(<LeadSheetSection candidate={candidate} />);
+    await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByLabelText(/when would they ideally like to begin/i));
+    fireEvent.click(screen.getByRole("option", { name: "Other" }));
+
+    expect(screen.getByLabelText(/Other ideal start time/i)).toBeInTheDocument();
+  });
 });

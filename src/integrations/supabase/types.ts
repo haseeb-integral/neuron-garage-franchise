@@ -417,6 +417,7 @@ export type Database = {
           id: string
           notes: string | null
           owner_email: string | null
+          source_process_step: number | null
           starts_at: string
           status: string
           title: string
@@ -432,6 +433,7 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_email?: string | null
+          source_process_step?: number | null
           starts_at: string
           status?: string
           title?: string
@@ -447,6 +449,7 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_email?: string | null
+          source_process_step?: number | null
           starts_at?: string
           status?: string
           title?: string

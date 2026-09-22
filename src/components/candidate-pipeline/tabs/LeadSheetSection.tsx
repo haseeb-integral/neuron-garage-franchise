@@ -407,7 +407,7 @@ export function LeadSheetSection({ candidate }: Props) {
       <div className="space-y-2">
         <Label>If this was a fit, when would they ideally like to begin?</Label>
         <Select
-          value={startTiming || undefined}
+          value={startTiming}
           onValueChange={(value) => {
             const nextTiming = value as StartTiming;
             setStartTiming(nextTiming);

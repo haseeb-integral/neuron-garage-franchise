@@ -273,11 +273,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
               dbId,
               stepNum,
               PROCESS_STEP_TITLES[stepNum]?.title ?? `Step ${stepNum + 1}`,
-              !!row.trial_close.scheduled_next_call,
               {
                 date: row.data.tc_next_call_date as string | undefined,
                 time: row.data.tc_next_call_time as string | undefined,
                 timeZone: row.data.tc_next_call_tz as string | undefined,
+                typeOption: row.data.tc_next_call_type as string | undefined,
+                durationMinutes: row.data.tc_next_call_duration as number | undefined,
+                title: row.data.tc_next_call_title as string | undefined,
+                notes: row.data.tc_next_call_notes as string | undefined,
               },
             );
             if (result !== "unchanged") {

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { EVENT_TYPE_OPTIONS as PROCESS_EVENT_OPTIONS } from "@/lib/candidateProcessSteps";
 
 export type CandidateEventType = "call" | "follow_up";
 export type CandidateEventStatus = "scheduled" | "completed" | "canceled";

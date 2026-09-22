@@ -43,6 +43,13 @@
       "when": 1790048591847,
       "tag": "0005_add_step1_explanation_checkboxes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790054322294,
+      "tag": "0006_link_candidate_events_to_process_steps",
+      "breakpoints": true
     }
   ]
 }

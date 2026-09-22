@@ -48,7 +48,7 @@ const TRIAL_CLOSE_ITEMS: { key: string; label: string }[] = [
 ];
 
 /** Homework items that do not require the candidate to send a document back. */
-const NO_UPLOAD_HOMEWORK = new Set(["review_websites", "mvs_site_share", "read_mindset"]);
+const NO_UPLOAD_HOMEWORK = new Set(["review_websites"]);
 
 const TIMEZONES = [
   "ET (Eastern)",
@@ -69,7 +69,7 @@ interface StepDef {
   fields?: { key: string; label: string; type: "text" | "number" | "date" | "textarea"; hint?: string }[];
 }
 
-const STEPS: StepDef[] = [
+export const QUALIFICATION_STEPS: StepDef[] = [
   {
     num: 1,
     title: "Initial Qualification",
@@ -85,49 +85,27 @@ const STEPS: StepDef[] = [
   },
   {
     num: 2,
-    title: "Business Overview Call",
-    goal: "Provide deeper understanding including unit economics. Review financial forecasting template.",
+    title: "Business Overview Call and FDD Review",
+    goal: "Provide a deeper understanding of the business and unit economics. Review the financial forecast, background and credit results, FDD, and key agreement terms. Background results should be reviewed for recency, decency, frequency, and whether the candidate learned from the event. Credit shows the ability to run a personal business; the national average is 683 and the target is 720+. Exceptions may include divorce or catastrophic health events.",
     trialClose: true,
     postCall: [
-      { key: "mvs_site_run", label: 'Ran "Market Validation" + "Site Analysis" on desired location, sent reports + uploaded to contact card' },
-      { key: "sent_mindset", label: "Sent franchisee candidate the Mindset book" },
-      { key: "sent_bg_auth", label: "Sent Background and Credit Check authorization" },
+      { key: "mvs_site_run", label: "Ran Market Validation and Site Analysis on desired location — INTERNAL ONLY" },
+      { key: "sent_bg_auth", label: "Run Background and Credit Check" },
+      { key: "sent_rfc_part2", label: "Sent Request for Consideration – Part 2: Financial" },
+      { key: "sent_fdd", label: "Sent FDD and saved/uploaded proof of date sent" },
     ],
     homework: [
-      { key: "mvs_site_share", label: "Candidate to review Market Validation + Site Analysis" },
       { key: "rfc_part2", label: "Complete Request for Consideration – Part 2 (financial)" },
-      { key: "read_mindset", label: "Read Mindset by Carol Dweck" },
-      { key: "provide_bg_auth", label: "Provide authorization for Background + Credit check" },
+      { key: "signed_item23", label: "Sign and return Item 23 of the FDD" },
+      { key: "personality_profile", label: "Complete personality profile assessment" },
     ],
-  },
-  {
-    num: 3,
-    title: "Internal: Background & Credit Check",
-    goal: "Background = recency, decency, frequency (did they learn their lesson). Credit = ability to run a personal business. National avg 683; target 720+. Exceptions: divorce, catastrophic health events.",
-    trialClose: false,
-    postCall: [],
-    homework: [],
     fields: [
       { key: "credit_score", label: "Credit score", type: "number", hint: "Target 720+ (national avg 683)" },
       { key: "background_result", label: "Background check summary", type: "textarea" },
     ],
   },
   {
-    num: 4,
-    title: "FDD & Franchise Agreement Review",
-    goal: "Educate and reinforce that franchises are awarded, not sold. Google Meet covering FDD + key agreement terms.",
-    trialClose: true,
-    postCall: [
-      { key: "sent_fdd", label: "Sent FDD and saved/uploaded proof of date sent" },
-    ],
-    homework: [
-      { key: "signed_item23", label: "Sign and return Item 23 of the FDD" },
-      { key: "personality_profile", label: "Complete personality profile assessment" },
-    ],
-    fields: [],
-  },
-  {
-    num: 5,
+    num: 3,
     title: "Business Immersion & Evaluation",
     goal: "Show full Neuron Garage owner experience: day-in-the-life, support systems, meet a growth guide. Prep for Selection Committee.",
     trialClose: true,
@@ -141,7 +119,7 @@ const STEPS: StepDef[] = [
     ],
   },
   {
-    num: 6,
+    num: 4,
     title: "Confirmation Call",
     goal: "Final alignment + commitment. 'The selection committee approved your award of a franchise.' First half = franchisor commitments. Second half = prospect Q&A.",
     trialClose: true,
@@ -151,9 +129,9 @@ const STEPS: StepDef[] = [
     homework: [],
   },
   {
-    num: 7,
+    num: 5,
     title: "Signing Call",
-    goal: "Finalize agreement. Conducted 48 hours after Step 6. Prospect signs Franchise Agreement + all required exhibits.",
+    goal: "Finalize agreement. Conducted 48 hours after Step 4. Prospect signs Franchise Agreement + all required exhibits.",
     trialClose: false,
     postCall: [
       { key: "begin_onboarding", label: "Began on-boarding process (email, phone #, file access, etc.)" },
@@ -162,6 +140,8 @@ const STEPS: StepDef[] = [
     homework: [],
   },
 ];
+
+const STEPS = QUALIFICATION_STEPS;
 
 /** Steps with no homework should not show the "Assigned homework" trial-close item. */
 const trialCloseItemsFor = (s: StepDef) =>
@@ -500,7 +480,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     state={row.post_call_actions}
                     onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
                     renderAction={
-                      step.num === 4
+                      step.num === 2
                         ? (item) =>
                             item.key === "sent_fdd" ? (
                               <HomeworkUploadButton
@@ -515,17 +495,17 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
-                {step.num === 4 && (
+                {step.num === 2 && (
                   <FddSentDateField
                     candidateDbId={dbId}
                     fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
-                    onMirror={(v) => updateField(4, "fdd_sent_date", v)}
+                    onMirror={(v) => updateField(2, "fdd_sent_date", v)}
                   />
                 )}
 
 
 
-                {step.num === 5 && (
+                {step.num === 3 && (
                   <ReferencesBlock
                     data={row.data ?? {}}
                     onField={(k, v) => updateField(step.num, k, v)}
@@ -553,13 +533,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 )}
 
 
-                {step.num === 7 && (
+                {step.num === 5 && (
                   <div className="rounded-md p-2 mt-3 text-xs" style={{ backgroundColor: "#fff4e5", border: "1px solid #ffd591", color: "#7a4a00" }}>
                     <strong>Note for recruiter:</strong> When signing is complete, manually move this candidate from the Pipeline into Onboarding. No auto-advance happens here.
                   </div>
                 )}
 
-                {step.num !== 3 && step.num !== 7 && (
+                {step.num !== 5 && (
                   <SignalsBlock
                     nameKey={`step-${step.num}`}
                     data={row.data ?? {}}
@@ -567,7 +547,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
-                {step.num !== 1 && step.num !== 3 && (
+                {step.num !== 1 && (
                   <div className="mt-4">
                     <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
                     <Textarea

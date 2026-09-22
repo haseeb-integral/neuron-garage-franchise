@@ -15,7 +15,7 @@ import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
 import { syncProcessCallEvent } from "@/lib/candidateEvents";
-import { PROCESS_STEP_TITLES } from "@/lib/candidateProcessSteps";
+import { PROCESS_STEP_TITLES, EVENT_TYPE_OPTIONS } from "@/lib/candidateProcessSteps";
 
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
 
@@ -273,11 +273,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
               dbId,
               stepNum,
               PROCESS_STEP_TITLES[stepNum]?.title ?? `Step ${stepNum + 1}`,
-              !!row.trial_close.scheduled_next_call,
               {
                 date: row.data.tc_next_call_date as string | undefined,
                 time: row.data.tc_next_call_time as string | undefined,
                 timeZone: row.data.tc_next_call_tz as string | undefined,
+                typeOption: row.data.tc_next_call_type as string | undefined,
+                durationMinutes: row.data.tc_next_call_duration as number | undefined,
+                title: row.data.tc_next_call_title as string | undefined,
+                notes: row.data.tc_next_call_notes as string | undefined,
               },
             );
             if (result !== "unchanged") {
@@ -790,6 +793,53 @@ function TrialCloseBlock({
                     ))}
                   </select>
                 </div>
+                <div>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Type</Label>
+                  <select
+                    value={(data.tc_next_call_type as string) ?? ""}
+                    onChange={(e) => onField("tc_next_call_type", e.target.value)}
+                    className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="">Next step (default)</option>
+                    {EVENT_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Length (minutes)</Label>
+                  <Input
+                    type="number"
+                    min={5}
+                    max={480}
+                    step={5}
+                    value={(data.tc_next_call_duration as number) ?? 30}
+                    onChange={(e) => onField("tc_next_call_duration", Number(e.target.value) || 30)}
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Title</Label>
+                  <Input
+                    value={(data.tc_next_call_title as string) ?? ""}
+                    onChange={(e) => onField("tc_next_call_title", e.target.value)}
+                    placeholder="Optional"
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <Label className="text-[11px]" style={{ color: "#526078" }}>Notes</Label>
+                  <Textarea
+                    rows={2}
+                    value={(data.tc_next_call_notes as string) ?? ""}
+                    onChange={(e) => onField("tc_next_call_notes", e.target.value)}
+                    placeholder="Agenda or reminder details (optional)"
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <p className="sm:col-span-3 text-[11px]" style={{ color: "#526078" }}>
+                  Once the date, time, and time zone are filled in, this call shows on the Calendar.
+                </p>
               </div>
             )}
           </div>

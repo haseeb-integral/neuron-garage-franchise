@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { EVENT_TYPE_OPTIONS as PROCESS_EVENT_OPTIONS } from "@/lib/candidateProcessSteps";
 
 export type CandidateEventType = "call" | "follow_up";
 export type CandidateEventStatus = "scheduled" | "completed" | "canceled";
@@ -158,13 +159,27 @@ export function processCallStartsAt(date: string, time: string, timeZoneLabel: s
 
 export type ProcessEventSyncResult = "created" | "updated" | "canceled" | "unchanged";
 
-/** Keep one automatic calendar event linked to a candidate's process step. */
+export interface ProcessCallDetails {
+  date?: string;
+  time?: string;
+  timeZone?: string;
+  /** Option value from EVENT_TYPE_OPTIONS (e.g. "step-2", "follow-up"). */
+  typeOption?: string;
+  durationMinutes?: number;
+  title?: string;
+  notes?: string;
+}
+
+/**
+ * Keep one automatic calendar event linked to a candidate's process step.
+ * The date/time/time zone drive the event: fill them in and the call appears,
+ * clear them and the call is marked canceled (kept in history).
+ */
 export async function syncProcessCallEvent(
   candidateId: string,
   sourceStep: number,
   nextStepTitle: string,
-  scheduled: boolean,
-  details: { date?: string; time?: string; timeZone?: string },
+  details: ProcessCallDetails,
 ): Promise<ProcessEventSyncResult> {
   const { data: existing, error: readError } = await supabase
     .from(TABLE)
@@ -174,26 +189,38 @@ export async function syncProcessCallEvent(
     .maybeSingle();
   if (readError) throw readError;
 
-  if (!scheduled) {
+  const complete = !!(details.date && details.time && details.timeZone);
+  if (!complete) {
     if (!existing || existing.status === "canceled") return "unchanged";
     const { error } = await supabase.from(TABLE).update({ status: "canceled" }).eq("id", existing.id);
     if (error) throw error;
     return "canceled";
   }
 
-  if (!details.date || !details.time || !details.timeZone) return "unchanged";
-  const startsAt = processCallStartsAt(details.date, details.time, details.timeZone);
-  const title = `Step ${sourceStep + 1} — ${nextStepTitle}`;
+  const startsAt = processCallStartsAt(details.date!, details.time!, details.timeZone!);
+  const option = details.typeOption
+    ? PROCESS_EVENT_OPTIONS.find((o) => o.value === details.typeOption)
+    : undefined;
+  const defaultTitle = option
+    ? option.label.includes(" — ")
+      ? option.label.split(" — ")[1]
+      : option.label
+    : `Step ${sourceStep + 1} — ${nextStepTitle}`;
+  const title = details.title?.trim() || defaultTitle;
+  const duration =
+    details.durationMinutes && details.durationMinutes > 0 ? details.durationMinutes : 30;
   const { data: userData } = await supabase.auth.getUser();
   const email = userData.user?.email ?? null;
   const payload = {
     candidate_id: candidateId,
     title,
-    event_type: "call" as const,
+    event_type: (option?.kind ?? "call") as CandidateEventType,
     starts_at: startsAt,
-    duration_minutes: 30,
+    duration_minutes: duration,
     all_day: false,
-    notes: `Automatically scheduled from Qualification Process Step ${sourceStep}.`,
+    notes:
+      details.notes?.trim() ||
+      `Automatically scheduled from Qualification Process Step ${sourceStep}.`,
     status: "scheduled" as const,
     owner_email: existing ? undefined : email,
     created_by: existing ? undefined : email,

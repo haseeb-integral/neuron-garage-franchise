@@ -14,6 +14,8 @@ import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSecti
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
+import { syncProcessCallEvent } from "@/lib/candidateEvents";
+import { PROCESS_STEP_TITLES } from "@/lib/candidateProcessSteps";
 
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
 
@@ -265,6 +267,33 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
           description,
           { step_number: stepNum, step_title: stepTitle, ...(change?.metadata ?? {}) },
         );
+        if (stepNum <= 4) {
+          try {
+            const result = await syncProcessCallEvent(
+              dbId,
+              stepNum,
+              PROCESS_STEP_TITLES[stepNum]?.title ?? `Step ${stepNum + 1}`,
+              !!row.trial_close.scheduled_next_call,
+              {
+                date: row.data.tc_next_call_date as string | undefined,
+                time: row.data.tc_next_call_time as string | undefined,
+                timeZone: row.data.tc_next_call_tz as string | undefined,
+              },
+            );
+            if (result !== "unchanged") {
+              logActivity(
+                dbId,
+                `process_call_${result}`,
+                `Step ${stepNum + 1} calendar call ${result}`,
+                { source_step_number: stepNum, calendar_action: result },
+              );
+            }
+          } catch (calendarError) {
+            const message = calendarError instanceof Error ? calendarError.message : "Unknown calendar error";
+            console.error("Failed to sync process call", calendarError);
+            toast.error("Step saved, but the calendar could not update", { description: message });
+          }
+        }
       }
     }, 450);
   };
@@ -308,6 +337,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
       { [group]: { ...cur[group], [key]: value } } as Partial<StepRow>,
       { description, metadata: { group, item_key: key, item_label: label, value } },
     );
+    if (
+      group === "trial_close" &&
+      key === "scheduled_next_call" &&
+      value &&
+      (!cur.data.tc_next_call_date || !cur.data.tc_next_call_time || !cur.data.tc_next_call_tz)
+    ) {
+      toast.info("Add the date, time, and time zone to place this call on the calendar.");
+    }
   };
 
   const updateField = (stepNum: number, key: string, value: any) => {

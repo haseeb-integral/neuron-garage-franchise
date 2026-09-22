@@ -5,16 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
   candidate: Candidate;
 }
-
-type Role = "operator" | "investor" | "other" | "";
-type YesNo = "yes" | "no" | "";
 
 interface ProfileForm {
   // existing
@@ -23,23 +21,17 @@ interface ProfileForm {
   experience_with_children: string;
   interest_in_neuron_garage: string;
   educational_philosophy: string;
-  liquid_capital: string;
-  net_worth: string;
   timeline: string;
+  owner_operator_explained: boolean;
+  general_timeline_explained: boolean;
   partner_involved: boolean;
   location_preferences: string;
   desired_market_city: string;
   desired_market_state: string;
   additional_notes: string;
-  // new (Google Form Step 1)
-  role: Role;
-  role_other: string;
-  married: YesNo;
   city: string;
   state: string;
   discovery_source: string;
-  can_invest_min: YesNo;
-  sweat_equity_ok: YesNo;
   other_opportunities: string;
 }
 
@@ -49,22 +41,17 @@ const empty: ProfileForm = {
   experience_with_children: "",
   interest_in_neuron_garage: "",
   educational_philosophy: "",
-  liquid_capital: "",
-  net_worth: "",
   timeline: "",
+  owner_operator_explained: false,
+  general_timeline_explained: false,
   partner_involved: false,
   location_preferences: "",
   desired_market_city: "",
   desired_market_state: "",
   additional_notes: "",
-  role: "",
-  role_other: "",
-  married: "",
   city: "",
   state: "",
   discovery_source: "",
-  can_invest_min: "",
-  sweat_equity_ok: "",
   other_opportunities: "",
 };
 
@@ -99,33 +86,23 @@ const REGISTRATION_NOTE =
 const REGISTRATION_STATES_LABEL =
   "Registration states (pause call if prospect is in one): CA, HI, IL, IN, MD, MI, MN, ND, NY, RI, SD, VA, WA, WI";
 
-const toYesNo = (v: boolean | null | undefined): YesNo =>
-  v === true ? "yes" : v === false ? "no" : "";
-const fromYesNo = (v: YesNo): boolean | null =>
-  v === "yes" ? true : v === "no" ? false : null;
-
 const FIELD_LABELS: Record<keyof ProfileForm, string> = {
   background: "Background",
   motivation: "Motivation",
   experience_with_children: "Experience working with children",
   interest_in_neuron_garage: "Interest in Neuron Garage",
   educational_philosophy: "Educational philosophy",
-  liquid_capital: "Liquid capital",
-  net_worth: "Net worth",
-  timeline: "Timeline",
+  timeline: "Ideal start time",
+  owner_operator_explained: "Owner/operator explanation",
+  general_timeline_explained: "General timeline explanation",
   partner_involved: "Partner involved",
   location_preferences: "Desired market",
   desired_market_city: "Desired market city",
   desired_market_state: "Desired market state",
   additional_notes: "Additional notes",
-  role: "Role",
-  role_other: "Role (other)",
-  married: "Married",
   city: "City",
   state: "State",
   discovery_source: "Discovery source",
-  can_invest_min: "Can invest minimum",
-  sweat_equity_ok: "Sweat equity OK",
   other_opportunities: "Other opportunities",
 };
 
@@ -195,22 +172,17 @@ export function LeadSheetSection({ candidate }: Props) {
           experience_with_children: p.experience_with_children ?? "",
           interest_in_neuron_garage: p.interest_in_neuron_garage ?? "",
           educational_philosophy: p.educational_philosophy ?? "",
-          liquid_capital: p.liquid_capital != null ? String(p.liquid_capital) : "",
-          net_worth: p.net_worth != null ? String(p.net_worth) : "",
           timeline: p.timeline ?? "",
+          owner_operator_explained: !!p.owner_operator_explained,
+          general_timeline_explained: !!p.general_timeline_explained,
           partner_involved: !!candidateData?.partner_involved,
           location_preferences: p.location_preferences ?? "",
           desired_market_city: p.desired_market_city ?? "",
           desired_market_state: p.desired_market_state ?? "",
           additional_notes: p.additional_notes ?? "",
-          role: (p.role as Role) ?? "",
-          role_other: p.role_other ?? "",
-          married: toYesNo(p.married),
           city: p.city ?? "",
           state: p.state ?? "",
           discovery_source: p.discovery_source ?? "",
-          can_invest_min: toYesNo(p.can_invest_min),
-          sweat_equity_ok: toYesNo(p.sweat_equity_ok),
           other_opportunities: p.other_opportunities ?? "",
         };
         setForm(loaded);
@@ -250,9 +222,9 @@ export function LeadSheetSection({ candidate }: Props) {
       experience_with_children: current.experience_with_children || null,
       interest_in_neuron_garage: current.interest_in_neuron_garage || null,
       educational_philosophy: current.educational_philosophy || null,
-      liquid_capital: current.liquid_capital ? Number(current.liquid_capital) : null,
-      net_worth: current.net_worth ? Number(current.net_worth) : null,
       timeline: current.timeline || null,
+      owner_operator_explained: current.owner_operator_explained,
+      general_timeline_explained: current.general_timeline_explained,
       desired_market_city: current.desired_market_city || null,
       desired_market_state: current.desired_market_state || null,
       // Keep the legacy combined text in sync so exports keep working.
@@ -261,14 +233,9 @@ export function LeadSheetSection({ candidate }: Props) {
           .filter(Boolean)
           .join(", ") || null,
       additional_notes: current.additional_notes || null,
-      role: current.role || null,
-      role_other: current.role === "other" ? (current.role_other || null) : null,
-      married: fromYesNo(current.married),
       city: current.city || null,
       state: current.state || null,
       discovery_source: current.discovery_source || null,
-      can_invest_min: fromYesNo(current.can_invest_min),
-      sweat_equity_ok: fromYesNo(current.sweat_equity_ok),
       other_opportunities: current.other_opportunities || null,
     };
     // NOTE: partner_involved is owned by the toggle below (auto-saves on click).
@@ -350,96 +317,14 @@ export function LeadSheetSection({ candidate }: Props) {
         />
       </div>
 
-      {/* Role */}
-      <div className="space-y-2">
-        <Label>What would be your role in Neuron Garage?</Label>
-        <RadioGroup
-          value={form.role}
-          onValueChange={(v) => updateAndSave("role", v as Role)}
-          className="flex flex-wrap gap-4"
-        >
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="operator" id="role-operator" />
-            <span className="text-sm">Operator</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="investor" id="role-investor" />
-            <span className="text-sm">Investor</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="other" id="role-other" />
-            <span className="text-sm">Other</span>
-          </label>
-        </RadioGroup>
-        {form.role === "other" && (
-          <Input
-            placeholder="Describe role"
-            value={form.role_other}
-            onChange={(e) => update("role_other", e.target.value)}
-          />
-        )}
-      </div>
-
-      {/* Married */}
-      <div className="space-y-2">
-        <Label>Are you married?</Label>
-        <RadioGroup
-          value={form.married}
-          onValueChange={(v) => updateAndSave("married", v as YesNo)}
-          className="flex gap-4"
-        >
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="yes" id="married-yes" />
-            <span className="text-sm">Yes</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <RadioGroupItem value="no" id="married-no" />
-            <span className="text-sm">No</span>
-          </label>
-        </RadioGroup>
-      </div>
-
-      {/* Partner */}
-      <div className="rounded-md border p-3 space-y-3">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="ls-partner" className="cursor-pointer">Will you have a partner in the business?</Label>
-          <Switch
-            id="ls-partner"
-            checked={form.partner_involved}
-            onCheckedChange={async (v) => {
-              if (!dbId) {
-                toast.error("Cannot save: candidate not linked to database.");
-                return;
-              }
-              const prev = form.partner_involved;
-              update("partner_involved", v);
-              const patch = v
-                ? { partner_involved: true }
-                : { partner_involved: false, partner_name: null, partner_email: null };
-              if (!v) { setPartnerFirst(""); setPartnerLast(""); setPartnerEmail(""); }
-              const { error } = await supabase
-                .from("candidates")
-                .update(patch)
-                .eq("id", dbId);
-              if (error) {
-                update("partner_involved", prev);
-                toast.error("Failed to save: " + error.message);
-              }
-            }}
-          />
-        </div>
-
-        {form.partner_involved && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" onBlur={savePartner}>
-            <Input placeholder="Partner first name" value={partnerFirst}
-              onChange={(e) => setPartnerFirst(e.target.value)} />
-            <Input placeholder="Partner last name" value={partnerLast}
-              onChange={(e) => setPartnerLast(e.target.value)} />
-            <Input type="email" placeholder="Partner email" value={partnerEmail}
-              onChange={(e) => setPartnerEmail(e.target.value)} />
-          </div>
-        )}
-      </div>
+      <label className="flex items-start gap-2 cursor-pointer">
+        <Checkbox
+          checked={form.owner_operator_explained}
+          onCheckedChange={(v) => updateAndSave("owner_operator_explained", !!v)}
+          className="mt-0.5"
+        />
+        <span className="text-sm">I explained that the Owner has to also be the Operator</span>
+      </label>
 
 
       {/* City */}
@@ -498,15 +383,55 @@ export function LeadSheetSection({ candidate }: Props) {
       )}
 
 
-      {/* Timeline */}
-      <div className="space-y-2">
-        <Label htmlFor="ls-timeline">Desired timeline to start</Label>
-        <Input
-          id="ls-timeline"
-          value={form.timeline}
-          onChange={(e) => update("timeline", e.target.value)}
-          placeholder='"In an ideal world, when would you want to start?"'
+      <label className="flex items-start gap-2 cursor-pointer">
+        <Checkbox
+          checked={form.general_timeline_explained}
+          onCheckedChange={(v) => updateAndSave("general_timeline_explained", !!v)}
+          className="mt-0.5"
         />
+        <span className="text-sm">Explained the general timeline of finding a facility, opening enrollment, start of camp.</span>
+      </label>
+
+      <div className="space-y-2">
+        <Label>If this was a fit, when would they ideally like to begin?</Label>
+        <Select
+          value={
+            form.timeline === "This coming Summer"
+              ? "this_summer"
+              : form.timeline === "Next Summer"
+                ? "next_summer"
+                : form.timeline
+                  ? "other"
+                  : undefined
+          }
+          onValueChange={(value) => {
+            const timeline = value === "this_summer"
+              ? "This coming Summer"
+              : value === "next_summer"
+                ? "Next Summer"
+                : form.timeline === "This coming Summer" || form.timeline === "Next Summer"
+                  ? ""
+                  : form.timeline;
+            updateAndSave("timeline", timeline);
+          }}
+        >
+          <SelectTrigger aria-label="If this was a fit, when would they ideally like to begin?">
+            <SelectValue placeholder="Select a time" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="this_summer">This coming Summer</SelectItem>
+            <SelectItem value="next_summer">Next Summer</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+        {form.timeline !== "" && form.timeline !== "This coming Summer" && form.timeline !== "Next Summer" && (
+          <Input
+            aria-label="Other ideal start time"
+            value={form.timeline}
+            onChange={(e) => update("timeline", e.target.value)}
+            placeholder="Enter their ideal start time"
+          />
+        )}
       </div>
 
       {/* Discovery */}
@@ -520,74 +445,6 @@ export function LeadSheetSection({ candidate }: Props) {
           placeholder="Capture as much detail as possible — helps our marketing"
         />
       </div>
-
-      {/* Investment ability */}
-      <fieldset className="space-y-3 rounded-md border p-3">
-        <legend className="px-1 text-sm font-medium text-[#003c7e]">
-          Low investment, but not no investment
-        </legend>
-
-        <div className="space-y-2">
-          <Label className="text-sm">
-            Can you invest ~$1,000 franchise fee + ~$15,000 working capital?
-          </Label>
-          <RadioGroup
-            value={form.can_invest_min}
-            onValueChange={(v) => updateAndSave("can_invest_min", v as YesNo)}
-            className="flex gap-4"
-          >
-            <label className="flex items-center gap-2 cursor-pointer">
-              <RadioGroupItem value="yes" id="invest-yes" />
-              <span className="text-sm">Yes</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <RadioGroupItem value="no" id="invest-no" />
-              <span className="text-sm">No</span>
-            </label>
-          </RadioGroup>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-sm">Can you commit one summer of sweat equity?</Label>
-          <RadioGroup
-            value={form.sweat_equity_ok}
-            onValueChange={(v) => updateAndSave("sweat_equity_ok", v as YesNo)}
-            className="flex gap-4"
-          >
-            <label className="flex items-center gap-2 cursor-pointer">
-              <RadioGroupItem value="yes" id="sweat-yes" />
-              <span className="text-sm">Yes</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <RadioGroupItem value="no" id="sweat-no" />
-              <span className="text-sm">No</span>
-            </label>
-          </RadioGroup>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
-          <div className="space-y-2">
-            <Label htmlFor="ls-liquid">Liquid Capital ($) — optional</Label>
-            <Input
-              id="ls-liquid"
-              type="number"
-              inputMode="decimal"
-              value={form.liquid_capital}
-              onChange={(e) => update("liquid_capital", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ls-networth">Net Worth ($) — optional</Label>
-            <Input
-              id="ls-networth"
-              type="number"
-              inputMode="decimal"
-              value={form.net_worth}
-              onChange={(e) => update("net_worth", e.target.value)}
-            />
-          </div>
-        </div>
-      </fieldset>
 
       {/* Motivation */}
       <div className="space-y-2">
@@ -612,6 +469,45 @@ export function LeadSheetSection({ candidate }: Props) {
           value={form.other_opportunities}
           onChange={(e) => update("other_opportunities", e.target.value)}
         />
+      </div>
+
+      {/* Partner */}
+      <div className="rounded-md border p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="ls-partner" className="cursor-pointer">Will you have a partner in the business?</Label>
+          <Switch
+            id="ls-partner"
+            checked={form.partner_involved}
+            onCheckedChange={async (v) => {
+              if (!dbId) {
+                toast.error("Cannot save: candidate not linked to database.");
+                return;
+              }
+              const previous = form.partner_involved;
+              update("partner_involved", v);
+              const patch = v
+                ? { partner_involved: true }
+                : { partner_involved: false, partner_name: null, partner_email: null };
+              if (!v) {
+                setPartnerFirst("");
+                setPartnerLast("");
+                setPartnerEmail("");
+              }
+              const { error } = await supabase.from("candidates").update(patch).eq("id", dbId);
+              if (error) {
+                update("partner_involved", previous);
+                toast.error("Failed to save: " + error.message);
+              }
+            }}
+          />
+        </div>
+        {form.partner_involved && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" onBlur={savePartner}>
+            <Input placeholder="Partner first name" value={partnerFirst} onChange={(e) => setPartnerFirst(e.target.value)} />
+            <Input placeholder="Partner last name" value={partnerLast} onChange={(e) => setPartnerLast(e.target.value)} />
+            <Input type="email" placeholder="Partner email" value={partnerEmail} onChange={(e) => setPartnerEmail(e.target.value)} />
+          </div>
+        )}
       </div>
 
     </div>

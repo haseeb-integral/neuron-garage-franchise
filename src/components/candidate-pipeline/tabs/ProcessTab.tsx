@@ -48,7 +48,7 @@ const TRIAL_CLOSE_ITEMS: { key: string; label: string }[] = [
 ];
 
 /** Homework items that do not require the candidate to send a document back. */
-const NO_UPLOAD_HOMEWORK = new Set(["mvs_site_share", "read_mindset"]);
+const NO_UPLOAD_HOMEWORK = new Set(["review_websites", "mvs_site_share", "read_mindset"]);
 
 const TIMEZONES = [
   "ET (Eastern)",
@@ -80,6 +80,7 @@ const STEPS: StepDef[] = [
     ],
     homework: [
       { key: "rfc_part1", label: "Complete Request for Consideration – Part 1 (non-financial), due 2 days before next call" },
+      { key: "review_websites", label: "Review neurongarage.com and review neurongaragefranchise.com" },
     ],
   },
   {
@@ -461,6 +462,26 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   <MailingAddressCard candidate={candidate} onSave={onSaveProfile} />
                 )}
 
+                {step.num === 1 && (
+                  <div className="mt-4">
+                    <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
+                    <Textarea
+                      value={row.notes ?? ""}
+                      onChange={(e) => updateStep(
+                        step.num,
+                        { notes: e.target.value },
+                        {
+                          description: `Step ${step.num} (${step.title}) — recruiter notes edited`,
+                          metadata: { field: "notes", length: e.target.value.length },
+                        },
+                      )}
+                      className="mt-1 text-sm"
+                      rows={2}
+                      placeholder="Add any context, objections uncovered, follow-ups…"
+                    />
+                  </div>
+                )}
+
                 {step.trialClose && (
                   <TrialCloseBlock
                     nameKey={`step-${step.num}`}
@@ -546,7 +567,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   />
                 )}
 
-                {step.num !== 3 && (
+                {step.num !== 1 && step.num !== 3 && (
                   <div className="mt-4">
                     <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
                     <Textarea

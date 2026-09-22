@@ -47,17 +47,19 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
     lastUpsertPayload = null;
   });
 
-  it("renders all 6 new Step-1 fields from the Google Form", async () => {
+  it("renders the revised Step 1 fields and removes the old questions", async () => {
     render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
 
-    expect(screen.getByText(/Role in Neuron Garage/i)).toBeInTheDocument();
-    expect(screen.getByText(/Are you married\?/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/City you're located in/i)).toBeInTheDocument();
+    expect(screen.getByText(/Owner has to also be the Operator/i)).toBeInTheDocument();
+    expect(screen.getByText(/Explained the general timeline/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/when would they ideally like to begin/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Are you married\?/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Low investment, but not no investment/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Liquid Capital/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/What city and state are you located in/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/How did you discover Neuron Garage\?/i)).toBeInTheDocument();
-    expect(screen.getByText(/Can invest ~\$1,000 franchise fee/i)).toBeInTheDocument();
-    expect(screen.getByText(/Can commit 1 summer of sweat equity\?/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Other summer-income opportunities/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/What other opportunities for summer income/i)).toBeInTheDocument();
   });
 
   it("shows the registration-state warning under the City field", async () => {
@@ -71,34 +73,28 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
     }
   });
 
-  it("persists the new fields with correct types (text, boolean, nulls) on Save", async () => {
+  it("persists the revised fields with correct types", async () => {
     render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
 
-    fireEvent.change(screen.getByLabelText(/City you're located in/i), {
+    fireEvent.change(screen.getByLabelText(/What city and state are you located in/i), {
       target: { value: "Nashville" },
     });
     fireEvent.change(screen.getByLabelText(/How did you discover Neuron Garage\?/i), {
       target: { value: "Facebook ad" },
     });
-    fireEvent.change(screen.getByLabelText(/Other summer-income opportunities/i), {
+    fireEvent.change(screen.getByLabelText(/What other opportunities for summer income/i), {
       target: { value: "Tutoring" },
     });
-
-    fireEvent.click(screen.getByText("Save"));
+    fireEvent.click(screen.getByText(/Owner has to also be the Operator/i));
 
     await waitFor(() => expect(lastUpsertPayload).not.toBeNull());
     expect(lastUpsertPayload.candidate_id).toBe("cand-1");
     expect(lastUpsertPayload.city).toBe("Nashville");
     expect(lastUpsertPayload.discovery_source).toBe("Facebook ad");
     expect(lastUpsertPayload.other_opportunities).toBe("Tutoring");
-    // Untouched yes/no fields should be null, not false
-    expect(lastUpsertPayload.married).toBeNull();
-    expect(lastUpsertPayload.can_invest_min).toBeNull();
-    expect(lastUpsertPayload.sweat_equity_ok).toBeNull();
-    // role_other only saved when role === "other"
-    expect(lastUpsertPayload.role).toBeNull();
-    expect(lastUpsertPayload.role_other).toBeNull();
+    expect(lastUpsertPayload.owner_operator_explained).toBe(true);
+    expect(lastUpsertPayload.general_timeline_explained).toBe(false);
   });
 
   it("loads saved values back into the form on mount", async () => {
@@ -106,18 +102,28 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
       candidate_id: "cand-1",
       city: "Austin",
       discovery_source: "Friend referral",
-      married: true,
-      can_invest_min: false,
-      sweat_equity_ok: true,
+      owner_operator_explained: true,
+      general_timeline_explained: true,
+      timeline: "A later summer",
       other_opportunities: "Summer camp director",
-      role: "operator",
     };
 
     render(<LeadSheetSection candidate={candidate} />);
     await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
 
-    expect((screen.getByLabelText(/City you're located in/i) as HTMLInputElement).value).toBe("Austin");
+    expect((screen.getByLabelText(/What city and state are you located in/i) as HTMLInputElement).value).toBe("Austin");
     expect((screen.getByLabelText(/How did you discover/i) as HTMLTextAreaElement).value).toBe("Friend referral");
-    expect((screen.getByLabelText(/Other summer-income/i) as HTMLTextAreaElement).value).toBe("Summer camp director");
+    expect((screen.getByLabelText(/What other opportunities for summer income/i) as HTMLTextAreaElement).value).toBe("Summer camp director");
+    expect((screen.getByLabelText(/Other ideal start time/i) as HTMLInputElement).value).toBe("A later summer");
+  });
+
+  it("opens a fill-in field when Other is selected", async () => {
+    render(<LeadSheetSection candidate={candidate} />);
+    await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByLabelText(/when would they ideally like to begin/i));
+    fireEvent.click(screen.getByRole("option", { name: "Other" }));
+
+    expect(screen.getByLabelText(/Other ideal start time/i)).toBeInTheDocument();
   });
 });

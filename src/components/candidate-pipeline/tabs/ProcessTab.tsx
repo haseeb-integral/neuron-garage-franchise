@@ -15,7 +15,7 @@ import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
 import { syncProcessCallEvent } from "@/lib/candidateEvents";
-import { PROCESS_STEP_TITLES } from "@/lib/candidateProcessSteps";
+import { PROCESS_STEP_TITLES, EVENT_TYPE_OPTIONS } from "@/lib/candidateProcessSteps";
 
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
 

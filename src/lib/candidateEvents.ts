@@ -15,6 +15,7 @@ export interface CandidateEvent {
   status: CandidateEventStatus;
   owner_email: string | null;
   created_by: string | null;
+  source_process_step: number | null;
 }
 
 export interface CandidateEventInput {
@@ -27,6 +28,7 @@ export interface CandidateEventInput {
   notes?: string | null;
   status?: CandidateEventStatus;
   owner_email?: string | null;
+  source_process_step?: number | null;
 }
 
 const TABLE = "candidate_events";
@@ -79,6 +81,129 @@ export async function updateEvent(id: string, patch: Partial<CandidateEventInput
 export async function deleteEvent(id: string): Promise<void> {
   const { error } = await supabase.from(TABLE).delete().eq("id", id);
   if (error) throw error;
+}
+
+const PROCESS_TIME_ZONES: Record<string, string> = {
+  "ET (Eastern)": "America/New_York",
+  "CT (Central)": "America/Chicago",
+  "MT (Mountain)": "America/Denver",
+  "PT (Pacific)": "America/Los_Angeles",
+  "AKT (Alaska)": "America/Anchorage",
+  "HT (Hawaii)": "Pacific/Honolulu",
+};
+
+const zonedParts = (date: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return {
+    year: value("year"),
+    month: value("month"),
+    day: value("day"),
+    hour: value("hour"),
+    minute: value("minute"),
+    second: value("second"),
+  };
+};
+
+/** Convert the process form's local date/time and US time-zone label to UTC. */
+export function processCallStartsAt(date: string, time: string, timeZoneLabel: string): string {
+  const timeZone = PROCESS_TIME_ZONES[timeZoneLabel];
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const timeMatch = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!timeZone || !match || !timeMatch) throw new Error("Enter a valid date, time, and time zone");
+
+  const desired = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(timeMatch[1]),
+    minute: Number(timeMatch[2]),
+    second: 0,
+  };
+  const desiredUtc = Date.UTC(
+    desired.year,
+    desired.month - 1,
+    desired.day,
+    desired.hour,
+    desired.minute,
+  );
+  let instant = desiredUtc;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const shown = zonedParts(new Date(instant), timeZone);
+    const shownUtc = Date.UTC(shown.year, shown.month - 1, shown.day, shown.hour, shown.minute, shown.second);
+    instant += desiredUtc - shownUtc;
+  }
+  const finalParts = zonedParts(new Date(instant), timeZone);
+  if (
+    finalParts.year !== desired.year ||
+    finalParts.month !== desired.month ||
+    finalParts.day !== desired.day ||
+    finalParts.hour !== desired.hour ||
+    finalParts.minute !== desired.minute
+  ) {
+    throw new Error("That local time does not exist because of daylight-saving time. Pick another time.");
+  }
+  return new Date(instant).toISOString();
+}
+
+export type ProcessEventSyncResult = "created" | "updated" | "canceled" | "unchanged";
+
+/** Keep one automatic calendar event linked to a candidate's process step. */
+export async function syncProcessCallEvent(
+  candidateId: string,
+  sourceStep: number,
+  nextStepTitle: string,
+  scheduled: boolean,
+  details: { date?: string; time?: string; timeZone?: string },
+): Promise<ProcessEventSyncResult> {
+  const { data: existing, error: readError } = await supabase
+    .from(TABLE)
+    .select("id,status,starts_at,title")
+    .eq("candidate_id", candidateId)
+    .eq("source_process_step", sourceStep)
+    .maybeSingle();
+  if (readError) throw readError;
+
+  if (!scheduled) {
+    if (!existing || existing.status === "canceled") return "unchanged";
+    const { error } = await supabase.from(TABLE).update({ status: "canceled" }).eq("id", existing.id);
+    if (error) throw error;
+    return "canceled";
+  }
+
+  if (!details.date || !details.time || !details.timeZone) return "unchanged";
+  const startsAt = processCallStartsAt(details.date, details.time, details.timeZone);
+  const title = `Step ${sourceStep + 1} — ${nextStepTitle}`;
+  const { data: userData } = await supabase.auth.getUser();
+  const email = userData.user?.email ?? null;
+  const payload = {
+    candidate_id: candidateId,
+    title,
+    event_type: "call" as const,
+    starts_at: startsAt,
+    duration_minutes: 30,
+    all_day: false,
+    notes: `Automatically scheduled from Qualification Process Step ${sourceStep}.`,
+    status: "scheduled" as const,
+    owner_email: existing ? undefined : email,
+    created_by: existing ? undefined : email,
+    source_process_step: sourceStep,
+  };
+  const { error } = await supabase
+    .from(TABLE)
+    .upsert(payload, { onConflict: "candidate_id,source_process_step" });
+  if (error) throw error;
+  return existing ? "updated" : "created";
 }
 
 /** Visual state used by the calendar blocks. */

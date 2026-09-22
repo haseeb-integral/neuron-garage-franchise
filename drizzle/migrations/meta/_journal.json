@@ -50,6 +50,13 @@
       "when": 1790054322294,
       "tag": "0006_link_candidate_events_to_process_steps",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790054459010,
+      "tag": "0007_make_process_step_event_link_upsertable",
+      "breakpoints": true
     }
   ]
 }

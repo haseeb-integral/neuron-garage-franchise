@@ -573,6 +573,7 @@ export type Database = {
           discovery_source: string | null
           educational_philosophy: string | null
           experience_with_children: string | null
+          general_timeline_explained: boolean
           interest_in_neuron_garage: string | null
           liquid_capital: number | null
           location_preferences: string | null
@@ -580,6 +581,7 @@ export type Database = {
           motivation: string | null
           net_worth: number | null
           other_opportunities: string | null
+          owner_operator_explained: boolean
           partner_involved: boolean
           role: string | null
           role_other: string | null
@@ -600,6 +602,7 @@ export type Database = {
           discovery_source?: string | null
           educational_philosophy?: string | null
           experience_with_children?: string | null
+          general_timeline_explained?: boolean
           interest_in_neuron_garage?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
@@ -607,6 +610,7 @@ export type Database = {
           motivation?: string | null
           net_worth?: number | null
           other_opportunities?: string | null
+          owner_operator_explained?: boolean
           partner_involved?: boolean
           role?: string | null
           role_other?: string | null
@@ -627,6 +631,7 @@ export type Database = {
           discovery_source?: string | null
           educational_philosophy?: string | null
           experience_with_children?: string | null
+          general_timeline_explained?: boolean
           interest_in_neuron_garage?: string | null
           liquid_capital?: number | null
           location_preferences?: string | null
@@ -634,6 +639,7 @@ export type Database = {
           motivation?: string | null
           net_worth?: number | null
           other_opportunities?: string | null
+          owner_operator_explained?: boolean
           partner_involved?: boolean
           role?: string | null
           role_other?: string | null

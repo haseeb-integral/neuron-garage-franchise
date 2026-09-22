@@ -4,7 +4,7 @@
 
 We will combine the current Steps 2, 3, and 4 into one new Step 2 named **Business Overview Call and FDD Review**.
 
-The qualification process will then have six steps. Current Steps 5–7 will become Steps 3–5? No: after combining three steps into one, current Step 5 becomes Step 3, current Step 6 becomes Step 4, and current Step 7 becomes Step 5. The final process will have five steps total.
+The qualification process will then have five steps. Current Step 5 becomes Step 3, current Step 6 becomes Step 4, and current Step 7 becomes Step 5.
 
 ## Final Step 2 contents
 

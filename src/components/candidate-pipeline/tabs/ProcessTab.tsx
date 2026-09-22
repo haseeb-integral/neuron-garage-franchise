@@ -124,6 +124,7 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     goal: "Final alignment + commitment. 'The selection committee approved your award of a franchise.' First half = franchisor commitments. Second half = prospect Q&A.",
     trialClose: true,
     postCall: [
+      { key: "shared_personality_assessment_results", label: "Shared Results of Personality Assessment" },
       { key: "overnight_pen", label: "Overnighted a personalized Neuron Garage pen with their franchise number on it." },
     ],
     homework: [],
@@ -438,6 +439,15 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </div>
                 )}
 
+                {step.num === 4 && (
+                  <ChecklistBlock
+                    title=""
+                    items={step.postCall.filter((item) => item.key === "shared_personality_assessment_results")}
+                    state={row.post_call_actions}
+                    onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
+                  />
+                )}
+
                 {[1, 3, 4].includes(step.num) && (
                   <div className="mt-4">
                     <Label className="text-xs" style={{ color: "#07142f" }}>Recruiter notes</Label>
@@ -472,7 +482,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 {step.postCall.length > 0 && (
                   <ChecklistBlock
                     title="Post-Call Actions"
-                    items={step.postCall}
+                    items={step.postCall.filter((item) => step.num !== 4 || item.key !== "shared_personality_assessment_results")}
                     state={row.post_call_actions}
                     onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
                     renderAction={

@@ -283,7 +283,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
             if (result !== "unchanged") {
               logActivity(
                 dbId,
-                `process_call_${result}`,
+                result === "created" ? "event_scheduled" : "event_updated",
                 `Step ${stepNum + 1} calendar call ${result}`,
                 { source_step_number: stepNum, calendar_action: result },
               );

@@ -581,6 +581,7 @@ export type Database = {
           liquid_capital: number | null
           location_preferences: string | null
           married: boolean | null
+          model_interest: string | null
           motivation: string | null
           net_worth: number | null
           other_opportunities: string | null
@@ -610,6 +611,7 @@ export type Database = {
           liquid_capital?: number | null
           location_preferences?: string | null
           married?: boolean | null
+          model_interest?: string | null
           motivation?: string | null
           net_worth?: number | null
           other_opportunities?: string | null
@@ -639,6 +641,7 @@ export type Database = {
           liquid_capital?: number | null
           location_preferences?: string | null
           married?: boolean | null
+          model_interest?: string | null
           motivation?: string | null
           net_worth?: number | null
           other_opportunities?: string | null

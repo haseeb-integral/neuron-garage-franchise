@@ -57,6 +57,13 @@
       "when": 1790054459010,
       "tag": "0007_make_process_step_event_link_upsertable",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790546073085,
+      "tag": "0008_add_candidate_profile_model_interest",
+      "breakpoints": true
     }
   ]
 }

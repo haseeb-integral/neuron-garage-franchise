@@ -91,13 +91,13 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
     fireEvent.change(screen.getByLabelText(/What other opportunities for summer income/i), {
       target: { value: "Tutoring" },
     });
-    fireEvent.click(screen.getByText(/Owner has to also be the Operator/i));
     fireEvent.change(screen.getByLabelText(/Why are you interested in owning your own garage franchise\?/i), {
       target: { value: "Wants financial freedom" },
     });
     fireEvent.change(screen.getByLabelText(/What is intriguing to you about our model\?/i), {
       target: { value: "Summer-only schedule" },
     });
+    fireEvent.click(screen.getByText(/Owner has to also be the Operator/i));
 
     await waitFor(() => expect(lastUpsertPayload).not.toBeNull());
     expect(lastUpsertPayload.candidate_id).toBe("cand-1");

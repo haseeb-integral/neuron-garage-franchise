@@ -20,6 +20,7 @@ interface ProfileForm {
   // existing
   background: string;
   motivation: string;
+  model_interest: string;
   experience_with_children: string;
   interest_in_neuron_garage: string;
   educational_philosophy: string;
@@ -40,6 +41,7 @@ interface ProfileForm {
 const empty: ProfileForm = {
   background: "",
   motivation: "",
+  model_interest: "",
   experience_with_children: "",
   interest_in_neuron_garage: "",
   educational_philosophy: "",
@@ -91,6 +93,7 @@ const REGISTRATION_STATES_LABEL =
 const FIELD_LABELS: Record<keyof ProfileForm, string> = {
   background: "Background",
   motivation: "Motivation",
+  model_interest: "Interest in our model",
   experience_with_children: "Experience working with children",
   interest_in_neuron_garage: "Interest in Neuron Garage",
   educational_philosophy: "Educational philosophy",
@@ -172,6 +175,7 @@ export function LeadSheetSection({ candidate }: Props) {
         const loaded: ProfileForm = {
           background: p.background ?? "",
           motivation: p.motivation ?? "",
+          model_interest: p.model_interest ?? "",
           experience_with_children: p.experience_with_children ?? "",
           interest_in_neuron_garage: p.interest_in_neuron_garage ?? "",
           educational_philosophy: p.educational_philosophy ?? "",
@@ -231,6 +235,7 @@ export function LeadSheetSection({ candidate }: Props) {
       candidate_id: dbId,
       background: current.background || null,
       motivation: current.motivation || null,
+      model_interest: current.model_interest || null,
       experience_with_children: current.experience_with_children || null,
       interest_in_neuron_garage: current.interest_in_neuron_garage || null,
       educational_philosophy: current.educational_philosophy || null,

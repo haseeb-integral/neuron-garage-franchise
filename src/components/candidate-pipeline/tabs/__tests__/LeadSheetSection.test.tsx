@@ -60,6 +60,11 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
     expect(screen.getByLabelText(/What city and state are you located in/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/How did you discover Neuron Garage\?/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/What other opportunities for summer income/i)).toBeInTheDocument();
+    // Split motivation question: two separate boxes
+    expect(screen.getByLabelText(/Why are you interested in owning your own garage franchise\?/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/What is intriguing to you about our model\?/i)).toBeInTheDocument();
+    // Checkbox wording: no leading "I", capital E
+    expect(screen.getByText("Explained that the Owner has to also be the Operator")).toBeInTheDocument();
   });
 
   it("shows the registration-state warning under the City field", async () => {
@@ -87,12 +92,20 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
       target: { value: "Tutoring" },
     });
     fireEvent.click(screen.getByText(/Owner has to also be the Operator/i));
+    fireEvent.change(screen.getByLabelText(/Why are you interested in owning your own garage franchise\?/i), {
+      target: { value: "Wants financial freedom" },
+    });
+    fireEvent.change(screen.getByLabelText(/What is intriguing to you about our model\?/i), {
+      target: { value: "Summer-only schedule" },
+    });
 
     await waitFor(() => expect(lastUpsertPayload).not.toBeNull());
     expect(lastUpsertPayload.candidate_id).toBe("cand-1");
     expect(lastUpsertPayload.city).toBe("Nashville");
     expect(lastUpsertPayload.discovery_source).toBe("Facebook ad");
     expect(lastUpsertPayload.other_opportunities).toBe("Tutoring");
+    expect(lastUpsertPayload.motivation).toBe("Wants financial freedom");
+    expect(lastUpsertPayload.model_interest).toBe("Summer-only schedule");
     expect(lastUpsertPayload.owner_operator_explained).toBe(true);
     expect(lastUpsertPayload.general_timeline_explained).toBe(false);
   });
@@ -106,6 +119,8 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
       general_timeline_explained: true,
       timeline: "A later summer",
       other_opportunities: "Summer camp director",
+      motivation: "Old combined answer stays here",
+      model_interest: "Loves the curriculum",
     };
 
     render(<LeadSheetSection candidate={candidate} />);
@@ -115,6 +130,8 @@ describe("LeadSheetSection — Google Form Step 1 fields", () => {
     expect((screen.getByLabelText(/How did you discover/i) as HTMLTextAreaElement).value).toBe("Friend referral");
     expect((screen.getByLabelText(/What other opportunities for summer income/i) as HTMLTextAreaElement).value).toBe("Summer camp director");
     expect((screen.getByLabelText(/Other ideal start time/i) as HTMLInputElement).value).toBe("A later summer");
+    expect((screen.getByLabelText(/Why are you interested in owning your own garage franchise\?/i) as HTMLTextAreaElement).value).toBe("Old combined answer stays here");
+    expect((screen.getByLabelText(/What is intriguing to you about our model\?/i) as HTMLTextAreaElement).value).toBe("Loves the curriculum");
   });
 
   it("opens a fill-in field when Other is selected", async () => {

@@ -430,6 +430,104 @@ export function LeadSheetSection({ candidate }: Props) {
         )}
       </div>
 
+      {/* City */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-city">What city and state are you located in?</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Input
+            id="ls-city"
+            value={form.city}
+            onChange={(e) => update("city", e.target.value)}
+            placeholder="City (e.g. Nashville)"
+          />
+          <Input
+            id="ls-state"
+            value={form.state}
+            onChange={(e) => update("state", e.target.value)}
+            placeholder="State (e.g. TN)"
+          />
+        </div>
+        <div
+          className="flex items-start gap-2 rounded-md p-2 text-xs"
+          style={{ backgroundColor: "#fff4e5", border: "1px solid #ffd591", color: "#7a4a00" }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>{REGISTRATION_STATES_LABEL}</span>
+        </div>
+      </div>
+
+      {/* Desired market */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-market-city">Desired Market (city and state)</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Input
+            id="ls-market-city"
+            value={form.desired_market_city}
+            onChange={(e) => update("desired_market_city", e.target.value)}
+            placeholder="City (e.g. Nashville)"
+          />
+          <Input
+            id="ls-market-state"
+            value={form.desired_market_state}
+            onChange={(e) => update("desired_market_state", e.target.value)}
+            placeholder="State (e.g. TN)"
+          />
+        </div>
+      </div>
+
+      {regState && (
+        <div
+          className="flex items-start gap-2 rounded-md p-2 text-xs font-medium"
+          style={{ backgroundColor: "#fff1f0", border: "1px solid #ffa39e", color: "#c0261c" }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>{REGISTRATION_NOTE} (Detected: {regState})</span>
+        </div>
+      )}
+
+      <label className="flex items-start gap-2 cursor-pointer">
+        <Checkbox
+          checked={form.general_timeline_explained}
+          onCheckedChange={(v) => updateAndSave("general_timeline_explained", !!v)}
+          className="mt-0.5"
+        />
+        <span className="text-sm">Explained the general timeline of finding a facility, opening enrollment, start of camp.</span>
+      </label>
+
+      <div className="space-y-2">
+        <Label>If this was a fit, when would they ideally like to begin?</Label>
+        <Select
+          value={startTiming}
+          onValueChange={(value) => {
+            const nextTiming = value as StartTiming;
+            setStartTiming(nextTiming);
+            const timeline = nextTiming === "this_summer"
+              ? "This coming Summer"
+              : nextTiming === "next_summer"
+                ? "Next Summer"
+                : "";
+            updateAndSave("timeline", timeline);
+          }}
+        >
+          <SelectTrigger aria-label="If this was a fit, when would they ideally like to begin?">
+            <SelectValue placeholder="Select a time" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="this_summer">This coming Summer</SelectItem>
+            <SelectItem value="next_summer">Next Summer</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+        {startTiming === "other" && (
+          <Input
+            aria-label="Other ideal start time"
+            value={form.timeline}
+            onChange={(e) => update("timeline", e.target.value)}
+            placeholder="Enter their ideal start time"
+          />
+        )}
+      </div>
+
     </div>
   );
 }

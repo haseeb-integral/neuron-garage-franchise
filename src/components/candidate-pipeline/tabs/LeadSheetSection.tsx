@@ -20,6 +20,7 @@ interface ProfileForm {
   // existing
   background: string;
   motivation: string;
+  model_interest: string;
   experience_with_children: string;
   interest_in_neuron_garage: string;
   educational_philosophy: string;
@@ -40,6 +41,7 @@ interface ProfileForm {
 const empty: ProfileForm = {
   background: "",
   motivation: "",
+  model_interest: "",
   experience_with_children: "",
   interest_in_neuron_garage: "",
   educational_philosophy: "",
@@ -91,6 +93,7 @@ const REGISTRATION_STATES_LABEL =
 const FIELD_LABELS: Record<keyof ProfileForm, string> = {
   background: "Background",
   motivation: "Motivation",
+  model_interest: "Interest in our model",
   experience_with_children: "Experience working with children",
   interest_in_neuron_garage: "Interest in Neuron Garage",
   educational_philosophy: "Educational philosophy",
@@ -172,6 +175,7 @@ export function LeadSheetSection({ candidate }: Props) {
         const loaded: ProfileForm = {
           background: p.background ?? "",
           motivation: p.motivation ?? "",
+          model_interest: p.model_interest ?? "",
           experience_with_children: p.experience_with_children ?? "",
           interest_in_neuron_garage: p.interest_in_neuron_garage ?? "",
           educational_philosophy: p.educational_philosophy ?? "",
@@ -231,6 +235,7 @@ export function LeadSheetSection({ candidate }: Props) {
       candidate_id: dbId,
       background: current.background || null,
       motivation: current.motivation || null,
+      model_interest: current.model_interest || null,
       experience_with_children: current.experience_with_children || null,
       interest_in_neuron_garage: current.interest_in_neuron_garage || null,
       educational_philosophy: current.educational_philosophy || null,
@@ -296,6 +301,27 @@ export function LeadSheetSection({ candidate }: Props) {
 
   return (
     <div className="space-y-4 py-4" onBlur={handleAutoSave}>
+      <label className="flex items-start gap-2 cursor-pointer">
+        <Checkbox
+          checked={form.owner_operator_explained}
+          onCheckedChange={(v) => updateAndSave("owner_operator_explained", !!v)}
+          className="mt-0.5"
+        />
+        <span className="text-sm">Explained that the Owner has to also be the Operator</span>
+      </label>
+
+      {/* Discovery */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-discovery">How did you discover Neuron Garage?</Label>
+        <Textarea
+          id="ls-discovery"
+          rows={2}
+          value={form.discovery_source}
+          onChange={(e) => update("discovery_source", e.target.value)}
+          placeholder="Capture as much detail as possible — helps our marketing"
+        />
+      </div>
+
       {/* Experience with children */}
       <div className="space-y-2">
         <Label htmlFor="ls-exp-children">What is their experience working with children?</Label>
@@ -329,15 +355,80 @@ export function LeadSheetSection({ candidate }: Props) {
         />
       </div>
 
-      <label className="flex items-start gap-2 cursor-pointer">
-        <Checkbox
-          checked={form.owner_operator_explained}
-          onCheckedChange={(v) => updateAndSave("owner_operator_explained", !!v)}
-          className="mt-0.5"
+      {/* Motivation */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-motivation">Why are you interested in owning your own garage franchise?</Label>
+        <p className="text-xs text-muted-foreground">
+          Uncover underlying pain or motivation. Financial / Undervalued / No agency / Legacy + mentorship / Other.
+        </p>
+        <Textarea
+          id="ls-motivation"
+          rows={3}
+          value={form.motivation}
+          onChange={(e) => update("motivation", e.target.value)}
         />
-        <span className="text-sm">I explained that the Owner has to also be the Operator</span>
-      </label>
+      </div>
 
+      {/* Interest in the model */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-model-interest">What is intriguing to you about our model?</Label>
+        <Textarea
+          id="ls-model-interest"
+          rows={3}
+          value={form.model_interest}
+          onChange={(e) => update("model_interest", e.target.value)}
+        />
+      </div>
+
+      {/* Other opportunities */}
+      <div className="space-y-2">
+        <Label htmlFor="ls-other-opps">What other opportunities for summer income are you looking at or considering?</Label>
+        <Textarea
+          id="ls-other-opps"
+          rows={2}
+          value={form.other_opportunities}
+          onChange={(e) => update("other_opportunities", e.target.value)}
+        />
+      </div>
+
+      {/* Partner */}
+      <div className="rounded-md border p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="ls-partner" className="cursor-pointer">Will you have a partner in the business?</Label>
+          <Switch
+            id="ls-partner"
+            checked={form.partner_involved}
+            onCheckedChange={async (v) => {
+              if (!dbId) {
+                toast.error("Cannot save: candidate not linked to database.");
+                return;
+              }
+              const previous = form.partner_involved;
+              update("partner_involved", v);
+              const patch = v
+                ? { partner_involved: true }
+                : { partner_involved: false, partner_name: null, partner_email: null };
+              if (!v) {
+                setPartnerFirst("");
+                setPartnerLast("");
+                setPartnerEmail("");
+              }
+              const { error } = await supabase.from("candidates").update(patch).eq("id", dbId);
+              if (error) {
+                update("partner_involved", previous);
+                toast.error("Failed to save: " + error.message);
+              }
+            }}
+          />
+        </div>
+        {form.partner_involved && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" onBlur={savePartner}>
+            <Input placeholder="Partner first name" value={partnerFirst} onChange={(e) => setPartnerFirst(e.target.value)} />
+            <Input placeholder="Partner last name" value={partnerLast} onChange={(e) => setPartnerLast(e.target.value)} />
+            <Input type="email" placeholder="Partner email" value={partnerEmail} onChange={(e) => setPartnerEmail(e.target.value)} />
+          </div>
+        )}
+      </div>
 
       {/* City */}
       <div className="space-y-2">
@@ -394,7 +485,6 @@ export function LeadSheetSection({ candidate }: Props) {
         </div>
       )}
 
-
       <label className="flex items-start gap-2 cursor-pointer">
         <Checkbox
           checked={form.general_timeline_explained}
@@ -435,82 +525,6 @@ export function LeadSheetSection({ candidate }: Props) {
             onChange={(e) => update("timeline", e.target.value)}
             placeholder="Enter their ideal start time"
           />
-        )}
-      </div>
-
-      {/* Discovery */}
-      <div className="space-y-2">
-        <Label htmlFor="ls-discovery">How did you discover Neuron Garage?</Label>
-        <Textarea
-          id="ls-discovery"
-          rows={2}
-          value={form.discovery_source}
-          onChange={(e) => update("discovery_source", e.target.value)}
-          placeholder="Capture as much detail as possible — helps our marketing"
-        />
-      </div>
-
-      {/* Motivation */}
-      <div className="space-y-2">
-        <Label htmlFor="ls-motivation">Why are you interested in owning your own garage franchise? What is intriguing to you about our model?</Label>
-        <p className="text-xs text-muted-foreground">
-          Uncover underlying pain or motivation. Financial / Undervalued / No agency / Legacy + mentorship / Other.
-        </p>
-        <Textarea
-          id="ls-motivation"
-          rows={3}
-          value={form.motivation}
-          onChange={(e) => update("motivation", e.target.value)}
-        />
-      </div>
-
-      {/* Other opportunities */}
-      <div className="space-y-2">
-        <Label htmlFor="ls-other-opps">What other opportunities for summer income are you looking at or considering?</Label>
-        <Textarea
-          id="ls-other-opps"
-          rows={2}
-          value={form.other_opportunities}
-          onChange={(e) => update("other_opportunities", e.target.value)}
-        />
-      </div>
-
-      {/* Partner */}
-      <div className="rounded-md border p-3 space-y-3">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="ls-partner" className="cursor-pointer">Will you have a partner in the business?</Label>
-          <Switch
-            id="ls-partner"
-            checked={form.partner_involved}
-            onCheckedChange={async (v) => {
-              if (!dbId) {
-                toast.error("Cannot save: candidate not linked to database.");
-                return;
-              }
-              const previous = form.partner_involved;
-              update("partner_involved", v);
-              const patch = v
-                ? { partner_involved: true }
-                : { partner_involved: false, partner_name: null, partner_email: null };
-              if (!v) {
-                setPartnerFirst("");
-                setPartnerLast("");
-                setPartnerEmail("");
-              }
-              const { error } = await supabase.from("candidates").update(patch).eq("id", dbId);
-              if (error) {
-                update("partner_involved", previous);
-                toast.error("Failed to save: " + error.message);
-              }
-            }}
-          />
-        </div>
-        {form.partner_involved && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" onBlur={savePartner}>
-            <Input placeholder="Partner first name" value={partnerFirst} onChange={(e) => setPartnerFirst(e.target.value)} />
-            <Input placeholder="Partner last name" value={partnerLast} onChange={(e) => setPartnerLast(e.target.value)} />
-            <Input type="email" placeholder="Partner email" value={partnerEmail} onChange={(e) => setPartnerEmail(e.target.value)} />
-          </div>
         )}
       </div>
 

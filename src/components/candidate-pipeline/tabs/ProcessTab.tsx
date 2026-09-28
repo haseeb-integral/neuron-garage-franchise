@@ -81,7 +81,7 @@ export const QUALIFICATION_STEPS: StepDef[] = [
       { key: "update_qualification_scores", label: "Update the qualification scores on the Overview tab" },
     ],
     homework: [
-      { key: "rfc_part1", label: "Complete Request for Consideration – Part 1 (non-financial), due 2 days before next call" },
+      { key: "rfc_part1", label: "Complete Request for Consideration form due 1 day before next call." },
       { key: "review_websites", label: "Review neurongarage.com and review neurongaragefranchise.com" },
     ],
   },
@@ -91,18 +91,20 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     goal: "Provide a deeper understanding of the business and camp. Review the FDD, and key Franchise Agreement terms.",
     trialClose: true,
     postCall: [
-      { key: "mvs_site_run", label: "Ran Market Validation and Site Analysis on desired location — INTERNAL ONLY" },
-      { key: "sent_bg_auth", label: "Run Background and Credit Check" },
-      { key: "sent_rfc_part2", label: "Sent Request for Consideration – Part 2: Financial" },
+      { key: "sent_rfc_part2", label: "Sent Background and Credit Check Authorization Form" },
       { key: "sent_personality_profile_invite", label: "Send invite to personality profile assessment" },
       { key: "sent_fdd", label: "Sent FDD and saved/uploaded proof of date sent" },
+      { key: "mvs_site_run", label: "Run Market Validation and Site Analysis on desired location — INTERNAL ONLY" },
+      { key: "sent_bg_auth", label: "Run Background Check and Run Credit Check" },
     ],
     homework: [
-      { key: "rfc_part2", label: "Complete Request for Consideration – Part 2 (financial)" },
+      { key: "rfc_part2", label: "Complete and return Background Check and Credit Check Authorization Form" },
       { key: "signed_item23", label: "Sign and return Item 23 of the FDD" },
       { key: "personality_profile", label: "Complete personality profile assessment" },
     ],
     fields: [
+      { key: "website_questions", label: "What questions came up as you explored neurongarage.com and neurongaragefranchise.com?", type: "textarea" },
+      { key: "since_last_call", label: "What’s been on your mind since we talked? What are you excited about, and what are you unsure about?", type: "textarea" },
       { key: "credit_score", label: "Credit score", type: "number", hint: "Credit shows the ability to run a personal business; the national average is 683 and the target is 720+. Exceptions may include divorce or catastrophic health events." },
       { key: "background_result", label: "Background check summary", type: "textarea", hint: "Background results should be reviewed for recency, decency, frequency, and whether the candidate learned from the event." },
     ],
@@ -453,30 +455,12 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                   </>
                 )}
 
-                {step.fields && step.fields.length > 0 && (
-                  <div className="space-y-3 mb-4">
-                    {step.fields.map((f) => (
-                      <div key={f.key}>
-                        <Label className="text-xs" style={{ color: "#07142f" }}>{f.label}</Label>
-                        {f.type === "textarea" ? (
-                          <Textarea
-                            value={(row.data?.[f.key] as string) ?? ""}
-                            onChange={(e) => updateField(step.num, f.key, e.target.value)}
-                            className="mt-1 text-sm"
-                            rows={3}
-                          />
-                        ) : (
-                          <Input
-                            type={f.type}
-                            value={(row.data?.[f.key] as string | number) ?? ""}
-                            onChange={(e) => updateField(step.num, f.key, f.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value)}
-                            className="mt-1 text-sm"
-                          />
-                        )}
-                        {f.hint && <div className="text-[11px] mt-1" style={{ color: "#8893a7" }}>{f.hint}</div>}
-                      </div>
-                    ))}
-                  </div>
+                {step.num === 2 && (
+                  <StepFields
+                    fields={step.fields?.filter((f) => f.key === "website_questions" || f.key === "since_last_call") ?? []}
+                    data={row.data}
+                    onField={(k, v) => updateField(step.num, k, v)}
+                  />
                 )}
 
                 {step.num === 4 && (
@@ -538,6 +522,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                             ) : null
                         : undefined
                     }
+                    renderDetail={step.num === 2 ? (item) => item.key === "sent_bg_auth" ? (
+                      <StepFields
+                        fields={step.fields?.filter((f) => f.key === "background_result" || f.key === "credit_score") ?? []}
+                        data={row.data}
+                        onField={(k, v) => updateField(step.num, k, v)}
+                      />
+                    ) : null : undefined}
                   />
                 )}
 
@@ -648,6 +639,7 @@ function ChecklistBlock({
   state,
   onToggle,
   renderAction,
+  renderDetail,
 }: {
   title: string;
   items: { key: string; label: string }[];
@@ -655,25 +647,63 @@ function ChecklistBlock({
   onToggle: (key: string, value: boolean) => void;
   /** Optional trailing control per item (used for homework uploads). */
   renderAction?: (item: { key: string; label: string }) => React.ReactNode;
+  renderDetail?: (item: { key: string; label: string }) => React.ReactNode;
 }) {
   return (
     <div className="mt-3">
       <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>{title}</div>
       <div className="space-y-1.5">
         {items.map((i) => (
-          <div key={i.key} className="flex items-start gap-2 text-sm" style={{ color: "#07142f" }}>
-            <label className="flex items-start gap-2 cursor-pointer flex-1 min-w-0">
-              <Checkbox
-                checked={!!state?.[i.key]}
-                onCheckedChange={(v) => onToggle(i.key, !!v)}
-                className="mt-0.5"
-              />
-              <span>{i.label}</span>
-            </label>
-            {renderAction?.(i)}
+          <div key={i.key} className="text-sm" style={{ color: "#07142f" }}>
+            <div className="flex items-start gap-2">
+              <label className="flex items-start gap-2 cursor-pointer flex-1 min-w-0">
+                <Checkbox
+                  checked={!!state?.[i.key]}
+                  onCheckedChange={(v) => onToggle(i.key, !!v)}
+                  className="mt-0.5"
+                />
+                <span>{i.label}</span>
+              </label>
+              {renderAction?.(i)}
+            </div>
+            {renderDetail?.(i)}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function StepFields({ fields, data, onField }: {
+  fields: NonNullable<StepDef["fields"]>;
+  data: Record<string, any>;
+  onField: (key: string, value: string | number) => void;
+}) {
+  return (
+    <div className="space-y-3 my-3">
+      {fields.map((f) => (
+        <div key={f.key}>
+          <Label htmlFor={`process-${f.key}`} className="text-xs" style={{ color: "#07142f" }}>{f.label}</Label>
+          {f.type === "textarea" ? (
+            <Textarea
+              id={`process-${f.key}`}
+              value={(data?.[f.key] as string) ?? ""}
+              onChange={(e) => onField(f.key, e.target.value)}
+              className="mt-1 text-sm"
+              rows={3}
+            />
+          ) : (
+            <Input
+              id={`process-${f.key}`}
+              type={f.type}
+              value={(data?.[f.key] as string | number) ?? ""}
+              onChange={(e) => onField(f.key, f.type === "number" ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value)}
+              className="mt-1 text-sm"
+            />
+          )}
+          {f.hint && <div className="text-[11px] mt-1" style={{ color: "#8893a7" }}>{f.hint}</div>}
+        </div>
+      ))}
     </div>
   );
 }

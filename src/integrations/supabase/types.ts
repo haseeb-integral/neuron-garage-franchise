@@ -2637,6 +2637,47 @@ export type Database = {
         }
         Relationships: []
       }
+      sequence_variants: {
+        Row: {
+          body: string | null
+          campaign_cache_id: string
+          created_at: string
+          delay_days: number | null
+          id: string
+          step_number: number
+          subject: string | null
+          variant_label: string
+        }
+        Insert: {
+          body?: string | null
+          campaign_cache_id: string
+          created_at?: string
+          delay_days?: number | null
+          id?: string
+          step_number: number
+          subject?: string | null
+          variant_label: string
+        }
+        Update: {
+          body?: string | null
+          campaign_cache_id?: string
+          created_at?: string
+          delay_days?: number | null
+          id?: string
+          step_number?: number
+          subject?: string | null
+          variant_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequence_variants_campaign_cache_id_fkey"
+            columns: ["campaign_cache_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_cache"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_analyses: {
         Row: {
           accessibility_score: number | null

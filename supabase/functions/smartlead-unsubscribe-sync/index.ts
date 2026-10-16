@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   const failed: Array<{ campaign_id: string; error: string }> = [];
   const seen = new Set<string>();
 
-  for (const c of campaigns ?? []) {
+  for (const c of (campaigns ?? []).filter((x: any) => /^\d+$/.test(String(x.id)))) {
     try {
       const emails: string[] = [];
       const limit = 100;

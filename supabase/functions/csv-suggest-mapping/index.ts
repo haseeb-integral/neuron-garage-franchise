@@ -78,18 +78,37 @@ Rules:
 Return JSON.`;
 
 
-    const { output } = await generateText({
-      model: gateway("google/gemini-3-flash-preview"),
-      output: Output.object({ schema: Schema }),
-      prompt,
-    });
+    // Deterministic pass first: exact header-name matches never need the AI.
+    const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    const exact: { target_field: string; csv_header: string }[] = [];
+    for (const h of headers) {
+      const n = norm(h);
+      if ((TARGET_FIELDS as readonly string[]).includes(n)) exact.push({ target_field: n, csv_header: h });
+      else if (n === "outreach_status_source") exact.push({ target_field: "outreach_status", csv_header: h });
+    }
+
+    // AI pass: if the model returns malformed output, fall back to exact matches
+    // instead of failing the whole request.
+    let aiMappings: { target_field: string; csv_header: string }[] = [];
+    let reasoning = "Matched by exact column names.";
+    try {
+      const { output } = await generateText({
+        model: gateway("google/gemini-3-flash-preview"),
+        output: Output.object({ schema: Schema }),
+        prompt,
+      });
+      aiMappings = output?.mappings ?? [];
+      reasoning = output?.reasoning ?? reasoning;
+    } catch (aiErr) {
+      console.warn("AI mapping failed, using exact matches only:", (aiErr as Error).message);
+    }
 
     // Sanity-check: keep only known target fields + real headers, no double-use
     const headerSet = new Set(headers);
     const fieldSet = new Set<string>(TARGET_FIELDS);
     const cleaned: Record<string, string | null> = {};
     const used = new Set<string>();
-    for (const m of output?.mappings ?? []) {
+    for (const m of [...exact, ...aiMappings]) {
       const f = String(m?.target_field ?? "");
       const h = String(m?.csv_header ?? "");
       if (!fieldSet.has(f) || !headerSet.has(h) || cleaned[f] || used.has(h)) continue;
@@ -98,7 +117,7 @@ Return JSON.`;
     }
     const unmapped = headers.filter((h) => !used.has(h));
 
-    return json({ mapping: cleaned, unmapped, reasoning: output.reasoning });
+    return json({ mapping: cleaned, unmapped, reasoning });
   } catch (e) {
     const msg = (e as Error).message ?? String(e);
     const status = msg.includes("429") ? 429 : msg.includes("402") ? 402 : 500;

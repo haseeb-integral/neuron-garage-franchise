@@ -1380,6 +1380,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_accounts: {
+        Row: {
+          created_at: string
+          daily_limit: number | null
+          daily_sent: number
+          email: string
+          id: string
+          last_synced_at: string | null
+          provider: string | null
+          smartlead_id: number
+          warmup_enabled: boolean
+          warmup_reputation: number | null
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number | null
+          daily_sent?: number
+          email: string
+          id?: string
+          last_synced_at?: string | null
+          provider?: string | null
+          smartlead_id: number
+          warmup_enabled?: boolean
+          warmup_reputation?: number | null
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number | null
+          daily_sent?: number
+          email?: string
+          id?: string
+          last_synced_at?: string | null
+          provider?: string | null
+          smartlead_id?: number
+          warmup_enabled?: boolean
+          warmup_reputation?: number | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string

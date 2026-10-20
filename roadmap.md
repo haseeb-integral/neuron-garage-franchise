@@ -8,7 +8,8 @@ Verified: 10 tests passed; address save/reload and default footers passed; deplo
 Live SmartLead activation remains unverified because its key is rejected; the campaign-list address rule is covered by the shared validation tests.
 
 ## Approved Phase 3
-- [ ] Secure the unsubscribe sync for scheduled calls and signed-in staff.
-- [ ] Add manual sync, result messages, last-added time, and a 60-second cooldown to Email Accounts.
-- [ ] Install one daily timer at 07:00 UTC (2 AM Central winter; 1 AM summer, per approved plan).
-- [ ] Run rule tests and signed-in checks. Live SmartLead success may remain blocked by its key.
+- [x] Restrict sync to verified staff or protected server calls; invalid tokens return 401.
+- [x] Add manual sync, result messages, last-added time, and a 60-second cooldown to Email Accounts.
+- [ ] Enable the daily 07:00 UTC timer. Created job 86, but paused after its saved server credential failed authentication. Repair is blocked by managed secret access; no existing timer or managed secret was changed.
+- [x] Run rule tests and signed-in checks: 12 tests passed; actual manual POST returned 200 with 9 failed campaigns and 0 new unsubscribes; cooldown disabled the button and reenabled it after 60 seconds. No emails sent.
+- [ ] Verify a successful real sync after SmartLead accepts its API key. Both manual and scheduled success remain blocked by the rejected key.

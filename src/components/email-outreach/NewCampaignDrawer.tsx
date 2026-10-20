@@ -4,15 +4,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
 import { canSpamFooter, checkCanSpam, hasUnsubscribeTag, UNSUBSCRIBE_TAG } from "@/lib/canSpam";
+import { loadCompanyMailingAddress } from "@/lib/companyMailingAddress";
 
 type SequenceStep = { day: number; subject: string; body: string };
 
-const FOOTER = canSpamFooter();
-
-const DEFAULT_SEQUENCES = (): SequenceStep[] => [
-  { day: 1, subject: "Quick question, {{first_name}}", body: `Hi {{first_name}},\n\n…${FOOTER}` },
-  { day: 3, subject: "Following up", body: `Just wanted to bump this.${FOOTER}` },
-  { day: 7, subject: "Last note", body: `Closing the loop.${FOOTER}` },
+const DEFAULT_SEQUENCES = (address = ""): SequenceStep[] => [
+  { day: 1, subject: "Quick question, {{first_name}}", body: `Hi {{first_name}},\n\n…${canSpamFooter(address)}` },
+  { day: 3, subject: "Following up", body: `Just wanted to bump this.${canSpamFooter(address)}` },
+  { day: 7, subject: "Last note", body: `Closing the loop.${canSpamFooter(address)}` },
 ];
 
 export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: () => void }) {
@@ -136,7 +135,18 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
   const [trackClicks, setTrackClicks] = useState(true);
   const [stopOnReply, setStopOnReply] = useState(true);
   // Step 4
-  const [sequences, setSequences] = useState<SequenceStep[]>(DEFAULT_SEQUENCES);
+  const [sequences, setSequences] = useState<SequenceStep[]>(() => DEFAULT_SEQUENCES());
+  const [mailingAddress, setMailingAddress] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    loadCompanyMailingAddress().then((address) => {
+      if (cancelled) return;
+      setMailingAddress(address);
+      setSequences((prev) => JSON.stringify(prev) === JSON.stringify(DEFAULT_SEQUENCES()) ? DEFAULT_SEQUENCES(address) : prev);
+    }).catch(() => { if (!cancelled) setMailingAddress(""); });
+    return () => { cancelled = true; };
+  }, [open]);
 
   const profileEmail = profile?.email ?? user?.email ?? "";
   const effectiveTestRecipient = testOverride.trim() || profileEmail;
@@ -151,6 +161,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
       setDays(["1", "2", "3", "4", "5"]); setDailyCap(200); setMinGapMinutes(1);
       setTrackOpens(true); setTrackClicks(true); setStopOnReply(true);
       setSequences(DEFAULT_SEQUENCES());
+      setMailingAddress("");
     }
   }, [open]);
 
@@ -181,17 +192,16 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     if (!sequences.length) return "Add at least one email step.";
     const badStep = sequences.find((sequence) => !sequence.subject.trim() || !sequence.body.trim() || sequence.day < 1);
     if (badStep) return "Each sequence step needs a valid day, subject, and body.";
-    // CAN-SPAM: no campaign goes live without an unsubscribe link, and no real
-    // (non-test) campaign goes live without a physical mailing address.
+    // Test campaigns follow the same mailing address safety rule.
     if (launch) {
-      const legal = checkCanSpam(sequences.map((s) => s.body), { requireAddress: !testMode });
+      const legal = checkCanSpam(sequences.map((s) => s.body), { address: mailingAddress });
       if (legal) return legal;
     }
     return null;
   };
 
   const submit = async (launch: boolean) => {
-    const error = validate(launch);
+    const error = validate(false);
     if (error) {
       setValidationError(error);
       toast.error(error);
@@ -201,6 +211,11 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
     setValidationError(null);
     setBusy(true);
     try {
+      if (launch) {
+        const address = await loadCompanyMailingAddress();
+        const legal = checkCanSpam(sequences.map((s) => s.body), { address });
+        if (legal) { setValidationError(legal); toast.error(legal); return; }
+      }
       const created = await callSmartLeadProxy("/campaigns/create", "POST", { name: testMode ? `[TEST] ${name.trim()}` : name.trim() });
       const id = created?.id ?? created?.campaign_id ?? created?.data?.id;
       if (!id) throw new Error("SmartLead did not return a campaign id");
@@ -506,7 +521,7 @@ export function NewCampaignDrawer({ open, onClose, onCreated }: { open: boolean;
                   )}
                 </div>
               ))}
-              <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: FOOTER }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>
+              <button onClick={() => setSequences((prev) => [...prev, { day: (prev[prev.length - 1]?.day ?? 1) + 3, subject: "", body: canSpamFooter(mailingAddress) }])} className="text-xs font-bold text-[#174be8]">+ Add step</button>
             </div>
           )}
         </div>

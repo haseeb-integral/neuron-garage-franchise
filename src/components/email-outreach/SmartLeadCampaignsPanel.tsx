@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Mail, ExternalLink, AlertCircle, Play, Pause, Square, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
-import { findMissingUnsubscribe, sequencesMissingUnsubscribe } from "@/lib/canSpam";
+import { findMissingUnsubscribe, sequencesMissingUnsubscribe, checkSequenceMailingAddress } from "@/lib/canSpam";
+import { loadCompanyMailingAddress } from "@/lib/companyMailingAddress";
+import { ADDRESS_REQUIRED_MESSAGE, isConfiguredAddress } from "../../../supabase/functions/_shared/canSpamAddress";
 
 // Compliance cache: campaign id -> { compliant, checkedAt }. SmartLead allows
 // ~10 requests / 2s, so we batch and reuse results for 10 minutes.
@@ -122,22 +124,30 @@ export function SmartLeadCampaignsPanel() {
     setActing(actionKey);
     try {
       if (status === "START") {
+        const address = await loadCompanyMailingAddress();
+        if (!isConfiguredAddress(address)) throw new Error(ADDRESS_REQUIRED_MESSAGE);
         // CAN-SPAM pre-flight: every email step needs the unsubscribe tag.
         complianceCache.delete(String(c.id));
         let compliant = false;
+        let sequenceList: unknown;
         try {
-          compliant = await fetchCompliance(String(c.id));
+          const sequenceRes = await callSmartLeadProxy(`/campaigns/${c.id}/sequences`, "GET");
+          sequenceList = Array.isArray(sequenceRes) ? sequenceRes : sequenceRes?.data;
+          compliant = !sequencesMissingUnsubscribe(sequenceList);
+          complianceCache.set(String(c.id), { compliant, missing: findMissingUnsubscribe(sequenceList), checkedAt: Date.now() });
         } catch {
           throw new Error("Could not read this campaign's email steps to check the unsubscribe link. Try again.");
         }
         setCompliance((prev) => ({ ...prev, [String(c.id)]: compliant }));
         if (!compliant) {
           toast.error(
-            "Cannot activate: one or more email steps are missing the {{unsubscribe}} tag. CAN-SPAM requires an unsubscribe link in every outgoing email.",
+            `Cannot activate: missing {{unsubscribe}} in ${complianceCache.get(String(c.id))?.missing.join("; ") || "one or more email versions"}.`,
           );
           setActing(null);
           return;
         }
+        const mailingProblem = checkSequenceMailingAddress(sequenceList, address);
+        if (mailingProblem) throw new Error(mailingProblem);
         await applyDefaultLaunchSetup(c.id);
       }
       await callSmartLeadProxy(`/campaigns/${c.id}/status`, "POST", { status });

@@ -37,9 +37,12 @@ Deno.serve(async (req) => {
   // Ordinary callers must have a verified session and a staff role.
   if (token !== serviceKey) {
     const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims?.sub) return json({ error: "Sign in to sync unsubscribes" }, 401);
-    const { data: staff, error: roleError } = await supabase.rpc("is_staff", { _user_id: data.claims.sub });
-    if (roleError || !staff) return json({ error: "Staff access required" }, 403);
+    if (error || !data?.claims) return json({ error: "Sign in to sync unsubscribes" }, 401);
+    if (data.claims.role !== "service_role") {
+      if (!data.claims.sub) return json({ error: "Sign in to sync unsubscribes" }, 401);
+      const { data: staff, error: roleError } = await supabase.rpc("is_staff", { _user_id: data.claims.sub });
+      if (roleError || !staff) return json({ error: "Staff access required" }, 403);
+    }
   }
   try {
     const body = await req.text();

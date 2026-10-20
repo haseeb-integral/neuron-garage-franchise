@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod@3";
 
 // Daily job (and manual POST): pulls unsubscribed leads from every SmartLead
 // campaign and adds new ones to suppressed_emails. Server-side only.
@@ -15,7 +16,7 @@ async function slGet(path: string, apiKey: string): Promise<any> {
     const res = await fetch(url);
     if (res.status === 429) { await sleep(2 ** attempt * 1000); continue; }
     const text = await res.text();
-    if (!res.ok) throw new Error(`SmartLead ${res.status}: ${text.slice(0, 200)}`);
+    if (!res.ok) throw new Error(`SmartLead ${res.status}${res.status === 401 ? ": API key rejected" : ": request failed"}`);
     return JSON.parse(text);
   }
   throw new Error("SmartLead rate limit after retries");
@@ -23,10 +24,32 @@ async function slGet(path: string, apiKey: string): Promise<any> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Use POST" }, 405);
+
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) return json({ error: "Server configuration error" }, 500);
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Sign in to sync unsubscribes" }, 401);
+  const token = authHeader.slice(7);
+  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+  // The daily callback uses the existing protected server credential.
+  // Ordinary callers must have a verified session and a staff role.
+  if (token !== serviceKey) {
+    const { data, error } = await supabase.auth.getClaims(token);
+    if (error || !data?.claims?.sub) return json({ error: "Sign in to sync unsubscribes" }, 401);
+    const { data: staff, error: roleError } = await supabase.rpc("is_staff", { _user_id: data.claims.sub });
+    if (roleError || !staff) return json({ error: "Staff access required" }, 403);
+  }
+  try {
+    const body = await req.text();
+    const parsed = z.object({ time: z.string().datetime().optional() }).strict().safeParse(body ? JSON.parse(body) : {});
+    if (!parsed.success) return json({ error: "Invalid sync request" }, 400);
+    if ([...new URL(req.url).searchParams].length > 0) return json({ error: "No query parameters allowed" }, 400);
+  } catch { return json({ error: "Invalid JSON" }, 400); }
 
   const apiKey = Deno.env.get("SMARTLEAD_API_KEY");
   if (!apiKey) return json({ error: "SMARTLEAD_API_KEY not configured" }, 500);
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   const { data: campaigns, error: cErr } = await supabase.from("campaign_cache").select("id");
   if (cErr) return json({ error: "campaign_query_failed", detail: cErr.message }, 500);
@@ -52,7 +75,8 @@ Deno.serve(async (req) => {
       }
       if (emails.length === 0) continue;
 
-      const { data: existing } = await supabase.from("suppressed_emails").select("email").in("email", emails);
+      const { data: existing, error: existingError } = await supabase.from("suppressed_emails").select("email").in("email", emails);
+      if (existingError) throw new Error("Could not read existing unsubscribes");
       const have = new Set((existing ?? []).map((x: any) => String(x.email).toLowerCase()));
       const fresh = emails.filter((e) => !have.has(e));
       alreadySuppressed += emails.length - fresh.length;
@@ -81,8 +105,8 @@ Deno.serve(async (req) => {
   }
 
   const summary = {
-    ok: true,
-    campaigns_checked: campaigns?.length ?? 0,
+    ok: failed.length === 0,
+    campaigns_checked: (campaigns ?? []).filter((c) => /^\d+$/.test(String(c.id))).length,
     new_suppressions_added: added,
     already_suppressed_skipped: alreadySuppressed,
     failed_campaigns: failed,

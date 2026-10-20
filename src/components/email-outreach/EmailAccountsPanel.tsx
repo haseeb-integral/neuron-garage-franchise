@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Mail, Plus, AlertCircle, Flame, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { UnsubscribeSyncControls } from "./UnsubscribeSyncControls";
 
 async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
   const { data, error } = await supabase.functions.invoke("smartlead-proxy", { body: { endpoint, method, payload } });
@@ -53,20 +54,24 @@ export function EmailAccountsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center rounded-xl border border-[#e7edf5] bg-white py-16"><Loader2 className="mr-2 h-5 w-5 animate-spin text-[#174be8]" /><span className="text-sm text-[#526078]">Loading email accounts…</span></div>;
+    return <div className="space-y-3"><UnsubscribeSyncControls /><div className="flex items-center justify-center rounded-xl border border-[#e7edf5] bg-white py-16"><Loader2 className="mr-2 h-5 w-5 animate-spin text-[#174be8]" /><span className="text-sm text-[#526078]">Loading email accounts…</span></div></div>;
   }
   if (error) {
     return (
+      <div className="space-y-3">
+      <UnsubscribeSyncControls />
       <div className="rounded-xl border border-red-200 bg-red-50 p-6">
         <div className="flex items-center gap-2 text-red-700"><AlertCircle size={16} /><span className="text-sm font-bold">Could not load email accounts</span></div>
         <p className="mt-2 text-xs text-red-700">{error}</p>
         <button onClick={() => void load()} className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700">Retry</button>
+      </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      <UnsubscribeSyncControls />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xs font-black uppercase tracking-wide text-[#07142f]">Email Accounts</h2>

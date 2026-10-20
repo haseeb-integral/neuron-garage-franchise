@@ -1209,6 +1209,27 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          id: boolean
+          mailing_address: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          mailing_address?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          mailing_address?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       csi_tier_thresholds: {
         Row: {
           city_count: number | null

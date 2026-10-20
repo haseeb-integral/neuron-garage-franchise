@@ -21,6 +21,7 @@ import { ProspectBatchesPanel } from "@/components/email-outreach/ProspectBatche
 import { AnalyticsPanel } from "@/components/email-outreach/AnalyticsPanel";
 import { NewCampaignDrawer } from "@/components/email-outreach/NewCampaignDrawer";
 import { EmailAccountsPanel } from "@/components/email-outreach/EmailAccountsPanel";
+import { CompanyMailingAddressCard } from "@/components/email-outreach/CompanyMailingAddressCard";
 import { OutreachQueuePanel } from "@/components/email-outreach/OutreachQueuePanel";
 import { EnrichmentJobsPanel } from "@/components/email-outreach/EnrichmentJobsPanel";
 
@@ -278,6 +279,7 @@ export default function EmailOutreachV2() {
             </button>
             {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
           </div>
+          <CompanyMailingAddressCard />
           <EmailAccountsPanel />
           <EnrichmentJobsPanel />
           <AnalyticsPanel />

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
 import { findMissingUnsubscribe, sequencesMissingUnsubscribe, checkSequenceMailingAddress } from "@/lib/canSpam";
 import { loadCompanyMailingAddress } from "@/lib/companyMailingAddress";
+import { ADDRESS_REQUIRED_MESSAGE, isConfiguredAddress } from "../../../supabase/functions/_shared/canSpamAddress";
 
 // Compliance cache: campaign id -> { compliant, checkedAt }. SmartLead allows
 // ~10 requests / 2s, so we batch and reuse results for 10 minutes.
@@ -124,13 +125,16 @@ export function SmartLeadCampaignsPanel() {
     try {
       if (status === "START") {
         const address = await loadCompanyMailingAddress();
-        const addressProblem = checkSequenceMailingAddress([{ email_body: address }], address);
-        if (addressProblem) throw new Error(addressProblem);
+        if (!isConfiguredAddress(address)) throw new Error(ADDRESS_REQUIRED_MESSAGE);
         // CAN-SPAM pre-flight: every email step needs the unsubscribe tag.
         complianceCache.delete(String(c.id));
         let compliant = false;
+        let sequenceList: unknown;
         try {
-          compliant = await fetchCompliance(String(c.id));
+          const sequenceRes = await callSmartLeadProxy(`/campaigns/${c.id}/sequences`, "GET");
+          sequenceList = Array.isArray(sequenceRes) ? sequenceRes : sequenceRes?.data;
+          compliant = !sequencesMissingUnsubscribe(sequenceList);
+          complianceCache.set(String(c.id), { compliant, missing: findMissingUnsubscribe(sequenceList), checkedAt: Date.now() });
         } catch {
           throw new Error("Could not read this campaign's email steps to check the unsubscribe link. Try again.");
         }
@@ -142,8 +146,6 @@ export function SmartLeadCampaignsPanel() {
           setActing(null);
           return;
         }
-        const sequenceRes = await callSmartLeadProxy(`/campaigns/${c.id}/sequences`, "GET");
-        const sequenceList = Array.isArray(sequenceRes) ? sequenceRes : sequenceRes?.data;
         const mailingProblem = checkSequenceMailingAddress(sequenceList, address);
         if (mailingProblem) throw new Error(mailingProblem);
         await applyDefaultLaunchSetup(c.id);

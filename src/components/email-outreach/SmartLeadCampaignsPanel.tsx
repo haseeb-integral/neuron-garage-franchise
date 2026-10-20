@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Loader2, RefreshCw, Mail, ExternalLink, AlertCircle, Play, Pause, Square, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { callSmartLeadProxy, getSmartLeadErrorMessage } from "@/components/email-outreach/smartleadErrors";
-import { sequencesMissingUnsubscribe } from "@/lib/canSpam";
+import { findMissingUnsubscribe, sequencesMissingUnsubscribe } from "@/lib/canSpam";
 
 // Compliance cache: campaign id -> { compliant, checkedAt }. SmartLead allows
 // ~10 requests / 2s, so we batch and reuse results for 10 minutes.
 const COMPLIANCE_TTL_MS = 10 * 60 * 1000;
-const complianceCache = new Map<string, { compliant: boolean; checkedAt: number }>();
+const complianceCache = new Map<string, { compliant: boolean; missing: string[]; checkedAt: number }>();
 
 async function fetchCompliance(id: string): Promise<boolean> {
   const cached = complianceCache.get(id);
@@ -15,7 +15,7 @@ async function fetchCompliance(id: string): Promise<boolean> {
   const res = await callSmartLeadProxy(`/campaigns/${id}/sequences`, "GET");
   const list = Array.isArray(res) ? res : ((res as { data?: unknown })?.data ?? []);
   const compliant = !sequencesMissingUnsubscribe(list);
-  complianceCache.set(id, { compliant, checkedAt: Date.now() });
+  complianceCache.set(id, { compliant, missing: findMissingUnsubscribe(list), checkedAt: Date.now() });
   return compliant;
 }
 

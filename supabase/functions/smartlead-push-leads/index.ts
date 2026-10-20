@@ -1,24 +1,21 @@
 // Push verified teacher_prospects from the Master Pool into a SmartLead campaign.
 // Sprint 2 of v1.2 plan. Records each successful push in outreach_queue.
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod@3";
+import { checkSequenceMailingAddress, isConfiguredAddress, ADDRESS_REQUIRED_MESSAGE } from "../_shared/canSpamAddress.ts";
 
 const SMARTLEAD_BASE = "https://server.smartlead.ai/api/v1";
 
-interface PushBody {
-  campaign_id: string | number;
-  state?: string | null;
-  city?: string | null;
-  teacher_prospect_ids?: string[];
-  include_catch_all?: boolean;
-  limit?: number;
-  dry_run?: boolean;
-}
+const PushSchema = z.object({
+  campaign_id: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]),
+  state: z.string().max(100).nullable().optional(),
+  city: z.string().max(255).nullable().optional(),
+  teacher_prospect_ids: z.array(z.string().uuid()).max(5000).optional(),
+  include_catch_all: z.boolean().optional(),
+  limit: z.number().int().min(1).max(5000).optional(),
+  dry_run: z.boolean().optional(),
+});
 
 const hasUnsubscribeTag = (text: string) => /\{\{\s*unsubscribe\s*\}\}/i.test(text);
 
@@ -66,21 +63,34 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return json({ error: "Unauthorized" }, 401);
     }
+    const url = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!url || !serviceKey || !anonKey) return json({ error: "Server settings are unavailable" }, 500);
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      url,
+      serviceKey,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const userClient = createClient(url, anonKey);
     const { data: claims, error: authErr } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
     if (authErr || !claims?.claims) return json({ error: "Unauthorized" }, 401);
     const userId = (claims.claims as { sub?: string }).sub ?? null;
 
+    const parsedBody = PushSchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsedBody.success) return json({ error: parsedBody.error.flatten().fieldErrors }, 400);
+    const body = parsedBody.data;
+
+    // Read with the service role, without the caller's authorization header.
+    const settingsClient = createClient(url, serviceKey);
+    const { data: settings, error: settingsError } = await settingsClient
+      .from("company_settings").select("mailing_address").eq("id", true).maybeSingle();
+    if (settingsError) return json({ error: "Could not load the company mailing address. No leads were pushed." }, 500);
+    const address = settings?.mailing_address?.trim() ?? "";
+    if (!isConfiguredAddress(address)) return json({ error: ADDRESS_REQUIRED_MESSAGE }, 400);
+
     const apiKey = Deno.env.get("SMARTLEAD_API_KEY");
     if (!apiKey) return json({ error: "SMARTLEAD_API_KEY not configured" }, 500);
-
-    const body = (await req.json().catch(() => ({}))) as PushBody;
-    if (!body.campaign_id) return json({ error: "campaign_id is required" }, 400);
 
     // CAN-SPAM gate: never push leads into a campaign whose email steps are
     // missing the unsubscribe tag. Runs for dry runs too.
@@ -106,6 +116,8 @@ Deno.serve(async (req) => {
           non_compliant_variants: missing,
         }, 400);
       }
+      const addressProblem = checkSequenceMailingAddress(sequences, address);
+      if (addressProblem) return json({ error: addressProblem }, 400);
     }
 
     // Build query: verified (+ optionally catch_all) prospects with valid emails

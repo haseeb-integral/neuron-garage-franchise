@@ -28,6 +28,8 @@ async function slGet(path: string, apiKey: string): Promise<any> {
 const asList = (raw: any): any[] => Array.isArray(raw) ? raw : (raw?.data ?? raw?.email_accounts ?? []);
 const num = (v: unknown): number | null => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 
+const clampRep = (n: number | null) => n === null ? null : Math.max(0, Math.min(100, Math.round(n)));
+
 function providerOf(a: any): string {
   const t = String(a?.type ?? a?.provider ?? "").toLowerCase();
   if (t.includes("gmail") || t.includes("google")) return "gmail";
@@ -69,12 +71,12 @@ Deno.serve(async (req) => {
       accounts.push(...rows);
       if (rows.length < 100) break;
     }
-    const rows = accounts.filter((a) => num(a?.id) !== null).map((a) => ({
+    const rows = accounts.filter((a) => num(a?.id) !== null && String(a.from_email ?? a.email ?? a.username ?? "").trim()).map((a) => ({
       smartlead_id: num(a.id)!,
       email: String(a.from_email ?? a.email ?? a.username ?? "").trim().toLowerCase() || null,
       provider: providerOf(a),
       warmup_enabled: String(a?.warmup_details?.status ?? "").toLowerCase() === "active" || a?.warmup_enabled === true,
-      warmup_reputation: num(String(a?.warmup_details?.warmup_reputation ?? a?.warmup_reputation ?? "").replace("%", "")),
+      warmup_reputation: clampRep(num(String(a?.warmup_details?.warmup_reputation ?? a?.warmup_reputation ?? "").replace("%", ""))),
       daily_limit: num(a.message_per_day ?? a.daily_limit),
       daily_sent: num(a.daily_sent_count ?? a.daily_sent) ?? 0,
       last_synced_at: now,

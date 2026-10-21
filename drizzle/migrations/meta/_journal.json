@@ -85,6 +85,13 @@
       "when": 1792459759642,
       "tag": "0011_company_settings_mailing_address",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792548821252,
+      "tag": "0012_campaign_mailbox_assignments",
+      "breakpoints": true
     }
   ]
 }

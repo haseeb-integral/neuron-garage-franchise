@@ -234,6 +234,36 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_mailbox_assignments: {
+        Row: {
+          campaign_cache_id: string
+          created_at: string
+          email: string | null
+          email_account_smartlead_id: number
+          id: string
+          last_synced_at: string
+          smartlead_campaign_id: number
+        }
+        Insert: {
+          campaign_cache_id: string
+          created_at?: string
+          email?: string | null
+          email_account_smartlead_id: number
+          id?: string
+          last_synced_at?: string
+          smartlead_campaign_id: number
+        }
+        Update: {
+          campaign_cache_id?: string
+          created_at?: string
+          email?: string | null
+          email_account_smartlead_id?: number
+          id?: string
+          last_synced_at?: string
+          smartlead_campaign_id?: number
+        }
+        Relationships: []
+      }
       candidate_activities: {
         Row: {
           actor_email: string | null

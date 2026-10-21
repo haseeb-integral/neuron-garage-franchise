@@ -25,8 +25,9 @@ describe("recomputeCategoryScore", () => {
         median_household_income: 97500, // mid of 45000..150000 -> ~50
         dual_income_household_pct: 91.5,// mid of 85..98 -> ~50
         education_bachelors_plus_pct: 42.5, // mid of 15..70 -> ~50
+        affluent_families_score: 50,    // mid of 0..100 -> 50 (5th demand metric, feature-flagged)
       },
-      { children_5_12_count: 30, median_household_income: 25, dual_income_household_pct: 20, education_bachelors_plus_pct: 25 },
+      { children_5_12_count: 30, median_household_income: 25, dual_income_household_pct: 20, education_bachelors_plus_pct: 25, affluent_families_score: 30 },
       null,
     );
     expect(res.usedServerFallback).toBe(false);

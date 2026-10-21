@@ -12,112 +12,160 @@ async function callProxy(endpoint: string, method = "GET", payload?: unknown) {
 }
 
 type Account = {
-  id: number | string;
-  from_email?: string;
-  from_name?: string;
-  username?: string;
-  smtp_host?: string;
-  daily_sent_count?: number;
-  message_per_day?: number;
-  warmup_details?: { status?: string; total_sent_count?: number } | null;
-  is_smtp_success?: boolean;
+  id: string;
+  smartlead_id: number;
+  email: string;
+  provider: string | null;
+  warmup_enabled: boolean;
+  warmup_reputation: number | null;
+  daily_limit: number | null;
+  daily_sent: number;
+  last_synced_at: string | null;
 };
+type CampaignLink = { email_account_smartlead_id: number; campaign_cache_id: string };
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "Never synced";
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "Last synced: just now";
+  if (mins < 60) return `Last synced: ${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return `Last synced: ${hrs} hr ago`;
+  return `Last synced: ${Math.round(hrs / 24)} days ago`;
+}
 
 export function EmailAccountsPanel() {
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [campaignsBy, setCampaignsBy] = useState<Record<number, string[]>>({});
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
+  // Reads the app's saved copy — works even when SmartLead is down.
   const load = async () => {
     setLoading(true); setError(null);
     try {
-      const raw = await callProxy("/email-accounts", "GET");
-      const list: Account[] = Array.isArray(raw) ? raw : (raw?.data ?? raw?.email_accounts ?? []);
-      setAccounts(list);
+      const [acc, links, camps] = await Promise.all([
+        supabase.from("email_accounts").select("*").order("email"),
+        supabase.from("campaign_mailbox_assignments").select("email_account_smartlead_id,campaign_cache_id"),
+        supabase.from("campaign_cache").select("id,name"),
+      ]);
+      if (acc.error) throw acc.error;
+      if (links.error) throw links.error;
+      const names = new Map((camps.data ?? []).map((c) => [String(c.id), c.name ?? `Campaign ${c.id}`]));
+      const by: Record<number, string[]> = {};
+      for (const l of (links.data ?? []) as CampaignLink[]) {
+        (by[l.email_account_smartlead_id] ??= []).push(names.get(l.campaign_cache_id) ?? `Campaign ${l.campaign_cache_id}`);
+      }
+      setAccounts((acc.data ?? []) as Account[]);
+      setCampaignsBy(by);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load email accounts");
+      setError(e instanceof Error ? e.message : "Failed to load mailboxes");
     } finally { setLoading(false); }
+  };
+
+  const sync = async () => {
+    setSyncing(true); setSyncError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("smartlead-sync-mailboxes", { body: {} });
+      if (error) {
+        let msg = error.message;
+        try { const b = await (error as { context?: Response }).context?.json(); if (b?.error) msg = b.error; } catch { /* keep msg */ }
+        throw new Error(msg);
+      }
+      if (data?.ok === false) throw new Error(data.error ?? "Sync failed");
+      toast.success(`Synced ${data.mailboxes} mailboxes`);
+      await load();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Sync failed";
+      setSyncError(msg); toast.error(msg);
+    } finally { setSyncing(false); }
   };
 
   useEffect(() => { void load(); }, []);
 
   const toggleWarmup = async (acc: Account) => {
-    const currentlyOn = (acc.warmup_details?.status ?? "").toLowerCase() === "active";
     try {
-      await callProxy(`/email-accounts/${acc.id}/warmup`, "POST", { warmup_enabled: !currentlyOn });
-      toast.success(`Warmup ${!currentlyOn ? "enabled" : "disabled"} for ${acc.from_email ?? acc.id}`);
-      void load();
+      await callProxy(`/email-accounts/${acc.smartlead_id}/warmup`, "POST", { warmup_enabled: !acc.warmup_enabled });
+      toast.success(`Warmup ${!acc.warmup_enabled ? "enabled" : "disabled"} for ${acc.email}`);
+      void sync();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to toggle warmup");
     }
   };
 
-  if (loading) {
-    return <div className="space-y-3"><UnsubscribeSyncControls /><div className="flex items-center justify-center rounded-xl border border-[#e7edf5] bg-white py-16"><Loader2 className="mr-2 h-5 w-5 animate-spin text-[#174be8]" /><span className="text-sm text-[#526078]">Loading email accounts…</span></div></div>;
-  }
-  if (error) {
-    return (
-      <div className="space-y-3">
-      <UnsubscribeSyncControls />
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <div className="flex items-center gap-2 text-red-700"><AlertCircle size={16} /><span className="text-sm font-bold">Could not load email accounts</span></div>
-        <p className="mt-2 text-xs text-red-700">{error}</p>
-        <button onClick={() => void load()} className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700">Retry</button>
-      </div>
-      </div>
-    );
-  }
+  const lastSynced = accounts.reduce<string | null>((m, a) => (a.last_synced_at && (!m || a.last_synced_at > m) ? a.last_synced_at : m), null);
 
   return (
     <div className="space-y-2">
       <UnsubscribeSyncControls />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-xs font-black uppercase tracking-wide text-[#07142f]">Email Accounts</h2>
-          <p className="text-[11px] text-[#526078]">Sending mailboxes connected to SmartLead. Live warmup &amp; daily limits.</p>
+          <h2 className="text-xs font-black uppercase tracking-wide text-[#07142f]">Mailboxes</h2>
+          <p className="text-[11px] text-[#526078]">Saved copy of your SmartLead mailboxes. {timeAgo(lastSynced)}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => void load()} className="inline-flex items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-2 py-1 text-[11px] font-bold text-[#174be8]"><RefreshCw size={11} /> Refresh</button>
+          <button onClick={() => void sync()} disabled={syncing} className="inline-flex items-center gap-1 rounded-lg border border-[#dbe4f2] bg-white px-2 py-1 text-[11px] font-bold text-[#174be8] disabled:opacity-60">
+            {syncing ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Refresh Mailboxes
+          </button>
           <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1 rounded-lg bg-[#174be8] px-2 py-1 text-[11px] font-bold text-white"><Plus size={11} /> Add SMTP</button>
         </div>
       </div>
 
-      {accounts.length === 0 ? (
+      {syncError && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          <AlertCircle size={13} /> Could not refresh from SmartLead: {syncError} Showing the last saved copy.
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center rounded-xl border border-[#e7edf5] bg-white py-10"><Loader2 className="mr-2 h-5 w-5 animate-spin text-[#174be8]" /><span className="text-sm text-[#526078]">Loading mailboxes…</span></div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-2 text-red-700"><AlertCircle size={16} /><span className="text-sm font-bold">Could not load mailboxes</span></div>
+          <p className="mt-1 text-xs text-red-700">{error}</p>
+          <button onClick={() => void load()} className="mt-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700">Retry</button>
+        </div>
+      ) : accounts.length === 0 ? (
         <div className="rounded-xl border border-[#e7edf5] bg-white p-6 text-center">
           <Mail className="mx-auto mb-2 h-8 w-8 text-[#174be8]" />
-          <h3 className="text-sm font-black">No email accounts connected</h3>
-          <p className="mx-auto mt-1 max-w-md text-xs text-[#526078]">Connect a sending mailbox before starting a campaign. Warm each account for ~2 weeks first.</p>
-          <button onClick={() => setShowAdd(true)} className="mt-3 inline-flex items-center gap-1 rounded-lg bg-[#174be8] px-3 py-1.5 text-xs font-bold text-white"><Plus size={12} /> Add SMTP Account</button>
+          <h3 className="text-sm font-black">No mailboxes saved yet</h3>
+          <p className="mx-auto mt-1 max-w-md text-xs text-[#526078]">Press "Refresh Mailboxes" to copy them from SmartLead. Warm each new mailbox for about 2 weeks before sending.</p>
         </div>
       ) : (
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {accounts.map((a) => {
-            const warmOn = (a.warmup_details?.status ?? "").toLowerCase() === "active";
-            const dailyUsed = a.daily_sent_count ?? 0;
-            const dailyMax = a.message_per_day ?? 50;
-            const pct = Math.min(100, (dailyUsed / Math.max(1, dailyMax)) * 100);
+            const dailyMax = a.daily_limit ?? 50;
+            const pct = Math.min(100, (a.daily_sent / Math.max(1, dailyMax)) * 100);
+            const rep = a.warmup_reputation;
+            const repCls = rep === null ? "text-[#8794ab]" : rep >= 80 ? "text-emerald-700" : rep >= 50 ? "text-amber-700" : "text-red-700";
+            const camps = campaignsBy[a.smartlead_id] ?? [];
             return (
               <div key={a.id} className="rounded-xl border border-[#e7edf5] bg-white p-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-[13px] font-black leading-tight">{a.from_name ?? a.username ?? "Unnamed"}</div>
-                    <div className="truncate text-[11px] leading-tight text-[#526078]">{a.from_email ?? a.username}</div>
+                    <div className="truncate text-[13px] font-black leading-tight">{a.email}</div>
+                    <div className="text-[11px] capitalize leading-tight text-[#526078]">{a.provider ?? "smtp"}</div>
                   </div>
-                  <span className={`inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[10px] font-bold ${a.is_smtp_success === false ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
-                    {a.is_smtp_success === false ? "Issue" : "Healthy"}
-                  </span>
+                  <span className={`text-[11px] font-black tabular-nums ${repCls}`} title="Warmup reputation">{rep === null ? "—" : `${rep}%`}</span>
                 </div>
 
                 <div className="mt-2 flex items-center gap-2 text-[10px] font-bold text-[#34445f]">
-                  <span className="shrink-0">Daily</span>
+                  <span className="shrink-0">Sent today</span>
                   <div className="h-1 flex-1 rounded-full bg-[#edf2f8]"><div className="h-1 rounded-full bg-[#174be8]" style={{ width: `${pct}%` }} /></div>
-                  <span className="shrink-0 tabular-nums">{dailyUsed}/{dailyMax}</span>
+                  <span className="shrink-0 tabular-nums">{a.daily_sent}/{dailyMax}</span>
                 </div>
 
                 <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                  <span className="inline-flex items-center gap-1"><Flame size={11} className={warmOn ? "text-[#b7791f]" : "text-[#8794ab]"} /><span className="font-bold">Warmup</span><span className="text-[#526078]">{warmOn ? "Active" : "Off"}</span></span>
-                  <button onClick={() => toggleWarmup(a)} className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${warmOn ? "border border-[#dbe4f2] text-[#526078]" : "bg-[#174be8] text-white"}`}>{warmOn ? "Disable" : "Enable"}</button>
+                  <span className="inline-flex items-center gap-1"><Flame size={11} className={a.warmup_enabled ? "text-[#b7791f]" : "text-[#8794ab]"} /><span className="font-bold">Warmup</span><span className="text-[#526078]">{a.warmup_enabled ? "On" : "Off"}</span></span>
+                  <button onClick={() => toggleWarmup(a)} className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${a.warmup_enabled ? "border border-[#dbe4f2] text-[#526078]" : "bg-[#174be8] text-white"}`}>{a.warmup_enabled ? "Turn off" : "Turn on"}</button>
+                </div>
+
+                <div className="mt-1.5 text-[10px] text-[#526078]">
+                  <span className="font-bold text-[#34445f]">Campaigns: </span>
+                  {camps.length ? camps.join(", ") : "Not on any campaign"}
                 </div>
               </div>
             );
@@ -125,7 +173,7 @@ export function EmailAccountsPanel() {
         </div>
       )}
 
-      {showAdd && <AddSmtpModal onClose={() => setShowAdd(false)} onCreated={() => { setShowAdd(false); void load(); }} />}
+      {showAdd && <AddSmtpModal onClose={() => setShowAdd(false)} onCreated={() => { setShowAdd(false); void sync(); }} />}
     </div>
   );
 }

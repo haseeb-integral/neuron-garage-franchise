@@ -10,6 +10,6 @@ Live SmartLead activation remains unverified because its key is rejected; the ca
 ## Approved Phase 3
 - [x] Restrict sync to verified staff or protected server calls; invalid tokens return 401.
 - [x] Add manual sync, result messages, last-added time, and a 60-second cooldown to Email Accounts.
-- [ ] Enable the daily 07:00 UTC timer. Created job 86, but paused after its saved server credential failed authentication. Repair is blocked by managed secret access; no existing timer or managed secret was changed.
+- [x] Daily 07:00 UTC timer on, using its own vault pass (max once per 20 hours). Timer-style call got in; wrong pass and no pass return 401.
 - [x] Run rule tests and signed-in checks: 12 tests passed; actual manual POST returned 200 with 9 failed campaigns and 0 new unsubscribes; cooldown disabled the button and reenabled it after 60 seconds. No emails sent.
-- [ ] Verify a successful real sync after SmartLead accepts its API key. Both manual and scheduled success remain blocked by the rejected key.
+- [ ] (Waits on user's SmartLead account fix) Verify a successful real sync after SmartLead accepts its API key. Both manual and scheduled success remain blocked by the rejected key.

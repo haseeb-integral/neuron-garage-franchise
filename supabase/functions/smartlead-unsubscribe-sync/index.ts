@@ -29,20 +29,22 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return json({ error: "Server configuration error" }, 500);
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Sign in to sync unsubscribes" }, 401);
-  const token = authHeader.slice(7);
   const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
-  // The daily callback uses the existing protected server credential.
-  // Ordinary callers must have a verified session and a staff role.
-  if (token !== serviceKey) {
+  const cronToken = req.headers.get("x-cron-token");
+  if (cronToken) {
+    // Nightly timer: its own pass, checked in the database, max once per 20 hours.
+    const { data: claim, error: claimError } = await supabase.rpc("claim_unsub_cron_run", { _token: cronToken });
+    if (claimError) return json({ error: "Could not check timer pass" }, 500);
+    if (claim === "too_soon") return json({ error: "Timer already ran in the last 20 hours" }, 429);
+    if (claim !== "ok") return json({ error: "Not allowed" }, 401);
+  } else {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Sign in to sync unsubscribes" }, 401);
+    const token = authHeader.slice(7);
     const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) return json({ error: "Sign in to sync unsubscribes" }, 401);
-    if (data.claims.role !== "service_role") {
-      if (!data.claims.sub) return json({ error: "Sign in to sync unsubscribes" }, 401);
-      const { data: staff, error: roleError } = await supabase.rpc("is_staff", { _user_id: data.claims.sub });
-      if (roleError || !staff) return json({ error: "Staff access required" }, 403);
-    }
+    if (error || !data?.claims?.sub) return json({ error: "Sign in to sync unsubscribes" }, 401);
+    const { data: staff, error: roleError } = await supabase.rpc("is_staff", { _user_id: data.claims.sub });
+    if (roleError || !staff) return json({ error: "Staff access required" }, 403);
   }
   try {
     const body = await req.text();

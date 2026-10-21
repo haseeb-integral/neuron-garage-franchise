@@ -28,6 +28,7 @@ const Onboarding = lazyWithPreload(() => import("./pages/Onboarding"));
 const Spec = lazyWithPreload(() => import("./pages/Spec"));
 const SmartLeadSpec = lazyWithPreload(() => import("./pages/SmartLeadSpec"));
 const EmailOutreachDocs = lazyWithPreload(() => import("./pages/EmailOutreachDocs"));
+const OutreachSpec = lazyWithPreload(() => import("./pages/OutreachSpec"));
 const UserGuide = lazyWithPreload(() => import("./pages/UserGuide"));
 const DemographicsMethodology = lazyWithPreload(() => import("./pages/DemographicsMethodology"));
 
@@ -80,6 +81,7 @@ registerRoutePrefetch("/city-search-guide", CitySearchUsersGuide.preload);
 registerRoutePrefetch("/city-search-methodology", CitySearchMethodology.preload);
 registerRoutePrefetch("/smartlead-spec", SmartLeadSpec.preload);
 registerRoutePrefetch("/email-outreach-docs", EmailOutreachDocs.preload);
+registerRoutePrefetch("/outreach-spec", OutreachSpec.preload);
 registerRoutePrefetch("/demographics-methodology", DemographicsMethodology.preload);
 
 registerRoutePrefetch("/mvs-methodology", MVSMethodology.preload);
@@ -136,6 +138,7 @@ const App = () => (
                 <Route path="/spec" element={<Spec />} />
                 <Route path="/smartlead-spec" element={<SmartLeadSpec />} />
                 <Route path="/email-outreach-docs" element={<EmailOutreachDocs />} />
+                <Route path="/outreach-spec" element={<OutreachSpec />} />
                 <Route path="/demographics-methodology" element={<DemographicsMethodology />} />
                 
                 <Route path="/mvs-methodology" element={<MVSMethodology />} />

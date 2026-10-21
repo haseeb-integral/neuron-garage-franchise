@@ -1213,18 +1213,21 @@ export type Database = {
         Row: {
           id: boolean
           mailing_address: string | null
+          unsub_sync_last_cron_run: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           id?: boolean
           mailing_address?: string | null
+          unsub_sync_last_cron_run?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           id?: boolean
           mailing_address?: string | null
+          unsub_sync_last_cron_run?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -3856,6 +3859,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_unsub_cron_run: { Args: { _token: string }; Returns: string }
       compute_csi_tiers: { Args: never; Returns: undefined }
       db_health_history_for: {
         Args: { _days?: number; _domain: string }

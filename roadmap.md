@@ -13,3 +13,8 @@ Live SmartLead activation remains unverified because its key is rejected; the ca
 - [x] Daily 07:00 UTC timer on, using its own vault pass (max once per 20 hours). Timer-style call got in; wrong pass and no pass return 401.
 - [x] Run rule tests and signed-in checks: 12 tests passed; actual manual POST returned 200 with 9 failed campaigns and 0 new unsubscribes; cooldown disabled the button and reenabled it after 60 seconds. No emails sent.
 - [ ] (Waits on user's SmartLead account fix) Verify a successful real sync after SmartLead accepts its API key. Both manual and scheduled success remain blocked by the rejected key.
+## Approved Phase 4
+- [x] Part 1: campaign-mailbox link list (staff read only).
+- [x] Part 2: smartlead-sync-mailboxes deployed; strangers 401, staff gets clear bad-key message.
+- [ ] Part 3+4: panel reads saved copy, campaigns per mailbox, Refresh button, own section.
+- [ ] (Waits on SmartLead account fix) live mailbox sync test.

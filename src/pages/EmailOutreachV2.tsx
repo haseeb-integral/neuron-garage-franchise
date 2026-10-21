@@ -270,8 +270,13 @@ export default function EmailOutreachV2() {
           <OutreachQueuePanel />
         </Section>
 
-        {/* SECTION 3 — Setup & reference (SmartLead-side wiring) */}
-        <Section step={3} title="Setup & reference" subtitle="Mailboxes, full stats. Open when you need them." storageKey="setup" defaultOpen={false}>
+        {/* SECTION 3 — Mailboxes */}
+        <Section step={3} title="Mailboxes" subtitle="Sending inboxes, warmup, and which campaigns use them." storageKey="mailboxes" defaultOpen>
+          <EmailAccountsPanel />
+        </Section>
+
+        {/* SECTION 4 — Setup & reference (SmartLead-side wiring) */}
+        <Section step={4} title="Setup & reference" subtitle="Connection, mailing address, full stats. Open when you need them." storageKey="setup" defaultOpen={false}>
           <div className="rounded-xl border border-[#e7edf5] bg-white">
             <button onClick={() => setConnectionOpen((v) => !v)} className="flex w-full items-center justify-between px-3 py-2 text-left">
               <div className="flex items-center gap-2"><LinkIcon size={13} className="text-[#174be8]" /><span className="text-xs font-black">SmartLead Connection</span><span className="text-[10px] text-[#66728a]">{connectionOpen ? "Hide details" : "Show details"}</span></div>
@@ -280,7 +285,6 @@ export default function EmailOutreachV2() {
             {connectionOpen && <div className="border-t border-[#edf2f8] p-4"><SmartLeadConnectionPanel /></div>}
           </div>
           <CompanyMailingAddressCard />
-          <EmailAccountsPanel />
           <EnrichmentJobsPanel />
           <AnalyticsPanel />
         </Section>

@@ -16,5 +16,5 @@ Live SmartLead activation remains unverified because its key is rejected; the ca
 ## Approved Phase 4
 - [x] Part 1: campaign-mailbox link list (staff read only).
 - [x] Part 2: smartlead-sync-mailboxes deployed; strangers 401, staff gets clear bad-key message.
-- [ ] Part 3+4: panel reads saved copy, campaigns per mailbox, Refresh button, own section.
+- [x] Part 3+4: panel reads saved copy, campaigns per mailbox, Refresh button, own section.
 - [ ] (Waits on SmartLead account fix) live mailbox sync test.

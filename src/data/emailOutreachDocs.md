@@ -147,21 +147,25 @@ The Analytics tab gives a full performance picture across all campaigns without 
 
 **Important note on date ranges:** SmartLead's API returns analytics in maximum 30-day windows. For longer history, the app automatically pulls in 30-day chunks and stitches them together. Analytics data is cached for 10 minutes to avoid hitting rate limits.
 
-**Feature 5: Email Account Health**
+**Feature 5: Mailboxes (Email Account Health)**
 
-The three sending mailboxes (Rani Chung, Elizabeth Gray, Isabella Aquino at [mailerss.co](http://mailerss.co)) are what actually deliver the emails. This screen shows their health at a glance.
+The three sending mailboxes (Rani Chung, Elizabeth Gray, Isabella Aquino at [mailerss.co](http://mailerss.co)) are what actually deliver the emails. They now have their own **Mailboxes** section on the Email Outreach page, right below "Campaigns & sending" (it is no longer hidden inside "Setup & reference").
+
+**At the top of the section:** the "Sync Unsubscribes" button and the "Last new unsubscribe" time (see Unsubscribe Rules below).
 
 **Each mailbox card shows:**
 
 * Email address and provider (Gmail/Outlook/SMTP)
 
-* Warmup status: Active or Inactive
+* Warmup reputation score, colored 🟢 green (80 or higher), 🟡 amber (50–79), 🔴 red (under 50)
 
-* Daily send progress: "0 / 15 sent today"
+* Daily send progress bar: for example "12 / 50 sent today"
 
-* Warmup reputation score (currently 100% on all three — excellent)
+* A warmup **On/Off switch** — flip it to start or stop warmup for that mailbox. The app tells SmartLead, then refreshes the card.
 
-* Health color: 🟢 Green (healthy), 🟡 Yellow (warmup off or approaching limit), 🔴 Red (at limit or error)
+* **Campaigns** — which campaigns this mailbox is sending for
+
+**"Refresh Mailboxes" button:** pulls the latest mailbox list, warmup info, and campaign links from SmartLead and saves a copy in the app. The section header shows "Last synced N minutes ago" (or "Never synced"). The cards read from this saved copy, so the page loads fast. Mailboxes are never deleted by a refresh — if one disappears in SmartLead, its card stays so nothing is lost by mistake. If a refresh fails, an amber line explains why and the last saved copy stays on screen.
 
 **Warmup explained:** New email accounts can't send 100 emails on day one — that triggers spam filters. SmartLead gradually increases the sending volume over 2–3 weeks while also exchanging warmup emails with other SmartLead accounts to build sender reputation. The warmup reputation score on each mailbox reflects how trusted that inbox is. All three mailboxes are currently warming up — do not send real campaigns until warmup has run for at least 2–3 weeks.
 

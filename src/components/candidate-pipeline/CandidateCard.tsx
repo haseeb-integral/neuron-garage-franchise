@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from "lucide-react";
 import { MouseEvent, useState } from "react";
 import { getStageAccent } from "./stageColors";
+import { PortalProgressBadge } from "./PortalProgressBadge";
 
 interface Props {
   candidate: Candidate;
@@ -136,6 +137,7 @@ export function CandidateCard({ candidate, onDragStart, onClick, onStartOnboardi
           );
         })()}
         <div className="flex items-center gap-2 flex-shrink-0">
+          <PortalProgressBadge candidate={candidate} />
           <DayChip days={candidate.daysInStage} />
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold"

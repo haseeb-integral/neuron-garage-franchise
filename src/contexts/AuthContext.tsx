@@ -17,6 +17,8 @@ interface AuthContextValue {
   role: AppRole | null;
   /** Candidate id when this user is a portal prospect. */
   portalCandidateId: string | null;
+  /** True once role + portal link have been loaded for the current user. */
+  accessChecked: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [portalCandidateId, setPortalCandidateId] = useState<string | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPortalCandidateId(portalData?.candidate_id ?? null);
     setProfile(profileData ?? null);
     setRole((roleData?.role as AppRole) ?? null);
+    setAccessChecked(true);
   };
 
   const signOut = async () => {
@@ -81,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, role, portalCandidateId, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, role, portalCandidateId, accessChecked, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

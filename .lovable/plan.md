@@ -44,19 +44,40 @@ Right now, **every new account is made a staff member automatically**. If a pros
 - Footer: the company line and "Questions? Skyler Bossen · 512-593-2750".
 - "Disqualified" candidates see a polite "process closed" message.
 
-**Phase 4 — Files both ways (about 2 turns)**
-- Staff mark which files the prospect can download (for example, the FDD or the Request for Consideration form).
-- Prospect uploads go into the open step. They show up in the candidate's Documents tab, tagged "From prospect."
-- Prospects only see their own files, never internal ones.
+**Phase 3b — Next call card (part of Phase 3)**
+- A card at the top shows the next call: the date, the time in the prospect's own time zone, how long it is, who it is with, and the call title.
+- It comes straight from the calls your staff schedule, so no extra work is needed. If a call is moved or canceled, the card updates.
+- Staff notes on the event stay hidden.
 
-**Phase 5 — Forms (about 2 turns)**
-- Short forms for each step (for example, the Request for Consideration). Answers are saved on the candidate, and staff see them in the pipeline.
-- Before building this, I will show you the exact questions for each step for your OK. I will not make up questions.
+**Phase 4 — Files both ways (about 2 turns)**
+- Each step has its own set of download files. They show up for the prospect on their own as soon as the step unlocks. Staff never have to tick a box.
+- Staff upload these step files once, on a new "Portal files" settings card (for example, the Request for Consideration form or the facility prospect form). Every prospect gets the same files.
+- Latest FDD: staff upload the newest FDD once. Every prospect who has reached Step 2 gets a "Download latest FDD" link. When a newer FDD is uploaded, the link points to it. You still email the FDD the way you do now.
+- Prospects upload their own files into the open step. These show up in the candidate's Documents tab, tagged "From prospect," and staff get a notification.
+- Prospects only ever see their own uploads and the shared step files, never internal files.
+
+**Phase 5 — Forms and e-sign (about 3 turns)**
+- Step 2: the Background and Credit Check Authorization is filled in right on the web page. The prospect e-signs by typing their full name, ticking "I agree to sign electronically," and pressing Sign. We save:
+  - their name and the exact form text
+  - the date and time
+  - their signed-in account
+  - a PDF copy, which goes into Documents
+- The saved PDF fills in the "Run Background and Credit Check" area for staff to see.
+- The Request for Consideration and the facility prospect form get the same kind of web forms.
+- Before I build any form, I will show you its exact questions and the authorization wording for your OK. I will not make these up. Your lawyer should approve the authorization text.
 
 **Phase 6 — Smoke test (1 turn)**
-- A full run-through: invite a test prospect, sign in, staff move them forward, the next step unlocks, uploads and downloads work, and staff see everything. Also check that private data stays hidden.
+- A full run-through: invite a test prospect, sign in, staff move them forward, the next step unlocks, the next call shows, files download on their own, the FDD link works, the e-sign makes a PDF, uploads work, and staff see everything. Also check that private data stays hidden.
 
-Total: about 10–12 turns.
+Total: about 12–14 turns.
+
+## My extra ideas (pick any; none are in the phases yet)
+1. **Email nudges:** an email when a new step unlocks, when a call is booked, and a reminder the day before a call. (About 2 turns.)
+2. **"Waiting on prospect" badge:** a small badge on the pipeline card showing how many tasks the prospect has finished, like "3 of 4 done", so staff know who to chase. (1 turn.)
+3. **Item 23 receipt e-sign:** the prospect signs the FDD Item 23 receipt on the page too. That date then fills in the FDD received date and starts the 16-day lock automatically. (1–2 turns. Your lawyer should check this.)
+4. **Contact card:** each step shows who the prospect's contact person is, with a photo, email, and phone. (Part of Phase 3.)
+5. **Activity log:** each time the prospect signs, uploads, or ticks a task, it shows in the candidate's Activity tab. (Part of Phases 4–5.)
+6. **Pick a call time:** let prospects choose a call time themselves from open slots. This is bigger, and it needs a calendar link like Google Calendar. (Later.)
 
 ## What will not change
 These stay as they are: the staff pipeline screens, the staff 5-step Qualification Process, the FDD 16-day lock, the calendar, Email Outreach, City Search, and Teacher Search. We only add new pieces next to them.
@@ -69,7 +90,9 @@ These stay as they are: the staff pipeline screens, the staff 5-step Qualificati
 
 ## Technical details
 - Remove the automatic 'manager' insert from handle_new_user. Add a candidate_portal_users table (user_id to candidate_id). is_staff stays admin/manager only.
-- New tables: candidate_portal_users, candidate_portal_checklist, candidate_portal_submissions. Add `prospect_visible boolean default false` and `uploaded_by_prospect` to candidate_files. RLS uses a security-definer `portal_candidate_id(auth.uid())`. GRANTs go in the same migration.
+- New tables: candidate_portal_users, candidate_portal_checklist, candidate_portal_submissions (form answers and signatures: signer name, consent text, signed_at, user_id, user agent), and portal_step_files (step number, file path, is_current_fdd). Add `uploaded_by_prospect` to candidate_files. RLS uses a security-definer `portal_candidate_id(auth.uid())`, and step files are readable only when the prospect's stage is at or past that step. GRANTs go in the same migration.
+- Next call: a security-definer RPC returns only the safe event fields (start, duration, title, type, host name) for the prospect's own candidate.
+- The signed PDF is made with pdf-lib in an edge function and saved to private storage.
 - Storage policies are limited to `candidates/{own id}/portal/...`.
 - Invites go through a staff-only edge function that uses the admin invite API, with a redirect to /portal.
 - /portal and /portal/login sit outside the staff ProtectedRoute. The staff layout sends prospect users to /portal.

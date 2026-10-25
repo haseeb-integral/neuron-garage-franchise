@@ -15,6 +15,8 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   role: AppRole | null;
+  /** Candidate id when this user is a portal prospect. */
+  portalCandidateId: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [portalCandidateId, setPortalCandidateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!newSession?.user) {
         setProfile(null);
         setRole(null);
+        setPortalCandidateId(null);
       } else {
         // Defer DB calls to avoid deadlock inside the callback
         setTimeout(() => fetchProfileAndRole(newSession.user.id), 0);
@@ -57,10 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchProfileAndRole = async (userId: string) => {
-    const [{ data: profileData }, { data: roleData }] = await Promise.all([
+    const [{ data: profileData }, { data: roleData }, { data: portalData }] = await Promise.all([
       supabase.from("profiles").select("id, email, full_name").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId).order("role", { ascending: true }).limit(1).maybeSingle(),
+      supabase.from("candidate_portal_users").select("candidate_id").eq("user_id", userId).maybeSingle(),
     ]);
+    setPortalCandidateId(portalData?.candidate_id ?? null);
     setProfile(profileData ?? null);
     setRole((roleData?.role as AppRole) ?? null);
   };
@@ -71,10 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setRole(null);
+    setPortalCandidateId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, role, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, role, portalCandidateId, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   const redirectTo = `${new URL(redirect_origin).origin}/reset-password?portal=1`
 
   const { data: cand, error: cErr } = await admin
-    .from('candidates').select('id, email, name').eq('id', candidate_id).maybeSingle()
+    .from('candidates').select('id, email, first_name, last_name').eq('id', candidate_id).maybeSingle()
   if (cErr || !cand) return json({ error: 'Candidate not found' }, 404)
   const email = (cand.email ?? '').trim().toLowerCase()
   if (!email || !email.includes('@')) return json({ error: 'This candidate has no email address.' }, 400)
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
   const { data: inv, error: invErr } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
-    data: { full_name: cand.name ?? null },
+    data: { full_name: [cand.first_name, cand.last_name].filter(Boolean).join(' ') || null },
   })
   if (invErr || !inv.user) {
     const msg = /already|registered|exists/i.test(invErr?.message ?? '')
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
   await admin.from('candidate_activities').insert({
     candidate_id, type: 'note', content: `Invited to the prospect portal (${email})`,
-    author: u.user.email ?? 'Staff',
+    actor_email: u.user.email ?? null,
   }).then(() => {}, () => {})
 
   return json({ status: 'invited' })

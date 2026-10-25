@@ -100,17 +100,19 @@ Deno.serve(async (req) => {
 
     const newUserId = created.user.id
 
-    // The handle_new_user trigger creates a profile + manager role.
-    // Update full_name and adjust role if admin was requested.
+    // The handle_new_user trigger creates the profile only; staff role is granted here.
     if (fullName) {
       await admin.from('profiles').update({ full_name: fullName }).eq('id', newUserId)
     }
 
-    if (role === 'admin') {
-      await admin.from('user_roles').delete().eq('user_id', newUserId).neq('role', 'admin')
-      await admin
-        .from('user_roles')
-        .insert({ user_id: newUserId, role: 'admin' })
+    const { error: roleInsErr } = await admin
+      .from('user_roles')
+      .upsert({ user_id: newUserId, role }, { onConflict: 'user_id,role' })
+    if (roleInsErr) {
+      return new Response(JSON.stringify({ error: 'User created but role could not be saved' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     return new Response(

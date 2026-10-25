@@ -22,11 +22,13 @@ Deno.serve(async (req) => {
   const auth = req.headers.get('Authorization')
   if (!auth?.startsWith('Bearer ')) return json({ error: 'Missing authorization' }, 401)
   const userClient = createClient(URL_, ANON, { global: { headers: { Authorization: auth } } })
-  const { data: u, error: uErr } = await userClient.auth.getUser()
-  if (uErr || !u.user) return json({ error: 'Invalid session' }, 401)
+  const { data: claims, error: cErr0 } = await userClient.auth.getClaims(auth.slice(7))
+  const callerId = claims?.claims?.sub as string | undefined
+  const callerEmail = (claims?.claims?.email as string | undefined) ?? null
+  if (cErr0 || !callerId) return json({ error: 'Invalid session' }, 401)
 
   const admin = createClient(URL_, SERVICE)
-  const { data: staff } = await admin.rpc('is_staff', { _user_id: u.user.id })
+  const { data: staff } = await admin.rpc('is_staff', { _user_id: callerId })
   if (!staff) return json({ error: 'Staff only' }, 403)
 
   let parsed
@@ -49,7 +51,7 @@ Deno.serve(async (req) => {
     const anon = createClient(URL_, ANON)
     const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo })
     if (error) return json({ error: 'Could not send the link. Try again later.' }, 502)
-    await admin.from('candidate_portal_users').update({ invited_at: new Date().toISOString(), invited_by: u.user.id })
+    await admin.from('candidate_portal_users').update({ invited_at: new Date().toISOString(), invited_by: callerId })
       .eq('candidate_id', candidate_id)
     return json({ status: 'resent' })
   }
@@ -70,13 +72,13 @@ Deno.serve(async (req) => {
   if (isStaffTarget) return json({ error: 'That email belongs to a staff account.' }, 409)
 
   const { error: linkErr } = await admin.from('candidate_portal_users').insert({
-    user_id: inv.user.id, candidate_id, invited_by: u.user.id,
+    user_id: inv.user.id, candidate_id, invited_by: callerId,
   })
   if (linkErr) return json({ error: 'Invite sent, but the link could not be saved.' }, 500)
 
   await admin.from('candidate_activities').insert({
     candidate_id, type: 'note', content: `Invited to the prospect portal (${email})`,
-    actor_email: u.user.email ?? null,
+    actor_email: callerEmail,
   }).then(() => {}, () => {})
 
   return json({ status: 'invited' })

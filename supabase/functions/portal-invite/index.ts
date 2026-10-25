@@ -64,12 +64,13 @@ Deno.serve(async (req) => {
     const msg = /already|registered|exists/i.test(invErr?.message ?? '')
       ? 'An account with this email already exists. Use a different email for this candidate.'
       : 'Could not send the invite. Try again later.'
-    return json({ error: msg }, 409)
+    // Expected refusal: return 200 with an error field so the UI shows a toast, not a crash.
+    return json({ error: msg, code: 'email_exists' }, 200)
   }
 
   // Safety: never link a staff account as a prospect.
   const { data: isStaffTarget } = await admin.rpc('is_staff', { _user_id: inv.user.id })
-  if (isStaffTarget) return json({ error: 'That email belongs to a staff account.' }, 409)
+  if (isStaffTarget) return json({ error: 'That email belongs to a staff account.', code: 'staff_email' }, 200)
 
   const { error: linkErr } = await admin.from('candidate_portal_users').insert({
     user_id: inv.user.id, candidate_id, invited_by: callerId,

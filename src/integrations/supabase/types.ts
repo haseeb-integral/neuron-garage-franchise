@@ -4111,6 +4111,7 @@ export type Database = {
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
       portal_current_step: { Args: { _user_id: string }; Returns: number }
+      portal_latest_fdd_id: { Args: never; Returns: string }
       portal_mark_activated: { Args: never; Returns: undefined }
       portal_my_path: { Args: never; Returns: Json }
       read_email_batch: {

@@ -40,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setRole(null);
         setPortalCandidateId(null);
-        setPortalCandidateId(null);
       } else {
         // Defer DB calls to avoid deadlock inside the callback
         setTimeout(() => fetchProfileAndRole(newSession.user.id), 0);
@@ -78,7 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setRole(null);
-    setPortalCandidateId(null);
     setPortalCandidateId(null);
   };
 

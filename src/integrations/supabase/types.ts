@@ -537,6 +537,44 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_portal_checklist: {
+        Row: {
+          candidate_id: string
+          done_at: string
+          done_by: string | null
+          id: string
+          item_key: string
+          item_label: string
+          step_num: number
+        }
+        Insert: {
+          candidate_id: string
+          done_at?: string
+          done_by?: string | null
+          id?: string
+          item_key: string
+          item_label: string
+          step_num: number
+        }
+        Update: {
+          candidate_id?: string
+          done_at?: string
+          done_by?: string | null
+          id?: string
+          item_key?: string
+          item_label?: string
+          step_num?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_portal_checklist_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_portal_users: {
         Row: {
           activated_at: string | null
@@ -4022,6 +4060,7 @@ export type Database = {
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
       portal_mark_activated: { Args: never; Returns: undefined }
+      portal_my_path: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

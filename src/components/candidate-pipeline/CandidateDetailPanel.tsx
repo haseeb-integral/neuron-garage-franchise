@@ -15,6 +15,7 @@ import { FileDown } from "lucide-react";
 import { exportResearchPacket } from "./exportResearchPacket";
 import { isEnabled } from "@/lib/featureFlags";
 import { toast } from "sonner";
+import { PortalInviteButton } from "./PortalInviteButton";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -62,6 +63,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
               </div>
             </div>
             <div className="flex items-start gap-3 shrink-0">
+              <PortalInviteButton candidateDbId={(candidate as any).dbId} />
               
               <Button
                 variant="outline"

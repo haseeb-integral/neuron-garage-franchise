@@ -20,6 +20,7 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
+  const isPortal = new URLSearchParams(window.location.search).get("portal") === "1";
 
   useEffect(() => {
     document.title = "Reset password · Neuron Garage";
@@ -57,8 +58,8 @@ export default function ResetPassword() {
       toast.error(error.message);
       return;
     }
-    toast.success("Password updated. You're now signed in.");
-    navigate("/", { replace: true });
+    toast.success(isPortal ? "Password saved. Welcome!" : "Password updated. You're now signed in.");
+    navigate(isPortal ? "/portal" : "/", { replace: true });
   };
 
   return (
@@ -70,10 +71,12 @@ export default function ResetPassword() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Set a new password</CardTitle>
+            <CardTitle>{isPortal ? "Welcome! Create your password" : "Set a new password"}</CardTitle>
             <CardDescription>
               {ready
-                ? "Enter a new password for your account."
+                ? isPortal
+                  ? "Choose a password to open your Path to Ownership."
+                  : "Enter a new password for your account."
                 : "Validating reset link…"}
             </CardDescription>
           </CardHeader>
@@ -104,7 +107,7 @@ export default function ResetPassword() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={submitting || !ready}>
-                {submitting ? "Updating…" : "Update password"}
+                {submitting ? "Saving…" : isPortal ? "Save password" : "Update password"}
               </Button>
               <button
                 type="button"

@@ -1,10 +1,16 @@
+import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 /** Prospect portal home. Phase 1 placeholder — the "Path to Ownership" page arrives in Phase 3. */
 export default function PortalHome() {
   const { session, loading, accessChecked, role, portalCandidateId, signOut } = useAuth();
+
+  useEffect(() => {
+    if (portalCandidateId) supabase.rpc("portal_mark_activated").then(() => {});
+  }, [portalCandidateId]);
 
   if (loading || (session && !accessChecked)) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;

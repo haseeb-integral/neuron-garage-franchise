@@ -25,7 +25,7 @@ Right now, **every new account is made a staff member automatically**. If a pros
 
 ## Phases
 
-**Phase 1 — Safety and accounts (about 2 turns)**
+**Phase 1 — Safety and accounts (DONE)**
 - New accounts stop being staff automatically. An admin adds new staff on purpose. Your current staff keep their access.
 - Add a "prospect" type of account, linked to exactly one candidate.
 - If a prospect tries to open any staff page, they get sent to their portal.
@@ -71,13 +71,18 @@ Right now, **every new account is made a staff member automatically**. If a pros
 
 Total: about 12–14 turns.
 
-## My extra ideas (pick any; none are in the phases yet)
-1. **Email nudges:** an email when a new step unlocks, when a call is booked, and a reminder the day before a call. (About 2 turns.)
-2. **"Waiting on prospect" badge:** a small badge on the pipeline card showing how many tasks the prospect has finished, like "3 of 4 done", so staff know who to chase. (1 turn.)
-3. **Item 23 receipt e-sign:** the prospect signs the FDD Item 23 receipt on the page too. That date then fills in the FDD received date and starts the 16-day lock automatically. (1–2 turns. Your lawyer should check this.)
-4. **Contact card:** each step shows who the prospect's contact person is, with a photo, email, and phone. (Part of Phase 3.)
-5. **Activity log:** each time the prospect signs, uploads, or ticks a task, it shows in the candidate's Activity tab. (Part of Phases 4–5.)
-6. **Pick a call time:** let prospects choose a call time themselves from open slots. This is bigger, and it needs a calendar link like Google Calendar. (Later.)
+## Added extras (approved by Sam)
+- **Activity log (inside Phases 3–5):** each time the prospect ticks a task, uploads a file, or signs something, a line shows in the candidate's Activity tab, for example "Prospect signed Background Authorization".
+- **"Waiting on prospect" badge (inside Phase 3):** a small badge on each pipeline card, like "3 of 4 done", that counts the prospect's ticked tasks for their current step.
+- **Item 23 receipt e-sign (inside Phase 5):** the prospect signs the FDD Item 23 receipt on the page, the same way as the authorization. The signing date fills in the FDD received date on its own, which starts the existing 16-day lock. The lock rule itself does not change. Your lawyer should check the wording.
+- **Email nudges (new Phase 5b, about 2 turns):**
+  - an email when a new step unlocks
+  - an email when a call is booked or moved
+  - a reminder the day before a call
+
+  Each email goes to one prospect, about their own process, and is sent from your verified email address. Every email has an unsubscribe link at the bottom; this cannot be turned off. I'll show you the wording first.
+
+New total: about 15–18 turns. Phase 1 is done.
 
 ## What will not change
 These stay as they are: the staff pipeline screens, the staff 5-step Qualification Process, the FDD 16-day lock, the calendar, Email Outreach, City Search, and Teacher Search. We only add new pieces next to them.

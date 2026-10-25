@@ -99,6 +99,13 @@
       "when": 1792960849167,
       "tag": "0013_prospect_portal_phase1",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792961297031,
+      "tag": "0014_portal_mark_activated",
+      "breakpoints": true
     }
   ]
 }

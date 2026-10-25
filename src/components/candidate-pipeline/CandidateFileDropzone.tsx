@@ -17,6 +17,8 @@ export interface CandidateFileRow {
   uploaded_by_email: string | null;
   created_at: string;
   deleted_at: string | null;
+  uploaded_by_prospect?: boolean;
+  portal_step?: number | null;
 }
 
 export type DocumentCategory =
@@ -245,6 +247,11 @@ export function CandidateFileDropzone({
               >
                 {f.file_name}
               </button>
+              {f.uploaded_by_prospect && (
+                <span className="shrink-0 rounded border px-1.5 text-[10px] font-semibold bg-portal-yellow/20" title={f.portal_step ? `Uploaded by the prospect in Step ${f.portal_step}` : undefined}>
+                  From prospect
+                </span>
+              )}
               <span className="text-[11px] text-muted-foreground shrink-0">
                 {formatBytes(f.size_bytes)} ·{" "}
                 {formatDistanceToNow(new Date(f.created_at), { addSuffix: true })}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Lock, CalendarClock, Clock } from "lucide-react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { fromDbStage } from "@/lib/stageDbMapping";
 import { PORTAL_STEPS, stageToStep, stepState, type PortalStep, type StepState } from "@/lib/portalPath";
+import { PortalStepFiles, type StepFile, type MyUpload } from "@/components/portal/PortalStepFiles";
 import logo from "@/assets/neuron-garage-logo.png";
 
 interface PathData {
@@ -48,6 +49,28 @@ export default function PortalHome() {
         .from("candidate_portal_checklist").select("step_num, item_key").eq("candidate_id", portalCandidateId!);
       if (error) throw error;
       return new Set((data ?? []).map((r) => `${r.step_num}:${r.item_key}`));
+    },
+  });
+
+  const stepFiles = useQuery({
+    queryKey: ["portal-step-files", portalCandidateId, path.data?.stage],
+    enabled: !!portalCandidateId && !!path.data,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("portal_step_files")
+        .select("id, step_num, title, bucket_path, file_name, is_fdd").order("created_at");
+      if (error) throw error;
+      return (data ?? []) as StepFile[];
+    },
+  });
+  const myUploads = useQuery({
+    queryKey: ["portal-my-uploads", portalCandidateId],
+    enabled: !!portalCandidateId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("candidate_files")
+        .select("id, portal_step, file_name, created_at").eq("uploaded_by_prospect", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as MyUpload[];
     },
   });
 
@@ -122,6 +145,15 @@ export default function PortalHome() {
                   date={data.step_dates?.[String(s.num)]}
                   ticked={ticks.data ?? new Set()}
                   onToggle={toggle}
+                  files={
+                    <PortalStepFiles
+                      stepNum={s.num}
+                      candidateId={portalCandidateId}
+                      files={(stepFiles.data ?? []).filter((f) => f.step_num === s.num)}
+                      uploads={(myUploads.data ?? []).filter((u) => u.portal_step === s.num)}
+                      onUploaded={() => qc.invalidateQueries({ queryKey: ["portal-my-uploads", portalCandidateId] })}
+                    />
+                  }
                 />
               ))}
             </ol>
@@ -165,8 +197,8 @@ function NextCallCard({ call }: { call: PathData["next_call"] }) {
   );
 }
 
-function StepRow({ step, state, last, date, ticked, onToggle }: {
-  step: PortalStep; state: StepState; last: boolean; date?: string;
+function StepRow({ step, state, last, date, ticked, onToggle, files }: {
+  step: PortalStep; state: StepState; last: boolean; date?: string; files: ReactNode;
   ticked: Set<string>; onToggle: (s: number, k: string, l: string, on: boolean) => void;
 }) {
   const locked = state === "locked";
@@ -196,6 +228,7 @@ function StepRow({ step, state, last, date, ticked, onToggle }: {
           <p className="mt-3 text-sm"><span className="font-semibold">Date scheduled:</span>{" "}
             {date ? fmtDate(date) : <span className="text-muted-foreground">—</span>}
           </p>
+          {!locked && files}
         </div>
         {!locked && (
           <div className="rounded-xl bg-muted/50 p-5">

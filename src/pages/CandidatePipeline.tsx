@@ -16,6 +16,7 @@ import { CardLegendPopover } from "@/components/candidate-pipeline/CardLegendPop
 import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAnalyticsBar";
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
+import { PortalFilesDialog } from "@/components/candidate-pipeline/PortalFilesDialog";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
 import { getEffectivePillarScores, computeComposite } from "@/lib/candidateScoring";
@@ -857,6 +858,7 @@ const CandidatePipeline = () => {
         hideJourneyBar
         action={
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            <PortalFilesDialog />
             <Button
               size="sm"
               variant="outline"

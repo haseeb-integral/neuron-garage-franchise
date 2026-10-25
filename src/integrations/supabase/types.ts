@@ -4021,6 +4021,7 @@ export type Database = {
       mvs_resume_stuck_b3_runs: { Args: never; Returns: number }
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
+      portal_mark_activated: { Args: never; Returns: undefined }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

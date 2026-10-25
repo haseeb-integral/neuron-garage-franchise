@@ -25,6 +25,10 @@
     --muted-foreground: 210 7% 46%;
 
     --accent: 210 14% 89%;
+    --portal-navy: 214 64% 20%;
+    --portal-navy-foreground: 0 0% 100%;
+    --portal-yellow: 45 96% 56%;
+    --portal-yellow-foreground: 214 64% 16%;
     --accent-foreground: 210 11% 25%;
 
     --destructive: 0 84% 60%;

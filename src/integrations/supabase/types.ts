@@ -505,9 +505,11 @@ export type Database = {
           file_name: string
           id: string
           mime_type: string | null
+          portal_step: number | null
           size_bytes: number | null
           uploaded_by: string | null
           uploaded_by_email: string | null
+          uploaded_by_prospect: boolean
         }
         Insert: {
           bucket_path: string
@@ -518,9 +520,11 @@ export type Database = {
           file_name: string
           id?: string
           mime_type?: string | null
+          portal_step?: number | null
           size_bytes?: number | null
           uploaded_by?: string | null
           uploaded_by_email?: string | null
+          uploaded_by_prospect?: boolean
         }
         Update: {
           bucket_path?: string
@@ -531,9 +535,11 @@ export type Database = {
           file_name?: string
           id?: string
           mime_type?: string | null
+          portal_step?: number | null
           size_bytes?: number | null
           uploaded_by?: string | null
           uploaded_by_email?: string | null
+          uploaded_by_prospect?: boolean
         }
         Relationships: []
       }
@@ -2430,6 +2436,51 @@ export type Database = {
           },
         ]
       }
+      portal_step_files: {
+        Row: {
+          bucket_path: string
+          created_at: string
+          deleted_at: string | null
+          file_name: string
+          id: string
+          is_fdd: boolean
+          mime_type: string | null
+          size_bytes: number | null
+          step_num: number
+          title: string
+          uploaded_by: string | null
+          uploaded_by_email: string | null
+        }
+        Insert: {
+          bucket_path: string
+          created_at?: string
+          deleted_at?: string | null
+          file_name: string
+          id?: string
+          is_fdd?: boolean
+          mime_type?: string | null
+          size_bytes?: number | null
+          step_num: number
+          title: string
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+        }
+        Update: {
+          bucket_path?: string
+          created_at?: string
+          deleted_at?: string | null
+          file_name?: string
+          id?: string
+          is_fdd?: boolean
+          mime_type?: string | null
+          size_bytes?: number | null
+          step_num?: number
+          title?: string
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+        }
+        Relationships: []
+      }
       private_elementary_count_backup: {
         Row: {
           city_id: string
@@ -4059,6 +4110,7 @@ export type Database = {
       mvs_resume_stuck_b3_runs: { Args: never; Returns: number }
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
+      portal_current_step: { Args: { _user_id: string }; Returns: number }
       portal_mark_activated: { Args: never; Returns: undefined }
       portal_my_path: { Args: never; Returns: Json }
       read_email_batch: {

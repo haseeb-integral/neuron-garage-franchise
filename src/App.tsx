@@ -104,6 +104,8 @@ registerRoutePrefetch("/docs/guardrails", Guardrails.preload);
 registerRoutePrefetch("/db-health", Observability.preload);
 registerRoutePrefetch("/glossary", Glossary.preload);
 
+const PortalHome = lazyWithPreload(() => import("./pages/portal/PortalHome"));
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: false } } });
 
 const App = () => (
@@ -119,6 +121,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
+              <Route path="/portal" element={<PortalHome />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<Index />} />
                 <Route path="/city-scoring" element={<CityScoring />} />

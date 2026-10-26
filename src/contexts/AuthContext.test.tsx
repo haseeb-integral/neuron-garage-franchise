@@ -44,9 +44,13 @@ function State() {
   })}</output>;
 }
 const state = () => JSON.parse(screen.getByTestId("state").textContent ?? "{}");
+function StaffGate() {
+  const { session: current } = useAuth();
+  return current ? <ProtectedRoute><div>Staff content</div></ProtectedRoute> : null;
+}
 const mount = () => render(<MemoryRouter><AuthProvider><State /><Routes>
-  <Route path="/" element={<ProtectedRoute><div>Staff content</div></ProtectedRoute>} />
-  <Route path="/auth" element={<ProtectedRoute><div>Staff content</div></ProtectedRoute>} />
+  <Route path="/" element={<StaffGate />} />
+  <Route path="/auth" element={<div>Signed out</div>} />
   <Route path="/portal" element={<div>Prospect content</div>} />
 </Routes></AuthProvider></MemoryRouter>);
 beforeEach(() => {

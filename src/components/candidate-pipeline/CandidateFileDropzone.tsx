@@ -162,8 +162,9 @@ export function CandidateFileDropzone({
         toastUploadSuccess(
           `${ok} file${ok > 1 ? "s" : ""} uploaded`,
           landedNames,
-          "They're in the list below.",
+          `${ok > 1 ? "They're" : "It's"} in the list below.`,
         );
+
         void loadFiles();
       }
     },

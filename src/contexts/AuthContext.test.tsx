@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "@supabase/supabase-js";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
@@ -44,7 +44,11 @@ function State() {
   })}</output>;
 }
 const state = () => JSON.parse(screen.getByTestId("state").textContent ?? "{}");
-const mount = () => render(<MemoryRouter><AuthProvider><State /><ProtectedRoute><div>Staff content</div></ProtectedRoute></AuthProvider></MemoryRouter>);
+const mount = () => render(<MemoryRouter><AuthProvider><State /><Routes>
+  <Route path="/" element={<ProtectedRoute><div>Staff content</div></ProtectedRoute>} />
+  <Route path="/auth" element={<ProtectedRoute><div>Staff content</div></ProtectedRoute>} />
+  <Route path="/portal" element={<div>Prospect content</div>} />
+</Routes></AuthProvider></MemoryRouter>);
 beforeEach(() => {
   mocks.getSession.mockResolvedValue({ data: { session: null } });
   mocks.query.mockImplementation((table: string, id: string) => Promise.resolve({

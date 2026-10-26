@@ -278,12 +278,8 @@ export function CandidateFileDropzone({
               >
                 {f.file_name}
               </button>
-              {isFlashed(f.bucket_path) && (
-                <span className="shrink-0 inline-flex items-center gap-1 rounded border border-success/40 bg-success/10 px-1.5 text-[10px] font-semibold text-success">
-                  <CheckCircle2 className="h-3 w-3" /> Uploaded
-                </span>
-              )}
               {f.uploaded_by_prospect && (
+
                 <span className="shrink-0 rounded border px-1.5 text-[10px] font-semibold bg-portal-yellow/20" title={f.portal_step ? `Uploaded by the prospect in Step ${f.portal_step}` : undefined}>
                   From prospect
                 </span>

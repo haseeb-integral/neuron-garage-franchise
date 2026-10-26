@@ -131,12 +131,8 @@ export function PortalFilesDialog() {
                         <span className="flex-1 truncate"><span className="font-medium">{f.title}</span>
                           {f.title !== f.file_name && <span className="text-xs text-muted-foreground"> · {f.file_name}</span>}
                         </span>
-                        {isFlashed(f.bucket_path) && (
-                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-success">
-                            <CheckCircle2 className="h-3 w-3" /> Uploaded
-                          </span>
-                        )}
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove(f.id, f.title)} title="Remove">
+
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </li>

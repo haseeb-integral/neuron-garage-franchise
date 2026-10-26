@@ -3,7 +3,7 @@
 ## Approved prospect sign-in fix
 - [x] Clear previous account access and reject late lookup results.
 - [x] Route prospects after their own access check.
-- [ ] Run focused account-switch tests and real staff/prospect browser checks.
+- [x] Run focused account-switch tests and real staff/prospect browser checks: 7 tests passed; real prospect session reached /portal after switching from staff and when opening a staff page or sign-in page; administrator opened Candidate Pipeline; no browser errors.
 
 - [x] Use the saved company address in new-campaign footers and all launch checks.
 - [x] Enforce the saved address before lead pushes, including dry runs.

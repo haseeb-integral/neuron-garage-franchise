@@ -27,7 +27,7 @@ const signupSchema = loginSchema.extend({
 });
 
 export default function Auth() {
-  const { session, loading } = useAuth();
+  const { session, loading, accessChecked, role, portalCandidateId } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -63,8 +63,11 @@ export default function Auth() {
     setForgotEmail("");
   };
 
-  if (!loading && session) {
-    return <Navigate to="/" replace />;
+  if (session && (loading || !accessChecked)) {
+    return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (!loading && session && accessChecked) {
+    return <Navigate to={!role && portalCandidateId ? "/portal" : "/"} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -82,7 +85,7 @@ export default function Auth() {
       return;
     }
     toast.success("Welcome back!");
-    navigate("/", { replace: true });
+    // The checked account above decides the destination, not the old session.
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -109,7 +112,7 @@ export default function Auth() {
     toast.success("Account created! Signing you in…");
     // Auto-confirm is on, so signInWithPassword will succeed immediately
     const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInErr) navigate("/", { replace: true });
+    if (signInErr) toast.error(signInErr.message);
   };
 
   const isLogin = tab === "login";

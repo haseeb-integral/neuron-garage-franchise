@@ -1,5 +1,10 @@
 # Approved Phase 2 — turn 2
 
+## Approved prospect sign-in fix
+- [x] Clear previous account access and reject late lookup results.
+- [x] Route prospects after their own access check.
+- [ ] Run focused account-switch tests and real staff/prospect browser checks.
+
 - [x] Use the saved company address in new-campaign footers and all launch checks.
 - [x] Enforce the saved address before lead pushes, including dry runs.
 - [x] Run rule tests and signed-in page checks; deploy the changed function.

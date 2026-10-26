@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Trash2, Download, Loader2 } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { toastUploadSuccess, useUploadFlash } from "@/lib/uploadFeedback";
 
 export interface CandidateFileRow {
   id: string;
@@ -66,9 +67,11 @@ export function CandidateFileDropzone({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [lastUpload, setLastUpload] = useState<{ count: number; names: string[] } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const onFilesChangeRef = useRef(onFilesChange);
   onFilesChangeRef.current = onFilesChange;
+  const { flash, isFlashed } = useUploadFlash();
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -109,11 +112,14 @@ export function CandidateFileDropzone({
       }
 
       setUploading(true);
+      setLastUpload(null);
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id ?? null;
       const uemail = userData.user?.email ?? null;
 
       let ok = 0;
+      const landedNames: string[] = [];
+      const landedPaths: string[] = [];
       for (const file of arr) {
         const uniq = crypto.randomUUID();
         const path = `candidates/${candidateDbId}/${category}/${uniq}-${safeName(file.name)}`;
@@ -145,15 +151,23 @@ export function CandidateFileDropzone({
           continue;
         }
         ok += 1;
+        landedNames.push(file.name);
+        landedPaths.push(path);
       }
 
       setUploading(false);
       if (ok > 0) {
-        toast.success(`Uploaded ${ok} file${ok > 1 ? "s" : ""}`);
+        setLastUpload({ count: ok, names: landedNames });
+        flash(landedPaths);
+        toastUploadSuccess(
+          `${ok} file${ok > 1 ? "s" : ""} uploaded`,
+          landedNames,
+          "They're in the list below.",
+        );
         void loadFiles();
       }
     },
-    [candidateDbId, category, loadFiles]
+    [candidateDbId, category, loadFiles, flash]
   );
 
   const handleDownload = async (row: CandidateFileRow) => {
@@ -177,6 +191,7 @@ export function CandidateFileDropzone({
       toast.error("Delete failed", { description: error.message });
       return;
     }
+    setLastUpload(null);
     toast.success("File removed");
     void loadFiles();
   };
@@ -228,6 +243,20 @@ export function CandidateFileDropzone({
         )}
       </div>
 
+      {lastUpload && (
+        <div className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm font-semibold text-success">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span className="min-w-0">
+            {lastUpload.count} file{lastUpload.count > 1 ? "s" : ""} uploaded successfully
+            <span className="font-normal text-success/90">
+              {" — "}
+              {lastUpload.names.slice(0, 2).join(", ")}
+              {lastUpload.names.length > 2 ? ` +${lastUpload.names.length - 2} more` : ""}
+            </span>
+          </span>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-xs text-muted-foreground">Loading files…</div>
       ) : files.length === 0 ? (
@@ -237,7 +266,9 @@ export function CandidateFileDropzone({
           {files.map((f) => (
             <li
               key={f.id}
-              className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
+              className={`flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm transition-colors ${
+                isFlashed(f.bucket_path) ? "border-success/50 bg-success/10 ring-2 ring-success/25" : ""
+              }`}
             >
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <button
@@ -248,6 +279,7 @@ export function CandidateFileDropzone({
                 {f.file_name}
               </button>
               {f.uploaded_by_prospect && (
+
                 <span className="shrink-0 rounded border px-1.5 text-[10px] font-semibold bg-portal-yellow/20" title={f.portal_step ? `Uploaded by the prospect in Step ${f.portal_step}` : undefined}>
                   From prospect
                 </span>

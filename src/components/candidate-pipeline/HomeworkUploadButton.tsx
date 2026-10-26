@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, FileText } from "lucide-react";
+import { Upload, Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { toastUploadSuccess, useUploadFlash } from "@/lib/uploadFeedback";
 
 const BUCKET = "candidate_documents";
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -36,6 +37,8 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<FileRow[]>([]);
+  const [lastUpload, setLastUpload] = useState<number | null>(null);
+  const { isFlashed, flash } = useUploadFlash();
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -63,8 +66,11 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
       return;
     }
     setUploading(true);
+    setLastUpload(null);
     const { data: userData } = await supabase.auth.getUser();
     let ok = 0;
+    const landedNames: string[] = [];
+    const landedPaths: string[] = [];
     for (const file of arr) {
       const path = `candidates/${candidateDbId}/${category}/${itemKey}/${crypto.randomUUID()}-${safeName(file.name)}`;
       const up = await supabase.storage
@@ -90,10 +96,18 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
         continue;
       }
       ok += 1;
+      landedNames.push(file.name);
+      landedPaths.push(path);
     }
     setUploading(false);
     if (ok > 0) {
-      toast.success(`Uploaded ${ok} file${ok > 1 ? "s" : ""} — see the Documents tab`);
+      setLastUpload(ok);
+      flash(landedPaths);
+      toastUploadSuccess(
+        `${ok} file${ok > 1 ? "s" : ""} uploaded to "${itemLabel}"`,
+        landedNames,
+        "See the Documents tab.",
+      );
       void load();
     }
   };
@@ -108,6 +122,8 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
     }
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
+
+  const justLanded = files.length > 0 && isFlashed(files[0].bucket_path);
 
   return (
     <span className="shrink-0 flex items-center gap-1">
@@ -124,15 +140,20 @@ export function HomeworkUploadButton({ candidateDbId, itemKey, itemLabel, catego
       {files.length > 0 && (
         <Button
           type="button"
-          variant="ghost"
+          variant={justLanded ? "secondary" : "ghost"}
           size="sm"
-          className="h-6 px-1.5 text-[11px]"
+          className={`h-6 px-1.5 text-[11px] ${justLanded ? "border border-success/50 bg-success/10 text-success" : ""}`}
           onClick={() => open(files[0])}
           title={files[0].file_name}
         >
           <FileText className="h-3 w-3 mr-1" />
           {files.length}
         </Button>
+      )}
+      {lastUpload !== null && (
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
+        </span>
       )}
       <Button
         type="button"

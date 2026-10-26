@@ -54,8 +54,9 @@ export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUpload
       toastUploadSuccess(
         `${ok} file${ok > 1 ? "s" : ""} sent`,
         landedNames,
-        "The Neuron Garage team can see them now.",
+        `The Neuron Garage team can see ${ok > 1 ? "them" : "it"} now.`,
       );
+
       onUploaded();
     }
   };

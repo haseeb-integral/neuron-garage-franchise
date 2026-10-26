@@ -35,53 +35,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    let active = true;
+    let requestId = 0;
+
+    const applySession = (newSession: Session | null) => {
+      if (!active) return;
+      const currentRequest = ++requestId;
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      if (!newSession?.user) {
-        setProfile(null);
-        setRole(null);
-        setPortalCandidateId(null);
-      } else {
-        // Defer DB calls to avoid deadlock inside the callback
-        setTimeout(() => fetchProfileAndRole(newSession.user.id), 0);
-      }
-    });
+      // Never combine the new session with the previous account's access.
+      setProfile(null);
+      setRole(null);
+      setPortalCandidateId(null);
+      setAccessChecked(!newSession?.user);
+      setLoading(false);
+      const userId = newSession?.user.id;
+      if (!userId) return;
 
-    // THEN check existing session
+      // Defer DB calls to avoid deadlock inside the auth callback.
+      setTimeout(async () => {
+        if (!active || currentRequest !== requestId) return;
+        try {
+          const [profileResult, roleResult, portalResult] = await Promise.all([
+            supabase.from("profiles").select("id, email, full_name").eq("id", userId).maybeSingle(),
+            supabase.from("user_roles").select("role").eq("user_id", userId).order("role", { ascending: true }).limit(1).maybeSingle(),
+            supabase.from("candidate_portal_users").select("candidate_id").eq("user_id", userId).maybeSingle(),
+          ]);
+          if (!active || currentRequest !== requestId) return;
+          // Failed access checks must never grant staff access.
+          if (roleResult.error || portalResult.error) return;
+          setProfile(profileResult.data ?? null);
+          const nextRole = roleResult.data?.role;
+          setRole(nextRole === "admin" || nextRole === "manager" ? nextRole : null);
+          setPortalCandidateId(portalResult.data?.candidate_id ?? null);
+          setAccessChecked(true);
+        } catch {
+          // Leave protected pages hidden until access can be confirmed.
+        }
+      }, 0);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      applySession(newSession);
+    });
+    const initialRequest = requestId;
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
-      if (existing?.user) {
-        fetchProfileAndRole(existing.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
+      if (active && requestId === initialRequest) applySession(existing);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      requestId++;
+      subscription.unsubscribe();
+    };
   }, []);
-
-  const fetchProfileAndRole = async (userId: string) => {
-    const [{ data: profileData }, { data: roleData }, { data: portalData }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name").eq("id", userId).maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", userId).order("role", { ascending: true }).limit(1).maybeSingle(),
-      supabase.from("candidate_portal_users").select("candidate_id").eq("user_id", userId).maybeSingle(),
-    ]);
-    setPortalCandidateId(portalData?.candidate_id ?? null);
-    setProfile(profileData ?? null);
-    setRole((roleData?.role as AppRole) ?? null);
-    setAccessChecked(true);
-  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    setRole(null);
-    setPortalCandidateId(null);
   };
 
   return (

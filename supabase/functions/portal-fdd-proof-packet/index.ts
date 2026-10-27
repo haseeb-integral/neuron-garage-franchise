@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1'
 import { z } from 'npm:zod@3'
+import { evidenceVersion, proofVersionIds, type ProofVersion } from './versions.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -16,6 +17,7 @@ const EVENT_LABELS: Record<string, string> = {
   downloaded: 'Downloaded by prospect',
   emailed: 'Emailed by staff',
   receipt_signed: 'Item 23 receipt signed',
+  receipt_corrected: 'Item 23 receipt corrected',
 }
 
 /** Staff-only. Builds a regulator-ready PDF: the FDD delivery log, the FDD fingerprint, and the signed Item 23 receipt. */
@@ -53,12 +55,15 @@ Deno.serve(async (req) => {
   ])
   if (!cand) return json({ error: 'Candidate not found' }, 404)
 
-  let fdd: { file_name: string; fdd_issuance_date: string | null; file_sha256: string | null } | null = null
   const fddId = comp?.fdd_file_id ?? events?.find((e) => e.fdd_file_id)?.fdd_file_id ?? null
-  if (fddId) {
-    const { data } = await admin.from('portal_step_files').select('file_name, fdd_issuance_date, file_sha256').eq('id', fddId).maybeSingle()
-    fdd = data ?? null
+  const versionIds = proofVersionIds(fddId, events ?? [], sig ?? [])
+  let versions: ProofVersion[] = []
+  if (versionIds.length) {
+    const { data, error } = await admin.from('portal_step_files').select('id, file_name, fdd_issuance_date, file_sha256').in('id', versionIds)
+    if (error) return json({ error: 'Could not load the FDD version evidence. Please try again.' }, 500)
+    versions = data ?? []
   }
+  const fdd = evidenceVersion(fddId, versions)
 
   const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: 'America/Chicago' }) : '—')
   const doc = await PDFDocument.create()
@@ -95,6 +100,7 @@ Deno.serve(async (req) => {
 
   write('FDD VERSION', bold, 12, navy); y -= 2
   if (fdd) {
+    write('Current staff-recorded version. Each receipt below identifies its own version.', font, 9)
     write(`File: ${fdd.file_name}`, font, 10)
     write(`Issuance date: ${fdd.fdd_issuance_date ?? 'not recorded'}`, font, 10)
     write(`File fingerprint (SHA-256): ${fdd.file_sha256 ?? 'not recorded'}`, font, 10)
@@ -113,11 +119,13 @@ Deno.serve(async (req) => {
   write('FDD DELIVERY LOG (one line per event, append-only)', bold, 12, navy); y -= 2
   if (!events?.length) write('No delivery events recorded yet.', font, 10)
   for (const e of events ?? []) {
-    const v = e.fdd_file_id === fddId ? ' · FDD version on file' : e.fdd_file_id ? ' · another FDD version' : ''
+    const version = evidenceVersion(e.fdd_file_id, versions)
+    const v = version ? ` · ${version.file_name} · issued ${version.fdd_issuance_date ?? 'not recorded'} · version ${version.id}` : ' · version not confirmed'
     const at = day(e.at)
     const who = e.actor_email ? ` · ${e.actor_email}` : ''
     const ipUa = e.ip || e.user_agent ? ` · IP ${e.ip ?? 'n/a'}${e.user_agent ? ` · ${String(e.user_agent).slice(0, 120)}` : ''}` : ''
     write(`- ${at} — ${EVENT_LABELS[e.event] ?? e.event}${v}${who}${ipUa}`, font, 9)
+    if (e.meta?.correction_request_id) write(`Correction request: ${e.meta.correction_request_id} · source receipt: ${e.meta.source_signature_id ?? 'not recorded'}`, font, 8)
   }
   y -= 6
 
@@ -125,6 +133,12 @@ Deno.serve(async (req) => {
   for (const receiptRecord of sig ?? []) {
     const sig = receiptRecord
     write(sig.correction_request_id ? `CORRECTED RECEIPT — request ${sig.correction_request_id}` : 'ORIGINAL RECEIPT', bold, 10)
+    const receiptVersion = evidenceVersion(sig.fdd_file_id, versions)
+    if (receiptVersion) {
+      write(`Receipt FDD: ${receiptVersion.file_name}`, font, 10)
+      write(`Version ID: ${receiptVersion.id} · issuance date: ${receiptVersion.fdd_issuance_date ?? 'not recorded'}`, font, 9)
+      write(`FDD file fingerprint (SHA-256): ${receiptVersion.file_sha256 ?? 'not recorded'}`, font, 9)
+    } else write('Receipt FDD version not confirmed. No version has been guessed.', font, 10)
     write(`Signer: ${sig.signer_name}`, font, 10)
     write(`Signed at: ${day(sig.signed_at)} (Central)`, font, 10)
     write(`Agreed to electronic records and signatures: ${sig.esign_consent_at ? day(sig.esign_consent_at) : 'n/a'} (Central)`, font, 10)

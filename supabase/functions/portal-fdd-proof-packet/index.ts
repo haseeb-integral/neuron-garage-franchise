@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   const { data: isStaff } = await admin.rpc('is_staff', { _user_id: uid })
   if (!isStaff) return json({ error: 'Staff only' }, 403)
 
-  const [{ data: cand }, { data: comp }, { data: events }, { data: sigs }] = await Promise.all([
+  const [{ data: cand }, { data: comp }, { data: events }, { data: sig }] = await Promise.all([
     admin.from('candidates').select('first_name, last_name, email').eq('id', candidateId).maybeSingle(),
     admin.from('candidate_compliance').select('fdd_sent_at, fdd_received_at, fdd_file_id').eq('candidate_id', candidateId).maybeSingle(),
     admin.from('fdd_delivery_events').select('event, at, actor_email, ip, user_agent, fdd_file_id, meta')

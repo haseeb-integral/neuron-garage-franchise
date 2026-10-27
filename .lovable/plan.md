@@ -10,7 +10,7 @@ These match the "After this call" lists the portal already shows:
 |---|---|---|
 | 1 | Complete the Request for Consideration | Request for Consideration (3 pages) |
 | 2 | Complete the Background, Credit, and Funding form | Background, Credit, and Funding (1 page, with the legal authorization) |
-| 2 | Sign and return the Item 23 receipt | Item 23 receipt — **not uploaded yet**, so it comes later |
+| 2 | Sign and return the Item 23 receipt | FDD Item 23 Receipt (FDD dated March 1, 2026) |
 | 3 | Complete the facility prospect form | Facility Prospect Form (3 pages) |
 
 "Assigned" means the step is open. When staff move the candidate into that step, the form shows up there on its own. Staff do not have to tick anything. This is the same rule as the files.
@@ -81,7 +81,14 @@ A new **"Prospect Forms"** tab in the candidate panel:
 - **5B — Background, Credit, and Funding with the compliant e-sign** (about 2 turns): the e-sign notice, signature screen, audit trail, locked PDF, Documents, and the Background/Credit area.
 - **5C — Facility Prospect Form** (about 1 turn): school cards that can be added.
 - **5D — Staff "Prospect Forms" tab** (about 1–2 turns): answers view, PDF download, reopen, notifications.
-- **5E — Item 23 receipt** (about 1 turn), after you upload it. Signing fills the FDD received date and starts the 16-day lock. The lock rule itself does not change.
+- **5E — Item 23 receipt** (about 1 turn).
+  - The prospect reads the receipt text, word for word, on one screen.
+  - The box for the seller who worked with them (Sam Reed or Kaylie Reed) is already ticked by staff.
+  - The prospect fills in: print name, address, and phone. Entity name and type are optional, for anyone forming a company.
+  - They sign the same way as the authorization.
+  - The paper form has two copies, one to keep and one to return. On the web, one signature does both: we keep the signed PDF, and the prospect can download the same PDF as their copy.
+  - The signing date fills the FDD received date, and that starts the 16-day lock. The lock rule itself does not change.
+  - The receipt shows the FDD date (March 1, 2026). When you upload a new FDD, you set its date, so the receipt always matches the FDD the prospect actually got.
 
 Total: about 7–8 turns. Email nudges (Phase 5b) and the smoke test stay after this.
 
@@ -89,7 +96,8 @@ Total: about 7–8 turns. Email nudges (Phase 5b) and the smoke test stay after 
 1. **Due-date wording:** your PDFs say "Please email it to Franchise@NeuronGarage.com…". On the web I would change this to "Please submit this at least one day before our next call." Is that OK?
 2. **Copy answers into the profile?** Should Request for Consideration answers (address, occupation, partner, target city, start time) also fill the matching boxes staff already use in the Qualification Process? I suggest yes, but only into empty boxes. It would never overwrite what staff typed.
 3. **Required boxes:** I plan to make every question required except ones marked "(Optional)", "(if any)", or "(if applicable)", and schools 4–10. OK?
-4. **Item 23:** please upload the Item 23 receipt when you have it.
+4. **Item 23 seller box:** should staff pick the seller (Sam or Kaylie) per candidate, or should both always be ticked?
+5. **Item 23 date:** the receipt date should be the day they actually got the FDD. Is it OK for the signing date to count as that day? I'd ask them to sign right after you email the FDD.
 
 ## What will not change
 These stay as they are: the staff Qualification Process steps, the FDD 16-day lock rule, the calendar, portal files and uploads, the path page look, and all other modules.

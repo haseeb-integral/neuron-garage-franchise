@@ -12,6 +12,7 @@ export const RFC_FORM: PortalFormDef = {
   dueText:
     "Please submit this at least one day before our next call. Questions? Contact Skyler Bossen at 512-593-2750. All information you share remains confidential.",
   nameKeys: { first: "first_name", last: "last_name" },
+  pdf: { category: "general", itemKey: "rfc" },
   sections: [
     {
       id: "personal",

@@ -33,6 +33,6 @@ export function reminderDue(savedStartsAt: string, current: { status: string; st
   if (!current || current.status !== 'scheduled') return false
   const start = new Date(current.starts_at)
   if (start.getTime() !== new Date(savedStartsAt).getTime()) return false
-  const tomorrow = new Date(now.getTime() + 36 * 3600 * 1000 - 12 * 3600 * 1000) // now + 24h
+  const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000)
   return start.getTime() > now.getTime() && denverDate(start) === denverDate(tomorrow)
 }

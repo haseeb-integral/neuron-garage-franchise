@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { getPortalForm, missingRequired, formProgress, signatureMatches } from "@/lib/portalForms/logic";
+import { formatFddIssuance } from "@/lib/portalForms/item23";
 import type { Answers, FormField, PortalFormDef } from "@/lib/portalForms/types";
 import { PORTAL_STEPS } from "@/lib/portalPath";
 import { ESIGN_CONSENT_AGREE, ESIGN_CONSENT_FULL_TEXT, ESIGN_CONSENT_INTRO, ESIGN_CONSENT_POINTS, ESIGN_CONSENT_TITLE, ESIGN_CONSENT_VERSION } from "@/lib/portalForms/esign";
@@ -43,6 +44,16 @@ export default function PortalForm() {
     queryKey: ["portal-path", portalCandidateId],
     enabled: !!portalCandidateId,
     queryFn: async () => (await supabase.rpc("portal_my_path")).data as { first_name: string | null } | null,
+  });
+  // Receipts that name the FDD version received (Item 23): which FDD did this prospect actually get?
+  const fddVersion = useQuery({
+    queryKey: ["portal-fdd-version", portalCandidateId],
+    enabled: !!portalCandidateId && !!form?.dynamicSignedText,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("portal_my_fdd_version");
+      if (error) throw error;
+      return (data as Array<{ fdd_file_id: string | null; issuance_date: string | null; source: string | null }> | null)?.[0] ?? null;
+    },
   });
 
   const [answers, setAnswers] = useState<Answers>({});
@@ -125,6 +136,10 @@ export default function PortalForm() {
   const total = form.sections.length; // review screen index = total
   const pct = formProgress(form, answers);
   const onReview = section >= total || locked;
+  const fddInfo = form.dynamicSignedText
+    ? { fddFileId: fddVersion.data?.fdd_file_id ?? null, issuanceDate: fddVersion.data?.issuance_date ?? null, source: fddVersion.data?.source ?? null }
+    : null;
+  const dynamicText = form.dynamicSignedText && fddVersion.isFetched && fddInfo ? form.dynamicSignedText(fddInfo) : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -154,6 +169,7 @@ export default function PortalForm() {
         {!ready ? <p className="text-sm text-muted-foreground">Loading your answers…</p> : onReview ? (
           <ReviewAndSign form={form} answers={answers} locked={locked} submittedAt={row.data?.submitted_at ?? null} formId={row.data?.id ?? null}
             pct={pct} onEdit={goTo}
+            fddInfo={fddInfo} fddPending={fddVersion.isLoading} dynamicPreText={dynamicText?.preText} dynamicSignedText={dynamicText?.signedText}
             onSubmitted={() => {
               dirty.current = false;
               qc.invalidateQueries({ queryKey: ["portal-form", portalCandidateId, formKey] });
@@ -384,8 +400,10 @@ function buildRows(form: PortalFormDef, a: Answers) {
   });
 }
 
-function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit, onSubmitted, onBeforeSubmit }: {
+function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit, onSubmitted, onBeforeSubmit, fddInfo, fddPending, dynamicPreText, dynamicSignedText }: {
   form: PortalFormDef; answers: Answers; locked: boolean; submittedAt: string | null; formId: string | null; pct: number;
+  fddInfo: { fddFileId: string | null; issuanceDate: string | null; source: string | null } | null; fddPending: boolean;
+  dynamicPreText?: string; dynamicSignedText?: string;
   onEdit: (i: number) => void; onSubmitted: () => void; onBeforeSubmit: () => Promise<void>;
 }) {
   const missing = useMemo(() => missingRequired(form, answers), [form, answers]);
@@ -393,7 +411,8 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const nameOk = signatureMatches(typed, answers[form.nameKeys.first], answers[form.nameKeys.last]);
-  const canSign = !locked && missing.length === 0 && nameOk && agree && !busy;
+  const fddKnown = !form.dynamicSignedText || !!fddInfo?.fddFileId;
+  const canSign = !locked && missing.length === 0 && nameOk && agree && !busy && !fddPending && fddKnown;
   const item = PORTAL_STEPS.find((s) => s.num === form.stepNum)?.items.find((i) => i.key === form.itemKey);
 
   const submit = async () => {
@@ -401,11 +420,12 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
     await onBeforeSubmit();
     const { data, error } = await supabase.functions.invoke("portal-submit-form", {
       body: {
-        form_key: form.key, signer_name: typed.trim(), signed_text: form.signature.text, form_title: form.title,
+        form_key: form.key, signer_name: typed.trim(), signed_text: dynamicSignedText ?? form.signature.text, form_title: form.title,
         step_num: form.stepNum, item_key: form.itemKey, item_label: item?.label ?? form.title,
         first_key: form.nameKeys.first, last_key: form.nameKeys.last,
-        pre_text: form.signature.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
+        pre_text: dynamicPreText ?? form.signature.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
         esign_consent_text: form.esignConsent ? ESIGN_CONSENT_FULL_TEXT : undefined,
+        fdd_issuance_date: form.dynamicSignedText ? fddInfo?.issuanceDate ?? null : undefined,
         sections: buildRows(form, answers),
       },
     });
@@ -473,8 +493,21 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
       {!locked && (
         <section className="rounded-xl border-2 border-portal-navy p-5 space-y-4">
           <h3 className="font-bold text-portal-navy uppercase tracking-wide">{form.signature.heading}</h3>
-          {form.signature.preText && <p className="text-sm leading-relaxed text-muted-foreground">{form.signature.preText}</p>}
-          <p className="text-sm leading-relaxed rounded-lg bg-muted/50 p-3">{form.signature.text}</p>
+          {form.dynamicSignedText && (
+            fddPending ? (
+              <p className="text-sm text-muted-foreground">Checking which FDD version you received…</p>
+            ) : !fddKnown ? (
+              <div className="rounded-lg border border-portal-yellow bg-portal-yellow/10 p-3 text-sm">
+                We can't confirm which FDD version you received yet. Please contact Skyler Bossen at 512-593-2750 so we can record it before you sign.
+              </div>
+            ) : (
+              <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm">
+                This receipt names the FDD you received: issued <strong>{formatFddIssuance(fddInfo?.issuanceDate)}</strong>.
+              </div>
+            )
+          )}
+          {(dynamicPreText ?? form.signature.preText) && <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{dynamicPreText ?? form.signature.preText}</p>}
+          <p className="text-sm leading-relaxed rounded-lg bg-muted/50 p-3 whitespace-pre-wrap">{dynamicSignedText ?? form.signature.text}</p>
           <div>
             <label htmlFor="sig" className="block text-sm font-medium mb-1.5">Type your full name to sign</label>
             <Input id="sig" className="h-12 text-lg font-serif italic" value={typed} onChange={(e) => setTyped(e.target.value)}

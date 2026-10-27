@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { earliestSigningDate, formatDay } from "@/lib/fddCompliance";
@@ -39,6 +41,37 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
   const [versionId, setVersionId] = useState<string>("");
   const [versions, setVersions] = useState<{ id: string; file_name: string; fdd_issuance_date: string | null; created_at: string }[]>([]);
   const [log, setLog] = useState<{ event: string; at: string; actor_email: string | null; fdd_file_id: string | null }[]>([]);
+
+  const [packetBusy, setPacketBusy] = useState(false);
+  const downloadPacket = async () => {
+    setPacketBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-fdd-proof-packet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({ candidate_id: candidateDbId }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error((j as { error?: string })?.error ?? "Download failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "FDD-proof-packet.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Proof packet downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not download the proof packet");
+    } finally {
+      setPacketBusy(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,7 +119,12 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
 
   return (
     <div className="mt-3 rounded-md p-3" style={{ backgroundColor: "#f7faff", border: "1px solid #dee2e6" }}>
-      <Label className="text-xs" style={{ color: "#07142f" }}>FDD sent date</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs" style={{ color: "#07142f" }}>FDD sent date</Label>
+        <Button size="sm" variant="outline" className="h-7 text-xs" disabled={packetBusy} onClick={() => void downloadPacket()}>
+          <Download className="h-3.5 w-3.5" /> {packetBusy ? "Building…" : "Download proof packet (PDF)"}
+        </Button>
+      </div>
       <Input
         type="date"
         value={value}

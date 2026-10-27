@@ -32,6 +32,14 @@ export interface FormSection {
   repeater?: FormRepeater;
 }
 
+/** The FDD version a prospect actually received. Item 23 receipts must name it, never the newest. */
+export interface FddVersionInfo {
+  fddFileId: string | null;
+  issuanceDate: string | null;
+  /** "recorded_sent" (staff picked it) or "delivery_log" (first portal event). */
+  source: string | null;
+}
+
 export interface PortalFormDef {
   key: string;
   version: string;
@@ -50,4 +58,6 @@ export interface PortalFormDef {
   pdf: { category: "background_check" | "general"; itemKey: string };
   /** Answer keys holding the signer's first and last name. */
   nameKeys: { first: string; last: string };
+  /** For receipts that must name the exact FDD version received: builds the words shown above the signature and the signed statement. */
+  dynamicSignedText?: (fdd: FddVersionInfo) => { preText: string; signedText: string };
 }

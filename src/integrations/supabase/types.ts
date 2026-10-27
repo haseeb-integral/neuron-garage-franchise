@@ -4325,6 +4325,16 @@ export type Database = {
       portal_latest_fdd_id: { Args: never; Returns: string }
       portal_log_fdd_available: { Args: never; Returns: string }
       portal_mark_activated: { Args: never; Returns: undefined }
+      portal_my_fdd_version: {
+        Args: never
+        Returns: {
+          fdd_file_id: string
+          file_name: string
+          file_sha256: string
+          issuance_date: string
+          source: string
+        }[]
+      }
       portal_my_path: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

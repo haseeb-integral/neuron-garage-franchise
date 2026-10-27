@@ -1,8 +1,9 @@
 import type { Answers, FormField, FormSection, PortalFormDef } from "./types";
 import { RFC_FORM } from "./rfc";
 import { BGCF_FORM } from "./bgcf";
+import { ITEM23_FORM } from "./item23";
 
-export const PORTAL_FORMS: PortalFormDef[] = [RFC_FORM, BGCF_FORM];
+export const PORTAL_FORMS: PortalFormDef[] = [RFC_FORM, BGCF_FORM, ITEM23_FORM];
 export const getPortalForm = (key: string) => PORTAL_FORMS.find((f) => f.key === key);
 export const formForItem = (step: number, itemKey: string) =>
   PORTAL_FORMS.find((f) => f.stepNum === step && f.itemKey === itemKey);

@@ -4493,6 +4493,7 @@ export type Database = {
         Args: { _form_id: string; _reason: string }
         Returns: string
       }
+      queue_portal_call_reminders: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

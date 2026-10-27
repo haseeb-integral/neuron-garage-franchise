@@ -14,18 +14,28 @@ const Body = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('stage'), candidate_id: z.string().uuid(), before: z.string(), after: z.string() }).strict(),
   z.object({ kind: z.literal('call'), before: Event.nullable(), after: Event }).strict(),
 ])
+const Dispatch = z.object({ dispatch_id: z.string().uuid(), dispatch_token: z.string().uuid() }).strict()
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return Reply({})
   if (req.method !== 'POST') return Reply({ error: 'Method not allowed' }, 405)
   const url = Deno.env.get('SUPABASE_URL'), key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if (!url || !key) return Reply({ error: 'Server configuration error' }, 500)
-  if (req.headers.get('Authorization') !== `Bearer ${key}`) return Reply({ error: 'Server event only' }, 403)
-  let parsed
-  try { parsed = Body.safeParse(await req.json()) } catch { return Reply({ error: 'Invalid JSON' }, 400) }
-  if (!parsed.success) return Reply({ error: 'Invalid event' }, 400)
-  const event = parsed.data
   const admin = createClient(url, key)
+  let request
+  try { request = Dispatch.safeParse(await req.json()) } catch { return Reply({ error: 'Invalid JSON' }, 400) }
+  if (!request.success) return Reply({ error: 'Invalid dispatch' }, 400)
+  // Each database-created event carries its own unguessable server-only token.
+  // The caller cannot choose recipients or change the saved event payload.
+  const { data: dispatch, error: dispatchErr } = await admin.from('portal_notice_dispatches')
+    .select('payload,delivered_at').eq('id', request.data.dispatch_id)
+    .eq('dispatch_token', request.data.dispatch_token).maybeSingle()
+  if (dispatchErr) return Reply({ error: 'Dispatch lookup failed' }, 500)
+  if (!dispatch) return Reply({ error: 'Invalid dispatch token' }, 403)
+  if (dispatch.delivered_at) return Reply({ skipped: 'already_processed' })
+  const parsed = Body.safeParse(dispatch.payload)
+  if (!parsed.success) return Reply({ error: 'Invalid saved event' }, 400)
+  const event = parsed.data
   const cid = event.kind === 'stage' ? event.candidate_id : event.after.candidate_id
   const { data: link, error: linkErr } = await admin.from('candidate_portal_users').select('user_id').eq('candidate_id', cid).maybeSingle()
   if (linkErr) return Reply({ error: 'Prospect lookup failed' }, 500)
@@ -59,5 +69,7 @@ Deno.serve(async req => {
     body: { templateName, idempotencyKey, recipientEmail: account.user.email, templateData },
   })
   if (error) return Reply({ error: 'Notice enqueue failed' }, 502)
+  await admin.from('portal_notice_dispatches').update({ delivered_at: new Date().toISOString() })
+    .eq('id', request.data.dispatch_id)
   return Reply(data)
 })

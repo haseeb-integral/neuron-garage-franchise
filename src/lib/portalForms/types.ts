@@ -3,7 +3,7 @@ export type Answers = Record<string, unknown>;
 export interface FormField {
   key: string;
   label: string;
-  type: "text" | "email" | "tel" | "textarea" | "radio" | "checkboxes" | "checkbox";
+  type: "text" | "email" | "tel" | "textarea" | "radio" | "checkboxes" | "checkbox" | "state";
   options?: string[];
   /** Fields are required unless marked optional. */
   optional?: boolean;

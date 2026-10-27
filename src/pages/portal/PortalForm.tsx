@@ -369,11 +369,11 @@ function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise
   );
 }
 
-function SignedCopyButton({ formId }: { formId: string }) {
+function SignedCopyButton({ formId, form }: { formId: string; form: PortalFormDef }) {
   const sig = useQuery({
     queryKey: ["portal-signature", formId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("candidate_portal_signatures").select("pdf_path")
+      const { data, error } = await supabase.from("candidate_portal_signatures").select("pdf_path, signed_at")
         .eq("form_id", formId).order("signed_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;

@@ -50,8 +50,10 @@ export interface PortalFormDef {
   /** Checklist item key in PORTAL_STEPS that this form completes. */
   itemKey: string;
   sections: FormSection[];
-  /** text = the exact words being signed. preText is shown above it but is not the signed statement. */
-  signature: { heading: string; text: string; note: string; preText?: string; agreeLabel?: string };
+  /** text = the exact words being signed. preText is shown above it but is not the signed statement. Optional: forms with no signature line on paper (noSignature) omit it. */
+  signature?: { heading: string; text: string; note: string; preText?: string; agreeLabel?: string };
+  /** True when the paper form has no signature line: the prospect reviews and submits, no typed signature. */
+  noSignature?: boolean;
   /** Show the e-sign consent notice before the form starts. */
   esignConsent?: boolean;
   /** Where the signed PDF is filed (category + item key the staff panel reads). */

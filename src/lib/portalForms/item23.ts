@@ -1,4 +1,4 @@
-import type { PortalFormDef } from "./types";
+import type { FddVersionInfo, PortalFormDef } from "./types";
 
 /** Format an FDD issuance date (YYYY-MM-DD) as "March 1, 2026"; never invent a date. */
 export function formatFddIssuance(date: string | null | undefined): string {
@@ -21,8 +21,8 @@ const EXHIBITS =
   "G. Form of General Release.";
 
 /** The Item 23 receipt, word for word from the paper form. The FDD date names the version the prospect received. */
-export function item23Receipt(issuanceDate: string | null | undefined): { preText: string; signedText: string } {
-  const date = formatFddIssuance(issuanceDate);
+export function item23Receipt(fdd: FddVersionInfo): { preText: string; signedText: string } {
+  const date = formatFddIssuance(fdd.issuanceDate);
   const preText = [
     "RECEIPT",
     "",

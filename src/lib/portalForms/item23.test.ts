@@ -17,7 +17,7 @@ describe("Item 23 receipt rules", () => {
   });
 
   it("names the exact FDD version received in the signed statement", () => {
-    const { signedText, preText } = item23Receipt("2026-03-01");
+    const { signedText, preText } = item23Receipt({ fddFileId: "fdd-1", issuanceDate: "2026-03-01", source: "recorded_sent" });
     expect(signedText).toContain("Franchise Disclosure Document dated March 1, 2026");
     expect(signedText).toContain("G. Form of General Release");
     expect(preText).toContain("Issuance Date: March 1, 2026");
@@ -25,7 +25,7 @@ describe("Item 23 receipt rules", () => {
 
   it("never invents a date when the version is not recorded", () => {
     expect(formatFddIssuance(null)).toBe("date not on file");
-    expect(item23Receipt(null).signedText).toContain("date not on file");
+    expect(item23Receipt({ fddFileId: null, issuanceDate: null, source: null }).signedText).toContain("date not on file");
   });
 
   it("attaches to the Step 2 'Sign and return the Item 23 receipt' checklist item", () => {

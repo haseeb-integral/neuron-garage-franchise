@@ -169,6 +169,13 @@
       "when": 1793118613119,
       "tag": "0023_allow_receipt_correction_events",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793118788426,
+      "tag": "0024_ensure_original_receipt_compliance_record",
+      "breakpoints": true
     }
   ]
 }

@@ -134,6 +134,10 @@ Deno.serve(async (req) => {
   if (!form) return json({ error: 'Form not found. Please save your answers first.' }, 404)
   if (form.status === 'submitted') return json({ error: 'This form was already submitted.' }, 409)
 
+  const { data: requests } = await admin.from('candidate_portal_corrections').select('id, fdd_file_id, requested_at').eq('form_id', form.id).order('requested_at', { ascending: false }).limit(1)
+  const correction = form.status === 'reopened' ? requests?.[0] : null
+  if (form.status === 'reopened' && !correction) return json({ error: 'No correction request is available.' }, 409)
+
   const a = (form.answers ?? {}) as Record<string, unknown>
   const f = norm(String(a[b.first_key] ?? '')), l = norm(String(a[b.last_key] ?? '')), t = norm(b.signer_name)
   if (!f || !l || !t.startsWith(f) || !t.endsWith(l)) {
@@ -142,12 +146,14 @@ Deno.serve(async (req) => {
   const consentAt = typeof a.__esign_consent_at === 'string' ? a.__esign_consent_at : null
   if (b.esign_consent_text && !consentAt) return json({ error: 'Please agree to electronic records and signatures first.' }, 400)
 
+  if (correction && ['bgcf', 'item23'].includes(b.form_key) && (!consentAt || consentAt < correction.requested_at)) return json({ error: 'Please agree to electronic records and signatures again.' }, 400)
+
   // Item 23 receipt: name the exact FDD version this prospect received (never the newest).
   let item23Fdd: { id: string; date: string | null; receivedAt: string | null } | null = null
   if (b.form_key === 'item23') {
     const { data: comp } = await admin.from('candidate_compliance').select('fdd_file_id, fdd_received_at').eq('candidate_id', candId).maybeSingle()
-    let fddId: string | null = (comp?.fdd_file_id as string | null) ?? null
-    if (!fddId) {
+    let fddId: string | null = correction ? correction.fdd_file_id : (comp?.fdd_file_id as string | null) ?? null
+    if (!fddId && !correction) {
       const { data: ev } = await admin.from('fdd_delivery_events').select('fdd_file_id')
         .eq('candidate_id', candId).not('fdd_file_id', 'is', null).order('at', { ascending: true }).limit(1).maybeSingle()
       fddId = (ev?.fdd_file_id as string | null) ?? null
@@ -183,44 +189,20 @@ Deno.serve(async (req) => {
     return json({ error: 'Could not create your signed copy. Nothing was submitted. Please try again.' }, 500)
   }
 
-  const { error: sErr } = await admin.from('candidate_portal_signatures').insert({
-    form_id: form.id, candidate_id: candId, form_key: b.form_key, form_version: form.form_version,
-    signer_name: b.signer_name, signed_text: (b.pre_text ? b.pre_text + '\n\n' : '') + b.signed_text,
-    esign_consent_text: b.esign_consent_text ?? null, esign_consent_at: consentAt,
-    answers_snapshot: a, answers_sha256: answersHash,
-    signed_at: now, user_id: uid, user_email: email, ip, user_agent: ua, pdf_path: pdfPath, pdf_sha256: pdfHash,
+  const { error: sErr } = await admin.rpc('portal_finish_submission', {
+    _form_id: form.id, _expected_answers: a,
+    _signature: {
+      candidate_id: candId, form_key: b.form_key,
+      signer_name: b.signer_name, signed_text: (b.pre_text ? b.pre_text + '\n\n' : '') + b.signed_text,
+      esign_consent_text: b.esign_consent_text ?? null, esign_consent_at: consentAt,
+      answers_sha256: answersHash, signed_at: now, user_id: uid, user_email: email, ip, user_agent: ua,
+      pdf_path: pdfPath, pdf_sha256: pdfHash, fdd_file_id: item23Fdd?.id ?? null,
+    },
+    _details: { form_title: b.form_title, pdf_category: b.pdf_category, step_num: b.step_num, item_key: b.item_key, item_label: b.item_label, fdd_issuance_date: item23Fdd?.date ?? null },
   })
-  if (sErr) return json({ error: 'Could not save your signature. Please try again.' }, 500)
-
-  await admin.from('candidate_portal_forms').update({ status: 'submitted', submitted_at: now, progress: 100 }).eq('id', form.id)
-
-  // File the PDF in Documents (its trigger logs "Prospect uploaded" and notifies staff).
-  await admin.from('candidate_files').insert({
-    candidate_id: candId, bucket_path: pdfPath, file_name: `Signed - ${b.form_title}.pdf`, mime_type: 'application/pdf',
-    category: b.pdf_category, uploaded_by: uid, uploaded_by_email: email, uploaded_by_prospect: true, portal_step: b.step_num,
-  })
-
-  const { data: tick } = await admin.from('candidate_portal_checklist').select('id')
-    .eq('candidate_id', candId).eq('step_num', b.step_num).eq('item_key', b.item_key).maybeSingle()
-  if (!tick) {
-    await admin.from('candidate_portal_checklist').insert({
-      candidate_id: candId, step_num: b.step_num, item_key: b.item_key, item_label: b.item_label, done_by: uid,
-    })
-  }
-  await admin.from('candidate_activities').insert({
-    candidate_id: candId, type: 'note', content: `Prospect signed and submitted: ${b.form_title}`,
-    metadata: { source: 'portal', form_key: b.form_key }, actor_email: email,
-  })
-
-  // Item 23: the signing date counts as the FDD received date (starts the 16-day lock), and the event goes in the permanent log.
-  if (b.form_key === 'item23' && item23Fdd) {
-    if (!item23Fdd.receivedAt) {
-      await admin.from('candidate_compliance').upsert({ candidate_id: candId, fdd_received_at: now }, { onConflict: 'candidate_id' })
-    }
-    await admin.from('fdd_delivery_events').insert({
-      candidate_id: candId, fdd_file_id: item23Fdd.id, event: 'receipt_signed', actor_id: uid, actor_email: email, ip, user_agent: ua,
-      meta: { signer_name: b.signer_name, form_version: form.form_version, pdf_path: pdfPath, pdf_sha256: pdfHash, fdd_issuance_date: item23Fdd.date },
-    })
+  if (sErr) {
+    if (pdfPath) await admin.storage.from('candidate_documents').remove([pdfPath])
+    return json({ error: 'The form changed or could not be submitted. Refresh and try again. Your draft is still saved.' }, 409)
   }
   return json({ status: 'submitted', signed_at: now, pdf_path: pdfPath })
 })

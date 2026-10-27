@@ -591,6 +591,68 @@ export type Database = {
           },
         ]
       }
+      candidate_portal_corrections: {
+        Row: {
+          candidate_id: string
+          fdd_file_id: string | null
+          form_id: string
+          id: string
+          reason: string
+          requested_at: string
+          requested_by: string
+          source_signature_id: string
+        }
+        Insert: {
+          candidate_id: string
+          fdd_file_id?: string | null
+          form_id: string
+          id?: string
+          reason: string
+          requested_at?: string
+          requested_by: string
+          source_signature_id: string
+        }
+        Update: {
+          candidate_id?: string
+          fdd_file_id?: string | null
+          form_id?: string
+          id?: string
+          reason?: string
+          requested_at?: string
+          requested_by?: string
+          source_signature_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_portal_corrections_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_portal_corrections_fdd_file_id_fkey"
+            columns: ["fdd_file_id"]
+            isOneToOne: false
+            referencedRelation: "portal_step_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_portal_corrections_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_portal_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_portal_corrections_source_signature_id_fkey"
+            columns: ["source_signature_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_portal_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_portal_forms: {
         Row: {
           answers: Json
@@ -655,8 +717,10 @@ export type Database = {
           answers_sha256: string
           answers_snapshot: Json
           candidate_id: string
+          correction_request_id: string | null
           esign_consent_at: string | null
           esign_consent_text: string | null
+          fdd_file_id: string | null
           form_id: string
           form_key: string
           form_version: string
@@ -675,8 +739,10 @@ export type Database = {
           answers_sha256: string
           answers_snapshot: Json
           candidate_id: string
+          correction_request_id?: string | null
           esign_consent_at?: string | null
           esign_consent_text?: string | null
+          fdd_file_id?: string | null
           form_id: string
           form_key: string
           form_version: string
@@ -695,8 +761,10 @@ export type Database = {
           answers_sha256?: string
           answers_snapshot?: Json
           candidate_id?: string
+          correction_request_id?: string | null
           esign_consent_at?: string | null
           esign_consent_text?: string | null
+          fdd_file_id?: string | null
           form_id?: string
           form_key?: string
           form_version?: string
@@ -717,6 +785,20 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_portal_signatures_correction_request_id_fkey"
+            columns: ["correction_request_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_portal_corrections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_portal_signatures_fdd_file_id_fkey"
+            columns: ["fdd_file_id"]
+            isOneToOne: false
+            referencedRelation: "portal_step_files"
             referencedColumns: ["id"]
           },
           {
@@ -4322,6 +4404,23 @@ export type Database = {
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
       portal_current_step: { Args: { _user_id: string }; Returns: number }
+      portal_finish_submission: {
+        Args: {
+          _details: Json
+          _expected_answers: Json
+          _form_id: string
+          _signature: Json
+        }
+        Returns: string
+      }
+      portal_form_fdd_version: {
+        Args: { _form_key: string }
+        Returns: {
+          fdd_file_id: string
+          issuance_date: string
+          source: string
+        }[]
+      }
       portal_latest_fdd_id: { Args: never; Returns: string }
       portal_log_fdd_available: { Args: never; Returns: string }
       portal_mark_activated: { Args: never; Returns: undefined }
@@ -4348,6 +4447,10 @@ export type Database = {
           street: string
           zip: string
         }[]
+      }
+      portal_request_correction: {
+        Args: { _form_id: string; _reason: string }
+        Returns: string
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

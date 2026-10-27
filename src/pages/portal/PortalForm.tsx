@@ -337,7 +337,7 @@ function SectionView({ form, index, answers, onChange, hidden }: { form: PortalF
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                {rep.fields.map((f) => (
+                {rep.fields.filter((f) => !f.showWhen || f.showWhen(items[i] ?? {})).map((f) => (
                   <FieldInput key={f.key} f={f} idPrefix={`${s.id}-${i}`} value={items[i]?.[f.key]} onChange={(v) => setItem(i, f.key, v)} />
                 ))}
               </div>
@@ -451,7 +451,7 @@ function buildRows(form: PortalFormDef, a: Answers) {
     const rows = (s.fields ?? []).map((f) => ({ label: f.label, value: answerText(a[f.key]) }));
     if (s.repeater) {
       ((a[s.repeater.key] as Answers[] | undefined) ?? []).forEach((it, j) => {
-        s.repeater!.fields.forEach((f) => rows.push({ label: `${s.repeater!.itemLabel} ${j + 1} - ${f.label}`, value: answerText(it?.[f.key]) }));
+        s.repeater!.fields.filter((f) => !f.showWhen || f.showWhen(it ?? {})).forEach((f) => rows.push({ label: `${s.repeater!.itemLabel} ${j + 1} - ${f.label}`, value: answerText(it?.[f.key]) }));
       });
     }
     return { title: s.title, rows };
@@ -544,7 +544,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
             {s.repeater && ((answers[s.repeater.key] as Answers[] | undefined) ?? []).map((it, j) => (
               <div key={j} className="rounded-md bg-muted/40 p-2">
                 <div className="text-xs font-semibold mb-1">{s.repeater!.itemLabel} {j + 1}</div>
-                {s.repeater!.fields.map((f) => (
+                {s.repeater!.fields.filter((f) => !f.showWhen || f.showWhen(it ?? {})).map((f) => (
                   <div key={f.key} className="grid md:grid-cols-[1fr_1.4fr] gap-1">
                     <dt className="text-muted-foreground">{f.label}</dt><dd className="whitespace-pre-wrap">{answerText(it?.[f.key])}</dd>
                   </div>

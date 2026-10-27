@@ -57,7 +57,12 @@ export const FACILITY_FORM: PortalFormDef = {
               "Along a commuter route",
               "Near large office parks",
               "I have a strong reason to believe this school would host",
+              "Other",
             ],
+          },
+          {
+            key: "good_fit_other", label: "Other reason", type: "textarea", optional: true,
+            showWhen: (a) => Array.isArray(a.good_fit) && a.good_fit.includes("Other"),
           },
           { key: "connection", label: "Your connection to this school (if any), and any other notes", type: "textarea", optional: true },
         ],

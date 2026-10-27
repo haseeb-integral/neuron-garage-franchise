@@ -4,4 +4,7 @@
 - [x] Narrow proof-packet repair: each receipt/event names its own saved FDD version; correction events have readable labels and source links. Thirty form tests and five live permission tests passed. Temporary submissions/files removed and test prospect restored.
 - Validation limits: true simultaneous requests and forced interruption/recovery were not exercised; repeated submission rejection was verified. Save-and-return used saved test answers rather than typing every field.
 - [x] Phase 5b Phase 1: verified Neuron Garage sender configured through email setup; email processing and sender functions deployed; four prospect previews and existing staff digest rendered successfully. No live prospect triggers added.
-- [ ] Phase 5b Phase 1 inbox check: waiting for approval of one test recipient. No preview email sent yet.
+- [x] Phase 5b Phase 1 inbox check: Sam confirmed receipt at his approved test address.
+- [ ] Phase 5b Phase 2a: connect step-opened, call-booked, and call-moved notices; verify portal-only delivery, no duplicates, and non-blocking saves.
+- [ ] Phase 5b Phase 2b: day-before reminders; waits for Phase 2a review and approval.
+- [ ] Phase 5b Phase 3: full notice smoke test; waits for reminder phase completion.

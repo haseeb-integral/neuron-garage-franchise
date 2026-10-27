@@ -16,6 +16,7 @@ import { exportResearchPacket } from "./exportResearchPacket";
 import { isEnabled } from "@/lib/featureFlags";
 import { toast } from "sonner";
 import { PortalInviteButton } from "./PortalInviteButton";
+import { ProspectFormsTab } from "./tabs/ProspectFormsTab";
 
 interface TeamMember { email: string; firstName: string; }
 
@@ -89,6 +90,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
             <TabsList className="inline-flex w-max gap-1 h-auto p-1 bg-transparent">
               <TabsTrigger value="overview" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Overview</TabsTrigger>
               <TabsTrigger value="process" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Qualification Process</TabsTrigger>
+              <TabsTrigger value="prospect-forms" className="whitespace-nowrap px-3 rounded-none">Prospect Forms</TabsTrigger>
               {isEnabled("FF_DOCUMENTS") && (
                 <TabsTrigger value="documents" className="whitespace-nowrap px-3 data-[state=active]:text-[#174be8] data-[state=active]:shadow-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#174be8] rounded-none text-[#526078]">Uploaded Documents</TabsTrigger>
               )}
@@ -103,6 +105,9 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
           </TabsContent>
           <TabsContent value="process">
             <ProcessTab candidate={candidate} teamMembers={teamMembers} onSaveProfile={onSaveProfile} />
+          </TabsContent>
+          <TabsContent value="prospect-forms">
+            <ProspectFormsTab candidateId={(candidate as Candidate & { dbId?: string }).dbId} />
           </TabsContent>
 
           <TabsContent value="notes">

@@ -10,7 +10,7 @@ These match the "After this call" lists the portal already shows:
 |---|---|---|
 | 1 | Complete the Request for Consideration | Request for Consideration (3 pages) |
 | 2 | Complete the Background, Credit, and Funding form | Background, Credit, and Funding (1 page, with the legal authorization) |
-| 2 | Sign and return the Item 23 receipt | Item 23 receipt — **not uploaded yet**, so it comes later |
+| 2 | Sign and return the Item 23 receipt | FDD Item 23 Receipt (FDD dated March 1, 2026) |
 | 3 | Complete the facility prospect form | Facility Prospect Form (3 pages) |
 
 "Assigned" means the step is open. When staff move the candidate into that step, the form shows up there on its own. Staff do not have to tick anything. This is the same rule as the files.

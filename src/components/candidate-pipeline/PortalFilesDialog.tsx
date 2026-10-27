@@ -12,6 +12,11 @@ import { PORTAL_STEPS } from "@/lib/portalPath";
 import { toastUploadSuccess, useUploadFlash } from "@/lib/uploadFeedback";
 
 const BUCKET = "portal_files";
+async function sha256Hex(file: File) {
+  const buf = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const fmtIssue = (d: string | null) => (d ? new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "date not recorded");
 const safeName = (n: string) => n.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
 
 /** Staff card: shared files every prospect gets when a step unlocks, plus the latest FDD. */
@@ -19,6 +24,7 @@ export function PortalFilesDialog() {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const { isFlashed, flash } = useUploadFlash();
+  const [issueDate, setIssueDate] = useState("");
   const files = useQuery({
     queryKey: ["portal-step-files-staff"],
     enabled: open,
@@ -31,8 +37,10 @@ export function PortalFilesDialog() {
   });
 
   /** Returns the stored path on success so the caller can confirm it in the row. */
-  const upload = async (step: number, file: File, title: string, isFdd: boolean): Promise<string | null> => {
+  const upload = async (step: number, file: File, title: string, isFdd: boolean, issuanceDate?: string): Promise<string | null> => {
     if (file.size > 50 * 1024 * 1024) { toast.error("File is over 50MB"); return null; }
+    if (isFdd && !issuanceDate) { toast.error("Enter the FDD issuance date first"); return null; }
+    const sha = isFdd ? await sha256Hex(file) : null;
     const { data: u } = await supabase.auth.getUser();
     const path = `step-${step}/${crypto.randomUUID()}-${safeName(file.name)}`;
     const up = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type || undefined });
@@ -40,6 +48,7 @@ export function PortalFilesDialog() {
     const ins = await supabase.from("portal_step_files").insert({
       step_num: step, title: title.trim() || file.name, bucket_path: path, file_name: file.name,
       mime_type: file.type || null, size_bytes: file.size, is_fdd: isFdd,
+      fdd_issuance_date: isFdd ? issuanceDate : null, file_sha256: sha,
       uploaded_by: u.user?.id ?? null, uploaded_by_email: u.user?.email ?? null,
     });
     if (ins.error) {
@@ -94,6 +103,7 @@ export function PortalFilesDialog() {
               }`}>
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium truncate">{fdds[0].file_name}</span>
+                <Badge variant="outline" className="shrink-0">Issued {fmtIssue(fdds[0].fdd_issuance_date)}</Badge>
                 <span className="text-xs text-muted-foreground">
                   · uploaded {formatDistanceToNow(new Date(fdds[0].created_at), { addSuffix: true })}
                 </span>
@@ -106,12 +116,27 @@ export function PortalFilesDialog() {
             ) : (
               <p className="text-sm text-muted-foreground italic">No FDD uploaded yet.</p>
             )}
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-medium" htmlFor="fdd-issue">FDD issuance date (required)</label>
+              <Input id="fdd-issue" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="h-8 w-44 text-sm" />
+            </div>
             <UploadRow
               label={fdds[0] ? "Upload newer FDD" : "Upload FDD"}
               hideTitle
+              disabled={!issueDate}
               doneLabel="Uploaded — every prospect's FDD link now points to it"
-              onUpload={(f) => upload(2, f, "Latest FDD", true)}
+              onUpload={async (f) => { const r = await upload(2, f, "Latest FDD", true, issueDate); if (r) setIssueDate(""); return r; }}
             />
+            {fdds.length > 1 && (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">Older FDD versions ({fdds.length - 1}) — kept for the audit trail, hidden from prospects</summary>
+                <ul className="mt-1 space-y-0.5 pl-4 list-disc">
+                  {fdds.slice(1).map((f) => (
+                    <li key={f.id}>{f.file_name} · issued {fmtIssue(f.fdd_issuance_date)} · uploaded {new Date(f.created_at).toLocaleDateString()}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </section>
 
           {PORTAL_STEPS.map((s) => {
@@ -143,15 +168,14 @@ export function PortalFilesDialog() {
               </section>
             );
           })}
-          {fdds.length > 1 && <p className="text-xs text-muted-foreground"><Badge variant="outline">Note</Badge> Older FDDs are kept but hidden from prospects.</p>}
         </DialogContent>
       </Dialog>
     </>
   );
 }
 
-function UploadRow({ label, hideTitle, doneLabel = "Uploaded — prospects can see it", onUpload }: {
-  label: string; hideTitle?: boolean; doneLabel?: string; onUpload: (f: File, title: string) => Promise<string | null>;
+function UploadRow({ label, hideTitle, disabled, doneLabel = "Uploaded — prospects can see it", onUpload }: {
+  label: string; hideTitle?: boolean; disabled?: boolean; doneLabel?: string; onUpload: (f: File, title: string) => Promise<string | null>;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
@@ -171,7 +195,7 @@ function UploadRow({ label, hideTitle, doneLabel = "Uploaded — prospects can s
         if (path) { setTitle(""); setDone(true); }
         setBusy(false);
       }} />
-      <Button size="sm" variant="secondary" disabled={busy} onClick={() => ref.current?.click()} className="shrink-0">
+      <Button size="sm" variant="secondary" disabled={busy || disabled} onClick={() => ref.current?.click()} className="shrink-0">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} {label}
       </Button>
       {done && (

@@ -485,7 +485,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
             <div className="text-sm text-muted-foreground">
               Submitted {submittedAt ? new Date(submittedAt).toLocaleString() : ""}. If something needs to change, contact Skyler Bossen at 512-593-2750.
             </div>
-            {formId && <SignedCopyButton formId={formId} />}
+            {formId && <SignedCopyButton formId={formId} form={form} />}
           </div>
         </div>
       )}

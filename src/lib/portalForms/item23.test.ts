@@ -33,4 +33,19 @@ describe("Item 23 receipt rules", () => {
     expect(getPortalForm("item23")?.key).toBe("item23");
     expect(ITEM23_FORM.stepNum).toBe(2);
   });
+
+  it("carries every disclosure paragraph from the paper form", () => {
+    const { preText, signedText } = item23Receipt({ fddFileId: "fdd-1", issuanceDate: "2026-03-01", source: "recorded_sent" });
+    expect(preText).toContain("14 calendar days before you sign a binding agreement");
+    expect(preText).toContain("New York requires that we give you this Disclosure Document");
+    expect(preText).toContain("Michigan requires that we give you this Disclosure Document");
+    expect(preText).toContain("Federal Trade Commission, Washington, D.C. 20580");
+    expect(preText).toContain("The franchisor is Neuron Garage Franchise Support, LLC located at 150 S. Willow Street #2125, Telluride, CO 81435");
+    expect(preText).toContain("authorizes the respective state agencies identified on Exhibit B");
+    expect(signedText).toContain("Keep this copy of the Receipt for your records.");
+  });
+
+  it("is marked paper-order so the signed PDF reads like the paper form", () => {
+    expect(ITEM23_FORM.paperOrder).toBe(true);
+  });
 });

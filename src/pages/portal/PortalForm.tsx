@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { getPortalForm, missingRequired, formProgress, signatureMatches } from "@/lib/portalForms/logic";
 import { formatFddIssuance } from "@/lib/portalForms/item23";
+import { buildPrefill, hiddenKnownKeys, type KnownProfile } from "@/lib/portalForms/prefill";
 import type { Answers, FormField, PortalFormDef } from "@/lib/portalForms/types";
 import { PORTAL_STEPS } from "@/lib/portalPath";
 import { ESIGN_CONSENT_AGREE, ESIGN_CONSENT_FULL_TEXT, ESIGN_CONSENT_INTRO, ESIGN_CONSENT_POINTS, ESIGN_CONSENT_TITLE, ESIGN_CONSENT_VERSION } from "@/lib/portalForms/esign";
@@ -45,6 +46,21 @@ export default function PortalForm() {
     enabled: !!portalCandidateId,
     queryFn: async () => (await supabase.rpc("portal_my_path")).data as { first_name: string | null } | null,
   });
+  const profile = useQuery({
+    queryKey: ["portal-profile", portalCandidateId],
+    enabled: !!portalCandidateId,
+    queryFn: async () => ((await supabase.rpc("portal_my_profile")).data as KnownProfile[] | null)?.[0] ?? null,
+  });
+  const rfc = useQuery({
+    queryKey: ["portal-form", portalCandidateId, "rfc"],
+    enabled: !!portalCandidateId && !!form && form.key !== "rfc",
+    queryFn: async () => {
+      const { data } = await supabase.from("candidate_portal_forms")
+        .select("id, answers, status, last_section, submitted_at")
+        .eq("candidate_id", portalCandidateId!).eq("form_key", "rfc").maybeSingle();
+      return data;
+    },
+  });
   // Receipts that name the FDD version received (Item 23): which FDD did this prospect actually get?
   const fddVersion = useQuery({
     queryKey: ["portal-fdd-version", portalCandidateId],
@@ -63,18 +79,18 @@ export default function PortalForm() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const dirty = useRef(false);
   const timer = useRef<number>();
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (ready || !form || row.isLoading || !row.isFetched) return;
-    const base: Answers = { ...(row.data?.answers as Answers | undefined) };
-    if (!row.data) {
-      if (path.data?.first_name) base[form.nameKeys.first] = path.data.first_name;
-      if (user?.email) base.email = user.email;
-    }
+    if (ready || !form || row.isLoading || !row.isFetched || profile.isLoading || (form.key !== "rfc" && rfc.isLoading)) return;
+    const saved: Answers = { ...(row.data?.answers as Answers | undefined) };
+    const base = row.data?.status === "submitted" ? saved
+      : buildPrefill(form, saved, profile.data ?? (path.data ? { first_name: path.data.first_name } : null), (rfc.data?.answers as Answers | undefined) ?? null, user?.email);
+    setHidden(row.data?.status === "submitted" ? new Set() : hiddenKnownKeys(form, base));
     setAnswers(base);
     setSection(Math.min(row.data?.last_section ?? 0, form.sections.length));
     setReady(true);
-  }, [ready, form, row.isLoading, row.isFetched, row.data, path.data, user]);
+  }, [ready, form, row.isLoading, row.isFetched, row.data, path.data, user, profile.isLoading, profile.data, rfc.isLoading, rfc.data]);
 
   const locked = row.data?.status === "submitted";
 
@@ -179,7 +195,7 @@ export default function PortalForm() {
             onBeforeSubmit={async () => { window.clearTimeout(timer.current); await persist(answers, total); }}
           />
         ) : (
-          <SectionView form={form} index={section} answers={answers} onChange={update} />
+          <SectionView form={form} index={section} answers={answers} onChange={update} hidden={hidden} />
         )}
 
         {!locked && ready && (
@@ -276,7 +292,7 @@ function FieldInput({ f, value, onChange, idPrefix }: { f: FormField; value: unk
   );
 }
 
-function SectionView({ form, index, answers, onChange }: { form: PortalFormDef; index: number; answers: Answers; onChange: (a: Answers) => void }) {
+function SectionView({ form, index, answers, onChange, hidden }: { form: PortalFormDef; index: number; answers: Answers; onChange: (a: Answers) => void; hidden: Set<string> }) {
   const s = form.sections[index];
   const rep = s.repeater;
   const items = rep ? ((answers[rep.key] as Answers[] | undefined) ?? []) : [];
@@ -292,9 +308,16 @@ function SectionView({ form, index, answers, onChange }: { form: PortalFormDef; 
         <h2 className="text-lg font-bold text-portal-navy">{s.title}</h2>
         {s.intro && <p className="text-sm text-muted-foreground mt-1">{s.intro}</p>}
       </div>
-      {s.fields && (
+      {s.fields?.some((f) => hidden.has(f.key)) && (
+        <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm">
+          <span className="text-muted-foreground">Submitting as </span>
+          <span className="font-semibold text-portal-navy">{[answers.first_name, answers.last_name].filter(Boolean).join(" ")}</span>
+          {answers.email ? <span className="text-muted-foreground"> · {String(answers.email)}</span> : null}
+        </div>
+      )}
+      {s.fields && s.fields.some((f) => !hidden.has(f.key)) && (
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          {s.fields.map((f) => (
+          {s.fields.filter((f) => !hidden.has(f.key)).map((f) => (
             <FieldInput key={f.key} f={f} idPrefix={s.id} value={answers[f.key]} onChange={(v) => onChange({ ...answers, [f.key]: v })} />
           ))}
         </div>

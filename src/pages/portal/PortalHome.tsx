@@ -1,13 +1,13 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Lock, CalendarClock, Clock } from "lucide-react";
+import { Check, Lock, CalendarClock, Clock, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { fromDbStage } from "@/lib/stageDbMapping";
-import { PORTAL_STEPS, stageToStep, stepState, type PortalStep, type StepState } from "@/lib/portalPath";
+import { PORTAL_STEPS, itemDueDate, stageToStep, stepState, type PortalStep, type StepState } from "@/lib/portalPath";
 import { PortalStepFiles, type StepFile, type MyUpload } from "@/components/portal/PortalStepFiles";
 import { formForItem } from "@/lib/portalForms/logic";
 import logo from "@/assets/neuron-garage-logo.png";
@@ -158,6 +158,7 @@ export default function PortalHome() {
                   ticked={ticks.data ?? new Set()}
                   onToggle={toggle}
                   forms={forms.data ?? {}}
+                  nextCall={data.next_call?.starts_at ?? null}
                   files={
                     <PortalStepFiles
                       stepNum={s.num}
@@ -212,7 +213,19 @@ function NextCallCard({ call }: { call: PathData["next_call"] }) {
 
 type FormStatusMap = Record<string, { form_key: string; status: string; progress: number }>;
 
-function FormItem({ formKey, label, status }: { formKey: string; label: string; status?: FormStatusMap[string] }) {
+function DueChip({ due, done, show }: { due: Date | null; done: boolean; show: boolean }) {
+  if (!show) return null;
+  if (done) return <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3 w-3" /> Done</span>;
+  const late = !!due && due.getTime() < Date.now();
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${late ? "bg-destructive text-destructive-foreground" : "bg-portal-yellow text-portal-yellow-foreground"}`}>
+      <AlarmClock className="h-3.5 w-3.5" />
+      {due ? `${late ? "Was due" : "Due"} ${due.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}` : "Due before your next call"}
+    </span>
+  );
+}
+
+function FormItem({ formKey, label, status, due }: { formKey: string; label: string; status?: FormStatusMap[string]; due: ReactNode }) {
   const done = status?.status === "submitted";
   const started = !!status && !done;
   return (
@@ -221,7 +234,10 @@ function FormItem({ formKey, label, status }: { formKey: string; label: string; 
         <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center ${done ? "bg-success border-success text-success-foreground" : ""}`}>
           {done && <Check className="h-3 w-3" />}
         </span>
-        <span className={`text-sm ${done ? "text-muted-foreground" : "font-medium"}`}>{label}</span>
+        <div className="space-y-1">
+          <span className={`block text-sm ${done ? "text-muted-foreground" : "font-medium"}`}>{label}</span>
+          {due}
+        </div>
       </div>
       <div className="flex items-center justify-between gap-2 pl-6">
         <span className={`text-xs rounded-full px-2 py-0.5 ${done ? "bg-success/15 text-success" : started ? "bg-portal-yellow/25" : "bg-muted text-muted-foreground"}`}>
@@ -236,8 +252,8 @@ function FormItem({ formKey, label, status }: { formKey: string; label: string; 
   );
 }
 
-function StepRow({ step, state, last, date, ticked, onToggle, files, forms }: {
-  step: PortalStep; state: StepState; last: boolean; date?: string; files: ReactNode; forms: FormStatusMap;
+function StepRow({ step, state, last, date, ticked, onToggle, files, forms, nextCall }: {
+  step: PortalStep; state: StepState; last: boolean; date?: string; files: ReactNode; forms: FormStatusMap; nextCall: string | null;
   ticked: Set<string>; onToggle: (s: number, k: string, l: string, on: boolean) => void;
 }) {
   const locked = state === "locked";
@@ -277,11 +293,20 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms }: {
                 const id = `${step.num}:${it.key}`;
                 const on = ticked.has(id);
                 const fdef = formForItem(step.num, it.key);
-                if (fdef) return <FormItem key={it.key} formKey={fdef.key} label={it.label} status={forms[fdef.key]} />;
+                const showDue = state === "current";
+                const due = itemDueDate(nextCall, it.dueDaysBefore);
+                if (fdef) {
+                  const st = forms[fdef.key];
+                  return <FormItem key={it.key} formKey={fdef.key} label={it.label} status={st}
+                    due={<DueChip due={due} done={st?.status === "submitted"} show={showDue} />} />;
+                }
                 return (
                   <li key={it.key} className="flex items-start gap-2.5">
                     <Checkbox id={id} checked={on} onCheckedChange={(v) => onToggle(step.num, it.key, it.label, !!v)} className="mt-0.5" />
-                    <label htmlFor={id} className={`text-sm cursor-pointer ${on ? "line-through text-muted-foreground" : ""}`}>{it.label}</label>
+                    <div className="space-y-1">
+                      <label htmlFor={id} className={`block text-sm cursor-pointer ${on ? "line-through text-muted-foreground" : ""}`}>{it.label}</label>
+                      <DueChip due={due} done={on} show={showDue} />
+                    </div>
                   </li>
                 );
               })}

@@ -93,9 +93,9 @@ async function buildPdf(o: {
   page.drawRectangle({ x: M - 6, y: y - 118, width: maxW + 12, height: 124, borderColor: navy, borderWidth: 1 })
   y -= 4
   write('AUDIT TRAIL', bold, 9, navy)
-  write(`Signer: ${o.signer} (${o.email ?? 'unknown email'}), signed in to the Neuron Garage owner portal`, font, 8.5)
+  write(`${o.noSignature ? 'Submitted by' : 'Signer'}: ${o.signer} (${o.email ?? 'unknown email'}), signed in to the Neuron Garage owner portal`, font, 8.5)
   if (o.consentAt) write(`Agreed to electronic records and signatures: ${o.consentAt} (UTC)`, font, 8.5)
-  write(`Signed at: ${o.signedAt} (UTC)`, font, 8.5)
+  write(`${o.noSignature ? 'Submitted at' : 'Signed at'}: ${o.signedAt} (UTC)`, font, 8.5)
   write(`IP address: ${o.ip ?? 'not available'}`, font, 8.5)
   write(`Browser: ${(o.ua ?? 'not available').slice(0, 180)}`, font, 8.5)
   write(`Answers fingerprint (SHA-256): ${o.answersHash}`, font, 8.5)

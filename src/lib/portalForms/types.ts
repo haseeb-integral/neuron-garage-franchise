@@ -60,4 +60,6 @@ export interface PortalFormDef {
   nameKeys: { first: string; last: string };
   /** For receipts that must name the exact FDD version received: builds the words shown above the signature and the signed statement. */
   dynamicSignedText?: (fdd: FddVersionInfo) => { preText: string; signedText: string };
+  /** Receipt-style forms: the signed PDF reads like the paper form — full form text first, filled-in answers after. */
+  paperOrder?: boolean;
 }

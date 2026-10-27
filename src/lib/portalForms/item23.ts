@@ -45,7 +45,9 @@ export function item23Receipt(fdd: FddVersionInfo): { preText: string; signedTex
     "",
     "Neuron Garage Franchise Support, LLC authorizes the respective state agencies identified on Exhibit B to receive service of process for it in a particular state.",
   ].join("\n");
-  const signedText = `I have received a Franchise Disclosure Document dated ${date}, that included the following exhibits: ${EXHIBITS}`;
+  const signedText =
+    `I have received a Franchise Disclosure Document dated ${date}, that included the following exhibits: ${EXHIBITS}` +
+    "\n\nKeep this copy of the Receipt for your records.";
   return { preText, signedText };
 }
 
@@ -56,6 +58,7 @@ export const ITEM23_FORM: PortalFormDef = {
   stepNum: 2,
   itemKey: "item23",
   esignConsent: true,
+  paperOrder: true,
   pdf: { category: "general", itemKey: "item23" },
   intro:
     "This is the receipt for the Franchise Disclosure Document (FDD) you received. Please read it, fill in your details, and sign. On paper this form has two copies; here one signature does both — we keep the signed PDF, and you can download the same PDF as your copy.",

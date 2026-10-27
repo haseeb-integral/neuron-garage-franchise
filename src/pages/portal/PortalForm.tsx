@@ -13,6 +13,9 @@ import { Progress } from "@/components/ui/progress";
 import { getPortalForm, missingRequired, formProgress, signatureMatches } from "@/lib/portalForms/logic";
 import type { Answers, FormField, PortalFormDef } from "@/lib/portalForms/types";
 import { PORTAL_STEPS } from "@/lib/portalPath";
+import { US_STATE_NAME_TO_ABBR } from "@/lib/usStates";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+const STATE_ABBRS = [...new Set(Object.values(US_STATE_NAME_TO_ABBR))].sort();
 import logo from "@/assets/neuron-garage-logo.png";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -154,7 +157,7 @@ export default function PortalForm() {
         {!locked && ready && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
             <Button variant="outline" disabled={section === 0} onClick={() => goTo(section - 1)}>Back</Button>
-            <Button variant="ghost" onClick={async () => { window.clearTimeout(timer.current); await persist(answers, section); nav("/portal"); }}>
+            <Button variant="outline" className="border-portal-navy text-portal-navy" onClick={async () => { window.clearTimeout(timer.current); await persist(answers, section); nav("/portal"); }}>
               Save and finish later
             </Button>
             {!onReview && (
@@ -213,6 +216,19 @@ function FieldInput({ f, value, onChange, idPrefix }: { f: FormField; value: unk
           ))}
         </div>
       </fieldset>
+    );
+  }
+  if (f.type === "state") {
+    return (
+      <div className={widthCls(f.width)}>
+        {label}
+        <Select value={(value as string) || undefined} onValueChange={(v) => onChange(v)}>
+          <SelectTrigger id={id} className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
+          <SelectContent className="max-h-72">
+            {STATE_ABBRS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
     );
   }
   if (f.type === "checkbox") {

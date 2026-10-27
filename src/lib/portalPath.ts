@@ -7,7 +7,8 @@ export interface PortalStep {
   time: string;
   description: string;
   afterLabel: string;
-  items: { key: string; label: string }[];
+  /** dueDaysBefore: days before the next call this item is due (from the form PDFs). Omitted = due before the next call. */
+  items: { key: string; label: string; dueDaysBefore?: number }[];
 }
 
 export const PORTAL_STEPS: PortalStep[] = [
@@ -16,7 +17,7 @@ export const PORTAL_STEPS: PortalStep[] = [
     description: "We get to know each other, talk through your background and goals, and share an overview of Neuron Garage.",
     afterLabel: "After this call",
     items: [
-      { key: "rfc", label: "Complete the Request for Consideration" },
+      { key: "rfc", label: "Complete the Request for Consideration", dueDaysBefore: 1 },
       { key: "explore_sites", label: "Explore neurongarage.com and neurongaragefranchise.com" },
     ],
   },
@@ -27,7 +28,7 @@ export const PORTAL_STEPS: PortalStep[] = [
     items: [
       { key: "fdd_attorney", label: "Review the FDD with an attorney" },
       { key: "item23", label: "Sign and return the Item 23 receipt" },
-      { key: "bg_credit_funding", label: "Complete the Background, Credit, and Funding form" },
+      { key: "bg_credit_funding", label: "Complete the Background, Credit, and Funding form", dueDaysBefore: 5 },
       { key: "personality", label: "Complete the personality profile" },
     ],
   },
@@ -36,7 +37,7 @@ export const PORTAL_STEPS: PortalStep[] = [
     description: "What running camp is really like, the support you’ll have, and a two-way conversation about how you’d lead it.",
     afterLabel: "After this call",
     items: [
-      { key: "facility_form", label: "Complete the facility prospect form" },
+      { key: "facility_form", label: "Complete the facility prospect form", dueDaysBefore: 2 },
       { key: "notice_schools", label: "Start noticing schools in your market" },
       { key: "talk_site_director", label: "Optional: talk with a current Site Director" },
     ],
@@ -85,4 +86,13 @@ export function stepProgress(stepNum: number, doneKeys: string[]): { done: numbe
   if (!step) return { done: 0, total: 0 };
   const set = new Set(doneKeys);
   return { done: step.items.filter((i) => set.has(i.key)).length, total: step.items.length };
+}
+
+/** Due date for a homework item: N days before the next call, or null when no call is booked. */
+export function itemDueDate(nextCallIso: string | null | undefined, dueDaysBefore = 0): Date | null {
+  if (!nextCallIso) return null;
+  const d = new Date(nextCallIso);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() - dueDaysBefore);
+  return d;
 }

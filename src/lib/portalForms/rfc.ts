@@ -23,7 +23,7 @@ export const RFC_FORM: PortalFormDef = {
         { key: "street", label: "Current Street Address", type: "text", width: "half" },
         { key: "unit", label: "Apartment/Unit #", type: "text", width: "half", optional: true },
         { key: "city", label: "City", type: "text", width: "third" },
-        { key: "state", label: "State", type: "text", width: "third" },
+        { key: "state", label: "State", type: "state", width: "third" },
         { key: "zip", label: "Zip", type: "text", width: "third" },
         { key: "cell", label: "Cell Phone", type: "tel", width: "half" },
         { key: "email", label: "Email Address", type: "email", width: "half" },
@@ -47,7 +47,7 @@ export const RFC_FORM: PortalFormDef = {
       fields: [
         { key: "camp_city", label: "City", type: "text", width: "third" },
         { key: "camp_county", label: "County", type: "text", width: "third" },
-        { key: "camp_state", label: "State", type: "text", width: "third" },
+        { key: "camp_state", label: "State", type: "state", width: "third" },
         { key: "open_when", label: "If this turns out to be a good fit, when would you ideally like to open?", type: "radio", options: ["This coming summer", "The following summer", "Not sure yet"] },
       ],
     },

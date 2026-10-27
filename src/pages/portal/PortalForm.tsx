@@ -372,18 +372,50 @@ function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise
 function SignedCopyButton({ formId }: { formId: string }) {
   const sig = useQuery({
     queryKey: ["portal-signature", formId],
-    queryFn: async () => (await supabase.from("candidate_portal_signatures").select("pdf_path")
-      .eq("form_id", formId).order("signed_at", { ascending: false }).limit(1).maybeSingle()).data,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("candidate_portal_signatures").select("pdf_path")
+        .eq("form_id", formId).order("signed_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
   });
-  if (!sig.data?.pdf_path) return null;
+  const pdfPath = sig.data?.pdf_path;
+  const pdf = useQuery({
+    queryKey: ["portal-signed-pdf", formId, pdfPath],
+    enabled: !!pdfPath,
+    retry: false,
+    queryFn: async () => {
+      if (!pdfPath) throw new Error("No signed copy is available.");
+      const { data, error } = await supabase.storage.from("candidate_documents").download(pdfPath);
+      if (error) throw error;
+      if (!data?.size) throw new Error("The signed copy is empty.");
+      return data;
+    },
+  });
+  if (sig.isError || pdf.isError) return (
+    <div className="mt-3 space-y-2">
+      <p role="alert" className="text-sm text-destructive">Could not prepare your signed copy. Please try again.</p>
+      <Button size="sm" variant="outline" disabled={sig.isFetching || pdf.isFetching}
+        onClick={() => { if (sig.isError) void sig.refetch(); else void pdf.refetch(); }}>
+        Try download again
+      </Button>
+    </div>
+  );
+  if (!pdfPath) return null;
   return (
-    <Button size="sm" variant="outline" className="mt-3" onClick={async () => {
-      const w = window.open("", "_blank");
-      const { data, error } = await supabase.storage.from("candidate_documents").createSignedUrl(sig.data!.pdf_path!, 120);
-      if (error || !data) { w?.close(); toast.error("Could not open your signed copy."); return; }
-      if (w) w.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+    <Button size="sm" variant="outline" className="mt-3" disabled={!pdf.data} onClick={() => {
+      if (!pdf.data) return;
+      const url = URL.createObjectURL(new Blob([pdf.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = pdfPath.split("/").pop() || "signed-copy.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
     }}>
-      <Download className="h-3.5 w-3.5" /> Download your signed copy
+      {pdf.data ? <Download className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+      {pdf.data ? "Download your signed copy" : "Preparing signed copy…"}
     </Button>
   );
 }

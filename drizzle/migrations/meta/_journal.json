@@ -148,6 +148,13 @@
       "when": 1793074780310,
       "tag": "0020_portal_my_fdd_version",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793113490091,
+      "tag": "0021_portal_my_profile",
+      "breakpoints": true
     }
   ]
 }

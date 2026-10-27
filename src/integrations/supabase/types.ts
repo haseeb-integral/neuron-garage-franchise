@@ -4336,6 +4336,19 @@ export type Database = {
         }[]
       }
       portal_my_path: { Args: never; Returns: Json }
+      portal_my_profile: {
+        Args: never
+        Returns: {
+          city: string
+          email: string
+          first_name: string
+          last_name: string
+          phone: string
+          state: string
+          street: string
+          zip: string
+        }[]
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

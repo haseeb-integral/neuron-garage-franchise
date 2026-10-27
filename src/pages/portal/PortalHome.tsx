@@ -132,10 +132,18 @@ export default function PortalHome() {
 
       <main className="mx-auto max-w-5xl px-5 py-8 space-y-8">
         {data?.first_name && <p className="text-lg font-semibold">Welcome, {data.first_name}!</p>}
-        <p className="text-muted-foreground">
-          Our process is five conversations, designed so that you and we can both make an informed decision.
-          After each call, you’ll have a few things to do before the next one.
-        </p>
+        <div className="space-y-3">
+          <p className="text-muted-foreground">
+            Over the next few weeks, we’ll have five conversations, each one a step deeper than the last —
+            your background and goals, how the business works, what running camp is really like.
+            Between calls, you’ll have a few things to complete so the next conversation can build on the one before.
+          </p>
+          <p className="text-muted-foreground">
+            By the end, you’ll know whether this is right for you, and we’ll know whether it’s right for us.
+            Let’s start the conversation.
+          </p>
+        </div>
+
 
         {path.isLoading && <p className="text-sm text-muted-foreground">Loading your path…</p>}
         {path.isError && <p className="text-sm text-destructive">We couldn’t load your path. Please refresh the page.</p>}

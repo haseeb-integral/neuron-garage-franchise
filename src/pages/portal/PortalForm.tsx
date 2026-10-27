@@ -369,11 +369,11 @@ function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise
   );
 }
 
-function SignedCopyButton({ formId }: { formId: string }) {
+function SignedCopyButton({ formId, form }: { formId: string; form: PortalFormDef }) {
   const sig = useQuery({
     queryKey: ["portal-signature", formId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("candidate_portal_signatures").select("pdf_path")
+      const { data, error } = await supabase.from("candidate_portal_signatures").select("pdf_path, signed_at")
         .eq("form_id", formId).order("signed_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;
@@ -408,7 +408,10 @@ function SignedCopyButton({ formId }: { formId: string }) {
       const url = URL.createObjectURL(new Blob([pdf.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = pdfPath.split("/").pop() || "signed-copy.pdf";
+      const signedDay = sig.data?.signed_at ? String(sig.data.signed_at).slice(0, 10) : "";
+      const base = [form.title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), "Signed", signedDay]
+        .filter(Boolean).join("-");
+      link.download = `${base}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -482,7 +485,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
             <div className="text-sm text-muted-foreground">
               Submitted {submittedAt ? new Date(submittedAt).toLocaleString() : ""}. If something needs to change, contact Skyler Bossen at 512-593-2750.
             </div>
-            {formId && <SignedCopyButton formId={formId} />}
+            {formId && <SignedCopyButton formId={formId} form={form} />}
           </div>
         </div>
       )}

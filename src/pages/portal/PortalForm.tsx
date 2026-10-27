@@ -445,23 +445,28 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
   const [typed, setTyped] = useState("");
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
-  const nameOk = signatureMatches(typed, answers[form.nameKeys.first], answers[form.nameKeys.last]);
+  const noSig = form.noSignature === true;
+  const nameOk = noSig || signatureMatches(typed, answers[form.nameKeys.first], answers[form.nameKeys.last]);
   const fddKnown = !form.dynamicSignedText || !!fddInfo?.fddFileId;
-  const canSign = !locked && missing.length === 0 && nameOk && agree && !busy && !fddPending && fddKnown;
+  const canSign = !locked && missing.length === 0 && (noSig || (nameOk && agree)) && !busy && !fddPending && fddKnown;
   const item = PORTAL_STEPS.find((s) => s.num === form.stepNum)?.items.find((i) => i.key === form.itemKey);
 
   const submit = async () => {
     setBusy(true);
     await onBeforeSubmit();
+    const derivedName = `${String(answers[form.nameKeys.first] ?? "").trim()} ${String(answers[form.nameKeys.last] ?? "").trim()}`.trim();
     const { data, error } = await supabase.functions.invoke("portal-submit-form", {
       body: {
-        form_key: form.key, signer_name: typed.trim(), signed_text: dynamicSignedText ?? form.signature.text, form_title: form.title,
+        form_key: form.key, signer_name: noSig ? derivedName : typed.trim(),
+        signed_text: noSig ? "Submitted through the Neuron Garage owner portal. This form has no signature line." : dynamicSignedText ?? form.signature!.text,
+        form_title: form.title,
         step_num: form.stepNum, item_key: form.itemKey, item_label: item?.label ?? form.title,
         first_key: form.nameKeys.first, last_key: form.nameKeys.last,
-        pre_text: dynamicPreText ?? form.signature.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
+        pre_text: noSig ? undefined : dynamicPreText ?? form.signature?.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
         esign_consent_text: form.esignConsent ? ESIGN_CONSENT_FULL_TEXT : undefined,
         fdd_issuance_date: form.dynamicSignedText ? fddInfo?.issuanceDate ?? null : undefined,
         paper_order: form.paperOrder === true,
+        no_signature: noSig,
         sections: buildRows(form, answers),
       },
     });
@@ -526,9 +531,21 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
           </dl>
         </section>
       ))}
-      {!locked && (
+      {!locked && noSig && (
         <section className="rounded-xl border-2 border-portal-navy p-5 space-y-4">
-          <h3 className="font-bold text-portal-navy uppercase tracking-wide">{form.signature.heading}</h3>
+          <h3 className="font-bold text-portal-navy uppercase tracking-wide">Submit</h3>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Please review your answers above. When you submit, the Neuron Garage team can see them and this form locks. If something needs to change later, contact Skyler Bossen at 512-593-2750.
+          </p>
+          <Button disabled={!canSign} onClick={submit} className="w-full h-12 bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Submit
+          </Button>
+          {missing.length > 0 && <p className="text-xs text-center text-muted-foreground">Finish the answers above to submit.</p>}
+        </section>
+      )}
+      {!locked && !noSig && (
+        <section className="rounded-xl border-2 border-portal-navy p-5 space-y-4">
+          <h3 className="font-bold text-portal-navy uppercase tracking-wide">{form.signature!.heading}</h3>
           {form.dynamicSignedText && (
             fddPending ? (
               <p className="text-sm text-muted-foreground">Checking which FDD version you received…</p>

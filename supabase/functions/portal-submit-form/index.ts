@@ -41,7 +41,7 @@ async function buildPdf(o: {
   title: string; sections: { title: string; rows: { label: string; value: string }[] }[]
   preText?: string; signedText: string; signer: string; signedAt: string
   email: string | null; ip: string | null; ua: string | null; consentAt: string | null; answersHash: string
-  paperOrder?: boolean
+  paperOrder?: boolean; noSignature?: boolean
 }) {
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)

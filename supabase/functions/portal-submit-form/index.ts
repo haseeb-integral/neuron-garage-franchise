@@ -23,6 +23,7 @@ const Body = z.object({
   pdf_item_key: z.string().regex(/^[a-z0-9_]{1,40}$/),
   fdd_issuance_date: z.string().min(4).max(40).nullable().optional(),
   paper_order: z.boolean().optional(),
+  no_signature: z.boolean().optional(),
   sections: z.array(z.object({ title: z.string().max(300), rows: z.array(Row).max(200) })).max(40),
 })
 
@@ -80,13 +81,13 @@ async function buildPdf(o: {
     for (const r of s.rows) { write(r.label, bold, 9, rgb(0.35, 0.38, 0.45), 1); write(r.value || '-', font, 10); y -= 4 }
   }
   y -= 10
-  write('SIGNATURE', bold, 12, navy); y -= 2
+  write(o.noSignature ? 'SUBMITTED' : 'SIGNATURE', bold, 12, navy); y -= 2
   if (!o.paperOrder) {
     if (o.preText) { write(o.preText, font, 9.5, rgb(0.25, 0.25, 0.3)); y -= 6 }
     write(o.signedText, font, 10); y -= 8
   }
-  write(`Signature: ${o.signer}`, italic, 14); write(`Date: ${new Date(o.signedAt).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}`, font, 10)
-  write('Signed electronically. Typing a full name counts as a signature.', font, 8.5, rgb(0.4, 0.4, 0.45))
+  write(`${o.noSignature ? 'Submitted by' : 'Signature'}: ${o.signer}`, italic, 14); write(`Date: ${new Date(o.signedAt).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}`, font, 10)
+  if (!o.noSignature) write('Signed electronically. Typing a full name counts as a signature.', font, 8.5, rgb(0.4, 0.4, 0.45))
   y -= 14
   if (y < M + 130) newPage()
   page.drawRectangle({ x: M - 6, y: y - 118, width: maxW + 12, height: 124, borderColor: navy, borderWidth: 1 })
@@ -170,7 +171,7 @@ Deno.serve(async (req) => {
     const bytes = await buildPdf({
       title: b.form_title, sections: b.sections, preText: b.pre_text, signedText: b.signed_text,
       signer: b.signer_name, signedAt: now, email, ip, ua, consentAt, answersHash,
-      paperOrder: b.paper_order === true,
+      paperOrder: b.paper_order === true, noSignature: b.no_signature === true,
     })
     pdfHash = await sha256(bytes)
     const safeTitle = b.form_title.replace(/[^A-Za-z0-9]+/g, '-')

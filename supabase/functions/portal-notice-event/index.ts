@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
-import { opensStep, callNotice, callTemplateData, NOTICE_STEP_TITLES } from '../_shared/portalNoticeRules.ts'
+import { opensStep, callNotice, callTemplateData, reminderDue, NOTICE_STEP_TITLES } from '../_shared/portalNoticeRules.ts'
 
 const Reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -13,6 +13,7 @@ const Event = z.object({ id: z.string().uuid(), candidate_id: z.string().uuid(),
 const Body = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('stage'), candidate_id: z.string().uuid(), before: z.string(), after: z.string() }).strict(),
   z.object({ kind: z.literal('call'), before: Event.nullable(), after: Event }).strict(),
+  z.object({ kind: z.literal('reminder'), after: Event }).strict(),
 ])
 const Dispatch = z.object({ dispatch_id: z.string().uuid(), dispatch_token: z.string().uuid() }).strict()
 
@@ -53,7 +54,17 @@ Deno.serve(async req => {
     idempotencyKey = `portal-step-${cid}-${step}`
     templateData = { candidateId: cid, firstName: cand.first_name ?? '', stepTitle: NOTICE_STEP_TITLES[step] }
   } else {
-    const notice = callNotice(event.before, event.after)
+    let notice: string | null
+    if (event.kind === 'reminder') {
+      // Re-check the live call right before sending: canceled, done, or moved calls get no reminder.
+      const { data: live, error } = await admin.from('candidate_events').select('status,starts_at').eq('id', event.after.id).maybeSingle()
+      if (error) return Reply({ error: 'Call lookup failed' }, 500)
+      if (!reminderDue(event.after.starts_at, live, new Date())) {
+        await admin.from('portal_notice_dispatches').update({ delivered_at: new Date().toISOString() }).eq('id', request.data.dispatch_id)
+        return Reply({ skipped: 'reminder_not_due' })
+      }
+      notice = 'portal-call-reminder'
+    } else notice = callNotice(event.before, event.after)
     if (!notice) return Reply({ skipped: 'no_call_change' })
     let hostName: string | undefined
     if (event.after.owner_email) {

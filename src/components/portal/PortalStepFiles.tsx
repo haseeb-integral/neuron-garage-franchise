@@ -17,6 +17,15 @@ async function openSigned(bucket: string, path: string, fileName: string) {
   if (w) w.location.href = data.signedUrl; else window.location.href = data.signedUrl;
 }
 
+/** FDD download goes through the backend so each download is logged for the FDD audit trail. */
+async function openFdd() {
+  const w = window.open("", "_blank");
+  const { data, error } = await supabase.functions.invoke("portal-fdd-download", { body: {} });
+  const url = (data as { url?: string } | null)?.url;
+  if (error || !url) { w?.close(); toast.error((data as { error?: string } | null)?.error ?? "Couldn't open the FDD. Please try again."); return; }
+  if (w) w.location.href = url; else window.location.href = url;
+}
+
 /** Downloads + uploads for one unlocked step on the prospect's path. */
 export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUploaded }: {
   stepNum: number; candidateId: string; files: StepFile[]; uploads: MyUpload[]; onUploaded: () => void;
@@ -71,7 +80,7 @@ export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUpload
           <div className="text-xs font-bold uppercase tracking-wider text-portal-navy">Files for you</div>
           {fdd && (
             <Button size="sm" className="bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90"
-              onClick={() => openSigned("portal_files", fdd.bucket_path, fdd.file_name)}>
+              onClick={() => openFdd()}>
               <Download className="h-3.5 w-3.5" /> Download latest FDD
             </Button>
           )}

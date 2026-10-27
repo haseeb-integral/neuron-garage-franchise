@@ -86,6 +86,12 @@ export default function PortalHome() {
     },
   });
 
+  const stepNow = path.data ? stageToStep(fromDbStage(path.data.stage)) : null;
+  useEffect(() => {
+    // FDD audit trail: note when the current FDD version first becomes available to this prospect.
+    if (portalCandidateId && stepNow && stepNow >= 2) supabase.rpc("portal_log_fdd_available").then(() => {});
+  }, [portalCandidateId, stepNow]);
+
   const toggle = async (step: number, key: string, label: string, on: boolean) => {
     if (!portalCandidateId || !user) return;
     if (on) {

@@ -6,15 +6,22 @@ import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
 // Configuration baked in at scaffold time — do NOT change these manually.
 // To update, re-run the email domain setup flow.
-const SITE_NAME = "neuron-garage-franchise"
+const SITE_NAME = "NG Franchise Recruiting"
 // SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
 // It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
 // The email API looks up this exact domain; a mismatch causes "No email domain record found".
-const SENDER_DOMAIN = "notify.integraldigital.com"
+const SENDER_DOMAIN = "notify.neurongaragefranchise.com"
 // FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
 // When display_from_root is enabled, this can be the root domain for cleaner branding,
 // even though actual sending uses the subdomain above.
-const FROM_DOMAIN = "integraldigital.com"
+const FROM_DOMAIN = "neurongaragefranchise.com"
+
+function redactEmail(email: string | null | undefined): string {
+  if (!email) return '***'
+  const [localPart, domain] = email.split('@')
+  if (!localPart || !domain) return '***'
+  return `${localPart[0]}***@${domain}`
+}
 
 // Generate a cryptographically random 32-byte hex token
 function generateToken(): string {
@@ -129,8 +136,9 @@ Deno.serve(async (req) => {
 
   if (suppressionError) {
     console.error('Suppression check failed — refusing to send', {
-      error: suppressionError,
-      effectiveRecipient,
+      code: suppressionError.code,
+      message: suppressionError.message,
+      recipient_redacted: redactEmail(effectiveRecipient),
     })
     return new Response(
       JSON.stringify({ error: 'Failed to verify suppression status' }),
@@ -150,7 +158,7 @@ Deno.serve(async (req) => {
       status: 'suppressed',
     })
 
-    console.log('Email suppressed', { effectiveRecipient, templateName })
+    console.log('Email suppressed', { templateName, recipient_redacted: redactEmail(effectiveRecipient) })
     return new Response(
       JSON.stringify({ success: false, reason: 'email_suppressed' }),
       {
@@ -173,8 +181,9 @@ Deno.serve(async (req) => {
 
   if (tokenLookupError) {
     console.error('Token lookup failed', {
-      error: tokenLookupError,
-      email: normalizedEmail,
+      code: tokenLookupError.code,
+      message: tokenLookupError.message,
+      email_redacted: redactEmail(normalizedEmail),
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
@@ -207,7 +216,8 @@ Deno.serve(async (req) => {
 
     if (tokenError) {
       console.error('Failed to create unsubscribe token', {
-        error: tokenError,
+        code: tokenError.code,
+        message: tokenError.message,
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
@@ -235,8 +245,9 @@ Deno.serve(async (req) => {
 
     if (reReadError || !storedToken) {
       console.error('Failed to read back unsubscribe token after upsert', {
-        error: reReadError,
-        email: normalizedEmail,
+        code: reReadError?.code,
+        message: reReadError?.message,
+        email_redacted: redactEmail(normalizedEmail),
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
@@ -258,7 +269,7 @@ Deno.serve(async (req) => {
     // Token exists but is already used — email should have been caught by suppression check above.
     // This is a safety fallback; log and skip sending.
     console.warn('Unsubscribe token already used but email not suppressed', {
-      email: normalizedEmail,
+      email_redacted: redactEmail(normalizedEmail),
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
@@ -323,9 +334,10 @@ Deno.serve(async (req) => {
 
   if (enqueueError) {
     console.error('Failed to enqueue email', {
-      error: enqueueError,
+      code: enqueueError.code,
+      message: enqueueError.message,
       templateName,
-      effectiveRecipient,
+      recipient_redacted: redactEmail(effectiveRecipient),
     })
 
     await supabase.from('email_send_log').insert({
@@ -342,7 +354,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  console.log('Transactional email enqueued', { templateName, effectiveRecipient })
+  console.log('Transactional email enqueued', { templateName, recipient_redacted: redactEmail(effectiveRecipient) })
 
   return new Response(
     JSON.stringify({ success: true, queued: true }),

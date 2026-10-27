@@ -12,6 +12,8 @@ export interface FormField {
   width?: "full" | "half" | "third";
   /** Hide the box when we already know the value (name/email asked once in the first form). */
   hideWhenKnown?: boolean;
+  /** Show a dependent field only when this returns true for its answers. */
+  showWhen?: (a: Answers) => boolean;
   help?: string;
 }
 

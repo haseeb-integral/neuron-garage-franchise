@@ -51,6 +51,14 @@ describe("Facility Prospect Form", () => {
       "Along a commuter route",
       "Near large office parks",
       "I have a strong reason to believe this school would host",
+      "Other",
     ]);
+  });
+  it("shows the Other reason only for a school with Other checked", () => {
+    const rep = FACILITY_FORM.sections.find((s) => s.id === "schools")?.repeater;
+    const other = rep?.fields.find((f) => f.key === "good_fit_other");
+    expect(other?.showWhen?.({ good_fit: ["Other"] })).toBe(true);
+    expect(other?.showWhen?.({ good_fit: ["Along a commuter route"] })).toBe(false);
+    expect(other?.showWhen?.({ good_fit: [] , good_fit_other: "Saved reason" })).toBe(false);
   });
 });

@@ -20,6 +20,7 @@ import { US_STATE_NAME_TO_ABBR } from "@/lib/usStates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 const STATE_ABBRS = [...new Set(Object.values(US_STATE_NAME_TO_ABBR))].sort();
 import logo from "@/assets/neuron-garage-logo.png";
+import { FormSubmissionHistory } from "@/components/portal/FormSubmissionHistory";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -35,7 +36,7 @@ export default function PortalForm() {
     enabled: !!portalCandidateId && !!form,
     queryFn: async () => {
       const { data, error } = await supabase.from("candidate_portal_forms")
-        .select("id, answers, status, last_section, submitted_at")
+        .select("id, answers, status, last_section, submitted_at, reopen_reason")
         .eq("candidate_id", portalCandidateId!).eq("form_key", formKey).maybeSingle();
       if (error) throw error;
       return data;
@@ -63,10 +64,10 @@ export default function PortalForm() {
   });
   // Receipts that name the FDD version received (Item 23): which FDD did this prospect actually get?
   const fddVersion = useQuery({
-    queryKey: ["portal-fdd-version", portalCandidateId],
+    queryKey: ["portal-fdd-version", portalCandidateId, formKey, row.data?.status],
     enabled: !!portalCandidateId && !!form?.dynamicSignedText,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("portal_my_fdd_version");
+      const { data, error } = await supabase.rpc("portal_form_fdd_version", { _form_key: formKey });
       if (error) throw error;
       return (data as Array<{ fdd_file_id: string | null; issuance_date: string | null; source: string | null }> | null)?.[0] ?? null;
     },
@@ -172,6 +173,7 @@ export default function PortalForm() {
           {section === 0 && !locked && <p className="mt-2 text-sm font-medium">{form.dueText}</p>}
         </div>
 
+        {row.data?.status === "reopened" && <div className="border rounded-lg p-4 space-y-1"><h2 className="font-semibold">Correction requested</h2><p className="text-sm">{row.data.reopen_reason}</p></div>}
         {!locked && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -191,6 +193,7 @@ export default function PortalForm() {
               qc.invalidateQueries({ queryKey: ["portal-form", portalCandidateId, formKey] });
               qc.invalidateQueries({ queryKey: ["portal-forms", portalCandidateId] });
               qc.invalidateQueries({ queryKey: ["portal-ticks", portalCandidateId] });
+              qc.invalidateQueries({ queryKey: ["form-submission-history", row.data?.id] });
             }}
             onBeforeSubmit={async () => { window.clearTimeout(timer.current); await persist(answers, total); }}
           />
@@ -211,6 +214,7 @@ export default function PortalForm() {
             )}
           </div>
         )}
+        {row.data?.id && <FormSubmissionHistory formId={row.data.id} form={form} />}
       </main>
     </div>
   );

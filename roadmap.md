@@ -1,2 +1,2 @@
 - [x] Phase 5D Phase 1: staff Prospect Forms answers, status, existing PDF download, and verification.
-- [ ] Phase 5D Phase 2: correction drafts; blocked pending a separate plan and user approval.
+- [ ] Phase 5D correction flow: requests, immutable history, pinned FDD, and end-to-end checks (approved).

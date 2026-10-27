@@ -12,7 +12,7 @@ const sig = (candidate: string): StaffSignatureRecord => ({
   signed_at: "2026-10-27T15:00:00Z", answers_snapshot: { city: "Austin" }, pdf_path: "saved.pdf",
   answers_sha256: "test-hash", esign_consent_at: null, esign_consent_text: null, form_version: "1", ip: null,
   pdf_sha256: "pdf-test-hash", signed_text: "Test submission", signer_name: "Test Prospect", user_agent: null,
-  user_email: "test@example.com", user_id: "test-user",
+  user_email: "test@example.com", user_id: "test-user", correction_request_id: null, fdd_file_id: null,
 });
 
 describe("Staff prospect form selection", () => {

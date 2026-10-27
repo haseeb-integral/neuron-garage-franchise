@@ -1,2 +1,3 @@
 - [x] Phase 5D Phase 1: staff Prospect Forms answers, status, existing PDF download, and verification.
-- [ ] Phase 5D Phase 2: correction drafts; blocked pending a separate plan and user approval.
+- [x] Phase 5D correction flow: implemented; Item 23 staff-to-prospect-to-staff flow, PDF and access tests passed.
+- Remaining validation: live correction flows for RFC/Background/Facility, competing submissions, later staff FDD selection, and multi-receipt proof-packet download. Not yet verified; next testing phase.

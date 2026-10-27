@@ -7,6 +7,8 @@ import type { PortalFormDef } from "@/lib/portalForms/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, Download, Loader2, RefreshCw } from "lucide-react";
+import { RequestFormCorrection } from "../RequestFormCorrection";
+import { FormSubmissionHistory } from "@/components/portal/FormSubmissionHistory";
 
 function dateLabel(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "Date not recorded";
@@ -74,11 +76,14 @@ function CandidateForms({ candidateId }: { candidateId: string }) {
           <span className="flex shrink-0 items-center gap-2"><Badge variant={view.submitted ? "default" : "secondary"}>{!view.record ? "Not started" : view.submitted ? "Submitted" : `Draft · ${view.record.progress}%`}</Badge>{open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
         </Button>
         {open && <div className="border-t p-4 space-y-5">
+          {view.record?.status === "reopened" && <p className="text-sm font-medium">Correction requested: {view.record.reopen_reason}</p>}
+          {view.submitted && view.record && view.signature && <RequestFormCorrection formId={view.record.id} onRequested={() => { void data.refetch(); }} />}
           {!view.record ? <p className="text-sm text-muted-foreground">This form has not been started.</p> : !view.answers ? <p className="text-sm text-muted-foreground">The saved submission copy is unavailable. No draft has been substituted.</p> : <>
             {!view.submitted && <Badge variant="secondary">Draft — not submitted</Badge>}
             {staffAnswerSections(form, view.answers).map((s) => <div key={s.title} className="space-y-2"><h3 className="font-semibold text-sm">{s.title}</h3><dl className="divide-y">{s.rows.map((r) => <div key={r.label} className="grid grid-cols-1 md:grid-cols-2 gap-1 md:gap-4 py-2 text-sm"><dt className="text-muted-foreground break-words">{r.label}</dt><dd className="whitespace-pre-wrap break-words min-w-0">{answerLabel(r.value)}</dd></div>)}</dl></div>)}
           </>}
           {view.signature && <div className="space-y-3 border-t pt-4"><h3 className="text-sm font-semibold">{form.noSignature ? "Submission record" : "Signature record"}</h3><p className="text-sm">{view.signature.signer_name} · {dateLabel(view.signature.signed_at)}</p><p className="text-sm whitespace-pre-wrap break-words">{view.signature.signed_text}</p>{view.signature.pdf_path ? <PdfDownload key={view.signature.id} candidateId={candidateId} path={view.signature.pdf_path} title={form.title} date={view.signature.signed_at} /> : <p className="text-sm text-muted-foreground">PDF not available.</p>}</div>}
+          {view.record && <FormSubmissionHistory formId={view.record.id} form={form} />}
         </div>}
       </section>;
     })}

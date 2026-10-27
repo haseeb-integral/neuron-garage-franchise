@@ -80,7 +80,7 @@ export default function PortalHome() {
     enabled: !!portalCandidateId,
     queryFn: async () => {
       const { data, error } = await supabase.from("candidate_portal_forms")
-        .select("form_key, status, progress").eq("candidate_id", portalCandidateId!);
+        .select("form_key, status, progress, reopen_reason").eq("candidate_id", portalCandidateId!);
       if (error) throw error;
       return Object.fromEntries((data ?? []).map((r) => [r.form_key, r])) as FormStatusMap;
     },
@@ -217,7 +217,7 @@ function NextCallCard({ call }: { call: PathData["next_call"] }) {
   );
 }
 
-type FormStatusMap = Record<string, { form_key: string; status: string; progress: number }>;
+type FormStatusMap = Record<string, { form_key: string; status: string; progress: number; reopen_reason?: string | null }>;
 
 function DueChip({ due, done, show }: { due: Date | null; done: boolean; show: boolean }) {
   if (!show) return null;
@@ -247,13 +247,14 @@ function FormItem({ formKey, label, status, due }: { formKey: string; label: str
       </div>
       <div className="flex items-center justify-between gap-2 pl-6">
         <span className={`text-xs rounded-full px-2 py-0.5 ${done ? "bg-success/15 text-success" : started ? "bg-portal-yellow/25" : "bg-muted text-muted-foreground"}`}>
-          {done ? "Submitted ✓" : started ? `In progress — ${status!.progress}%` : "Not started"}
+          {done ? "Submitted ✓" : status?.status === "reopened" ? "Correction requested" : started ? `In progress — ${status?.progress}%` : "Not started"}
         </span>
         <Button asChild size="sm" variant={done ? "outline" : "default"}
           className={done ? "" : "bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90"}>
           <Link to={`/portal/form/${formKey}`}>{done ? "View" : started ? "Continue" : "Start"}</Link>
         </Button>
       </div>
+      {status?.status === "reopened" && <p className="text-sm pl-6">{status.reopen_reason}</p>}
     </li>
   );
 }

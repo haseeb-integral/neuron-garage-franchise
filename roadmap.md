@@ -3,4 +3,5 @@
 - [x] Final validation: all four live correction flows, staff read-back, PDF downloads, duplicate request/submission rejection, original evidence preservation, later staff FDD selection, and multi-receipt proof packet.
 - [x] Narrow proof-packet repair: each receipt/event names its own saved FDD version; correction events have readable labels and source links. Thirty form tests and five live permission tests passed. Temporary submissions/files removed and test prospect restored.
 - Validation limits: true simultaneous requests and forced interruption/recovery were not exercised; repeated submission rejection was verified. Save-and-return used saved test answers rather than typing every field.
-- [ ] Phase 5b Phase 1: Neuron Garage sender and four email previews. Whole-app sender switch approved, including staff digest emails. Waiting for selection of verified neurongaragefranchise.com in email setup; no sender settings or email code changed yet.
+- [x] Phase 5b Phase 1: verified Neuron Garage sender configured through email setup; email processing and sender functions deployed; four prospect previews and existing staff digest rendered successfully. No live prospect triggers added.
+- [ ] Phase 5b Phase 1 inbox check: waiting for approval of one test recipient. No preview email sent yet.

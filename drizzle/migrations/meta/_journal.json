@@ -162,6 +162,13 @@
       "when": 1793118337354,
       "tag": "0022_portal_form_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793118613119,
+      "tag": "0023_allow_receipt_correction_events",
+      "breakpoints": true
     }
   ]
 }

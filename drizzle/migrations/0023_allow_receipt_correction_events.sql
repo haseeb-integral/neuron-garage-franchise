@@ -1,0 +1,2 @@
+ALTER TABLE public.fdd_delivery_events DROP CONSTRAINT fdd_delivery_events_event_check;
+ALTER TABLE public.fdd_delivery_events ADD CONSTRAINT fdd_delivery_events_event_check CHECK(event IN ('made_available','downloaded','emailed','receipt_signed','receipt_corrected'));

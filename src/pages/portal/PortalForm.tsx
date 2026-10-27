@@ -461,6 +461,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
         pre_text: dynamicPreText ?? form.signature.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
         esign_consent_text: form.esignConsent ? ESIGN_CONSENT_FULL_TEXT : undefined,
         fdd_issuance_date: form.dynamicSignedText ? fddInfo?.issuanceDate ?? null : undefined,
+        paper_order: form.paperOrder === true,
         sections: buildRows(form, answers),
       },
     });

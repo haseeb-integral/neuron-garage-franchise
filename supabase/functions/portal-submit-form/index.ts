@@ -22,6 +22,7 @@ const Body = z.object({
   pdf_category: z.enum(['background_check', 'general']),
   pdf_item_key: z.string().regex(/^[a-z0-9_]{1,40}$/),
   fdd_issuance_date: z.string().min(4).max(40).nullable().optional(),
+  paper_order: z.boolean().optional(),
   sections: z.array(z.object({ title: z.string().max(300), rows: z.array(Row).max(200) })).max(40),
 })
 
@@ -39,6 +40,7 @@ async function buildPdf(o: {
   title: string; sections: { title: string; rows: { label: string; value: string }[] }[]
   preText?: string; signedText: string; signer: string; signedAt: string
   email: string | null; ip: string | null; ua: string | null; consentAt: string | null; answersHash: string
+  paperOrder?: boolean
 }) {
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)
@@ -68,14 +70,21 @@ async function buildPdf(o: {
   const navy = rgb(0.07, 0.19, 0.33)
   write('Neuron Garage', bold, 10, navy)
   write(o.title.toUpperCase(), bold, 16, navy); y -= 8
+  // Paper order (Item 23 receipt): the full form text comes first, like the paper form; answers follow.
+  if (o.paperOrder) {
+    if (o.preText) { write(o.preText, font, 9.5, rgb(0.25, 0.25, 0.3)); y -= 6 }
+    write(o.signedText, font, 10); y -= 8
+  }
   for (const s of o.sections) {
     y -= 6; write(s.title, bold, 12, navy); y -= 2
     for (const r of s.rows) { write(r.label, bold, 9, rgb(0.35, 0.38, 0.45), 1); write(r.value || '-', font, 10); y -= 4 }
   }
   y -= 10
   write('SIGNATURE', bold, 12, navy); y -= 2
-  if (o.preText) { write(o.preText, font, 9.5, rgb(0.25, 0.25, 0.3)); y -= 6 }
-  write(o.signedText, font, 10); y -= 8
+  if (!o.paperOrder) {
+    if (o.preText) { write(o.preText, font, 9.5, rgb(0.25, 0.25, 0.3)); y -= 6 }
+    write(o.signedText, font, 10); y -= 8
+  }
   write(`Signature: ${o.signer}`, italic, 14); write(`Date: ${new Date(o.signedAt).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}`, font, 10)
   write('Signed electronically. Typing a full name counts as a signature.', font, 8.5, rgb(0.4, 0.4, 0.45))
   y -= 14
@@ -161,6 +170,7 @@ Deno.serve(async (req) => {
     const bytes = await buildPdf({
       title: b.form_title, sections: b.sections, preText: b.pre_text, signedText: b.signed_text,
       signer: b.signer_name, signedAt: now, email, ip, ua, consentAt, answersHash,
+      paperOrder: b.paper_order === true,
     })
     pdfHash = await sha256(bytes)
     const safeTitle = b.form_title.replace(/[^A-Za-z0-9]+/g, '-')

@@ -159,7 +159,7 @@ export default function PortalForm() {
         {!locked && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{onReview ? "Review and sign" : `Section ${section + 1} of ${total} — ${form.sections[section].title}`}</span>
+              <span>{onReview ? (form.noSignature ? "Review and submit" : "Review and sign") : `Section ${section + 1} of ${total} — ${form.sections[section].title}`}</span>
               <SaveNote state={save} at={savedAt} />
             </div>
             <Progress value={onReview ? 100 : ((section + 1) / (total + 1)) * 100} className="h-1.5" />
@@ -559,18 +559,18 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
               </div>
             )
           )}
-          {(dynamicPreText ?? form.signature.preText) && <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{dynamicPreText ?? form.signature.preText}</p>}
-          <p className="text-sm leading-relaxed rounded-lg bg-muted/50 p-3 whitespace-pre-wrap">{dynamicSignedText ?? form.signature.text}</p>
+          {(dynamicPreText ?? form.signature!.preText) && <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{dynamicPreText ?? form.signature!.preText}</p>}
+          <p className="text-sm leading-relaxed rounded-lg bg-muted/50 p-3 whitespace-pre-wrap">{dynamicSignedText ?? form.signature!.text}</p>
           <div>
             <label htmlFor="sig" className="block text-sm font-medium mb-1.5">Type your full name to sign</label>
             <Input id="sig" className="h-12 text-lg font-serif italic" value={typed} onChange={(e) => setTyped(e.target.value)}
               placeholder={`${answers[form.nameKeys.first] ?? ""} ${answers[form.nameKeys.last] ?? ""}`.trim() || "Full name"} />
             {typed && !nameOk && <p className="text-xs text-muted-foreground mt-1">Your typed name should match the first and last name on this form.</p>}
-            <p className="text-xs text-muted-foreground mt-1">Date: {new Date().toLocaleDateString("en-US")}. {form.signature.note}</p>
+            <p className="text-xs text-muted-foreground mt-1">Date: {new Date().toLocaleDateString("en-US")}. {form.signature!.note}</p>
           </div>
           <label className="flex items-start gap-2.5 text-sm cursor-pointer">
             <Checkbox checked={agree} onCheckedChange={(v) => setAgree(!!v)} className="mt-0.5" />
-            {form.signature.agreeLabel ?? "I agree that my typed name is my electronic signature on this form."}
+            {form.signature!.agreeLabel ?? "I agree that my typed name is my electronic signature on this form."}
           </label>
           <Button disabled={!canSign} onClick={submit} className="w-full h-12 bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sign and Submit

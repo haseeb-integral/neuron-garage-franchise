@@ -4,4 +4,8 @@
 - [x] Narrow proof-packet repair: each receipt/event names its own saved FDD version; correction events have readable labels and source links. Thirty form tests and five live permission tests passed. Temporary submissions/files removed and test prospect restored.
 - Validation limits: true simultaneous requests and forced interruption/recovery were not exercised; repeated submission rejection was verified. Save-and-return used saved test answers rather than typing every field.
 - [x] Phase 5b Phase 1: verified Neuron Garage sender configured through email setup; email processing and sender functions deployed; four prospect previews and existing staff digest rendered successfully. No live prospect triggers added.
-- [ ] Phase 5b Phase 1 inbox check: waiting for approval of one test recipient. No preview email sent yet.
+- [x] Phase 5b Phase 1 inbox check: Sam confirmed receipt at his approved test address.
+- [x] Phase 5b Phase 2a: saved stage/call triggers send portal-only notices. Live checks: one booking, two distinct moves, one step notice sent; repeated step, completion/cancellation, and no-portal candidate produced no extra dispatches. Forged prospect request rejected (403). Thirty-three focused tests passed; test calls removed and original stages restored.
+- Phase 2a limits: direct saved-row checks exercised step changes; booking/time change used staff UI, then prospect read-back. Send failures retain dispatch records for retry; automatic retry of failed webhook handoff is not added. Existing email queue handles retries after successful enqueue. Call emails show labeled Mountain time. Inbox receipt of these new event-triggered samples awaits Sam's confirmation.
+- [ ] Phase 5b Phase 2b: day-before reminders; waits for Phase 2a review and approval.
+- [ ] Phase 5b Phase 3: full notice smoke test; waits for reminder phase completion.

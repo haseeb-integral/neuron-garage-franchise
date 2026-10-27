@@ -176,6 +176,13 @@
       "when": 1793118788426,
       "tag": "0024_ensure_original_receipt_compliance_record",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793131804613,
+      "tag": "0025_prospect_notice_events",
+      "breakpoints": true
     }
   ]
 }

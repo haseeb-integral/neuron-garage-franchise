@@ -2719,6 +2719,47 @@ export type Database = {
           },
         ]
       }
+      portal_notice_dispatches: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          delivered_at: string | null
+          dispatch_token: string
+          id: string
+          notice_key: string
+          payload: Json
+          request_id: number | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          delivered_at?: string | null
+          dispatch_token?: string
+          id?: string
+          notice_key: string
+          payload: Json
+          request_id?: number | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          dispatch_token?: string
+          id?: string
+          notice_key?: string
+          payload?: Json
+          request_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_notice_dispatches_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_step_files: {
         Row: {
           bucket_path: string

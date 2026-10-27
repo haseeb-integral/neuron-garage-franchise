@@ -2,6 +2,7 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { z } from 'npm:zod@3'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
 // Configuration baked in at scaffold time — do NOT change these manually.
@@ -32,9 +33,8 @@ function generateToken(): string {
     .join('')
 }
 
-// Auth note: this function uses verify_jwt = true in config.toml, so Supabase's
-// gateway validates the caller's JWT (anon or service_role) before the request
-// reaches this code. No in-function auth check is needed.
+// The gateway alone does not distinguish staff, prospects, or the anon key.
+// Portal notices additionally require the server credential and a linked prospect.
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -61,9 +61,11 @@ Deno.serve(async (req) => {
   let recipientEmail: string
   let idempotencyKey: string
   let messageId: string
+  let noticeDispatch: unknown
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
+    noticeDispatch = body.noticeDispatch
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
@@ -126,6 +128,52 @@ Deno.serve(async (req) => {
 
   // Create Supabase client with service role (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  if (templateName.startsWith('portal-')) {
+    const dispatchInput = z.object({ id: z.string().uuid(), token: z.string().uuid() }).strict().safeParse(noticeDispatch)
+    if (!dispatchInput.success) {
+      return new Response(JSON.stringify({ error: 'Server notice only' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const { data: dispatch, error: dispatchErr } = await supabase.from('portal_notice_dispatches')
+      .select('candidate_id').eq('id', dispatchInput.data.id).eq('dispatch_token', dispatchInput.data.token).maybeSingle()
+    if (dispatchErr || !dispatch) return new Response(JSON.stringify({ error: 'Invalid server dispatch' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+    const NoticeData = z.object({
+      candidateId: z.string().uuid(), firstName: z.string().max(255),
+      stepTitle: z.string().max(255).optional(), callTitle: z.string().max(255).optional(),
+      dateTime: z.string().max(255).optional(), hostName: z.string().max(255).nullable().optional(),
+      duration: z.number().int().positive().max(480).optional(),
+    }).strict()
+    const parsed = NoticeData.safeParse(templateData)
+    if (!parsed.success || parsed.data.candidateId !== dispatch.candidate_id || !z.string().email().safeParse(effectiveRecipient).success || !idempotencyKey.startsWith('portal-')) {
+      return new Response(JSON.stringify({ error: 'Invalid notice data' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const { data: link, error: linkError } = await supabase.from('candidate_portal_users')
+      .select('user_id').eq('candidate_id', parsed.data.candidateId).maybeSingle()
+    if (linkError) return new Response(JSON.stringify({ error: 'Could not verify prospect' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+    if (!link) return new Response(JSON.stringify({ success: false, reason: 'no_portal_login' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+    const { data: account, error: accountError } = await supabase.auth.admin.getUserById(link.user_id)
+    const { data: targetStaff, error: staffError } = await supabase.rpc('is_staff', { _user_id: link.user_id })
+    if (accountError || staffError) return new Response(JSON.stringify({ error: 'Could not verify recipient' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+    if (targetStaff || account.user?.email?.toLowerCase() !== effectiveRecipient.toLowerCase()) {
+      return new Response(JSON.stringify({ success: false, reason: 'recipient_not_prospect' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const { candidateId: _candidateId, ...publicData } = parsed.data
+    templateData = publicData
+  }
 
   // 2. Check suppression list (fail-closed: if we can't verify, don't send)
   const { data: suppressed, error: suppressionError } = await supabase

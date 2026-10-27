@@ -68,7 +68,13 @@ Deno.serve(async req => {
   const { data, error } = await admin.functions.invoke('send-transactional-email', {
     body: { templateName, idempotencyKey, recipientEmail: account.user.email, templateData },
   })
-  if (error) return Reply({ error: 'Notice enqueue failed' }, 502)
+  if (error) {
+    const response = error.context instanceof Response ? error.context : null
+    // The send endpoint returns generic errors only; no account data or tokens.
+    const detail = response ? await response.json().catch(() => ({})) : {}
+    console.error('Notice enqueue failed', { status: response?.status, error: detail.error ?? error.message })
+    return Reply({ error: 'Notice enqueue failed' }, 502)
+  }
   await admin.from('portal_notice_dispatches').update({ delivered_at: new Date().toISOString() })
     .eq('id', request.data.dispatch_id)
   return Reply(data)

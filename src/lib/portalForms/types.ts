@@ -10,6 +10,8 @@ export interface FormField {
   /** Required only when this returns true (overrides optional). */
   requiredWhen?: (a: Answers) => boolean;
   width?: "full" | "half" | "third";
+  /** Hide the box when we already know the value (name/email asked once in the first form). */
+  hideWhenKnown?: boolean;
   help?: string;
 }
 

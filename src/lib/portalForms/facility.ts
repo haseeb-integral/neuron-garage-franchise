@@ -19,9 +19,9 @@ export const FACILITY_FORM: PortalFormDef = {
       id: "info",
       title: "Your Information",
       fields: [
-        { key: "last_name", label: "Last Name", type: "text", width: "third" },
-        { key: "first_name", label: "First Name", type: "text", width: "third" },
-        { key: "email", label: "Email Address", type: "email", width: "third" },
+        { key: "last_name", label: "Last Name", type: "text", width: "third", hideWhenKnown: true },
+        { key: "first_name", label: "First Name", type: "text", width: "third", hideWhenKnown: true },
+        { key: "email", label: "Email Address", type: "email", width: "third", hideWhenKnown: true },
       ],
     },
     {

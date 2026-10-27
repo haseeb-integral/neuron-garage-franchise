@@ -19,12 +19,12 @@ export const BGCF_FORM: PortalFormDef = {
       id: "info",
       title: "Your Information",
       fields: [
-        { key: "last_name", label: "Last Name", type: "text", width: "third" },
-        { key: "first_name", label: "First Name", type: "text", width: "third" },
+        { key: "last_name", label: "Last Name", type: "text", width: "third", hideWhenKnown: true },
+        { key: "first_name", label: "First Name", type: "text", width: "third", hideWhenKnown: true },
         { key: "middle_name", label: "Middle Name", type: "text", width: "third", optional: true },
         { key: "other_names", label: "Other names you've used (such as a maiden name)", type: "text", optional: true },
         { key: "cell", label: "Cell Phone", type: "tel", width: "half" },
-        { key: "email", label: "Email Address", type: "email", width: "half" },
+        { key: "email", label: "Email Address", type: "email", width: "half", hideWhenKnown: true },
       ],
     },
     {

@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     admin.from('fdd_delivery_events').select('event, at, actor_email, ip, user_agent, fdd_file_id, meta')
       .eq('candidate_id', candidateId).order('at', { ascending: true }),
     admin.from('candidate_portal_signatures').select('*').eq('candidate_id', candidateId).eq('form_key', 'item23')
-      .order('signed_at', { ascending: false }).limit(1).maybeSingle(),
+      .order('signed_at', { ascending: true }),
   ])
   if (!cand) return json({ error: 'Candidate not found' }, 404)
 
@@ -122,7 +122,9 @@ Deno.serve(async (req) => {
   y -= 6
 
   write('ITEM 23 RECEIPT', bold, 12, navy); y -= 2
-  if (sig) {
+  for (const receiptRecord of sig ?? []) {
+    const sig = receiptRecord
+    write(sig.correction_request_id ? `CORRECTED RECEIPT — request ${sig.correction_request_id}` : 'ORIGINAL RECEIPT', bold, 10)
     write(`Signer: ${sig.signer_name}`, font, 10)
     write(`Signed at: ${day(sig.signed_at)} (Central)`, font, 10)
     write(`Agreed to electronic records and signatures: ${sig.esign_consent_at ? day(sig.esign_consent_at) : 'n/a'} (Central)`, font, 10)
@@ -133,11 +135,12 @@ Deno.serve(async (req) => {
     write(`Answers fingerprint (SHA-256): ${sig.answers_sha256}`, font, 10)
     write(`Signed PDF stored at: ${sig.pdf_path ?? 'n/a'}`, font, 9, rgb(0.4, 0.4, 0.45))
     write('The full signed receipt is attached on the following pages.', font, 9, rgb(0.4, 0.4, 0.45))
-  } else {
-    write('The Item 23 receipt has not been signed yet.', font, 10)
   }
+  if (!sig?.length) write('The Item 23 receipt has not been signed yet.', font, 10)
 
-  if (sig?.pdf_path) {
+  for (const receiptRecord of sig ?? []) {
+    const sig = receiptRecord
+    if (!sig.pdf_path) continue
     try {
       const { data: blob, error } = await admin.storage.from('candidate_documents').download(sig.pdf_path)
       if (error) throw error

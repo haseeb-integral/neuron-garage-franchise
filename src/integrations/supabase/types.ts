@@ -353,6 +353,7 @@ export type Database = {
           created_at: string
           fa_proof_file_id: string | null
           fa_signed_at: string | null
+          fdd_file_id: string | null
           fdd_proof_file_id: string | null
           fdd_received_at: string | null
           fdd_sent_at: string | null
@@ -367,6 +368,7 @@ export type Database = {
           created_at?: string
           fa_proof_file_id?: string | null
           fa_signed_at?: string | null
+          fdd_file_id?: string | null
           fdd_proof_file_id?: string | null
           fdd_received_at?: string | null
           fdd_sent_at?: string | null
@@ -381,6 +383,7 @@ export type Database = {
           created_at?: string
           fa_proof_file_id?: string | null
           fa_signed_at?: string | null
+          fdd_file_id?: string | null
           fdd_proof_file_id?: string | null
           fdd_received_at?: string | null
           fdd_sent_at?: string | null
@@ -395,6 +398,13 @@ export type Database = {
             columns: ["fa_proof_file_id"]
             isOneToOne: false
             referencedRelation: "candidate_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_compliance_fdd_file_id_fkey"
+            columns: ["fdd_file_id"]
+            isOneToOne: false
+            referencedRelation: "portal_step_files"
             referencedColumns: ["id"]
           },
           {
@@ -1842,6 +1852,60 @@ export type Database = {
         }
         Relationships: []
       }
+      fdd_delivery_events: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          at: string
+          candidate_id: string
+          event: string
+          fdd_file_id: string | null
+          id: string
+          ip: string | null
+          meta: Json
+          user_agent: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          at?: string
+          candidate_id: string
+          event: string
+          fdd_file_id?: string | null
+          id?: string
+          ip?: string | null
+          meta?: Json
+          user_agent?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          at?: string
+          candidate_id?: string
+          event?: string
+          fdd_file_id?: string | null
+          id?: string
+          ip?: string | null
+          meta?: Json
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fdd_delivery_events_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fdd_delivery_events_fdd_file_id_fkey"
+            columns: ["fdd_file_id"]
+            isOneToOne: false
+            referencedRelation: "portal_step_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imports: {
         Row: {
           batch_label: string | null
@@ -2578,7 +2642,9 @@ export type Database = {
           bucket_path: string
           created_at: string
           deleted_at: string | null
+          fdd_issuance_date: string | null
           file_name: string
+          file_sha256: string | null
           id: string
           is_fdd: boolean
           mime_type: string | null
@@ -2592,7 +2658,9 @@ export type Database = {
           bucket_path: string
           created_at?: string
           deleted_at?: string | null
+          fdd_issuance_date?: string | null
           file_name: string
+          file_sha256?: string | null
           id?: string
           is_fdd?: boolean
           mime_type?: string | null
@@ -2606,7 +2674,9 @@ export type Database = {
           bucket_path?: string
           created_at?: string
           deleted_at?: string | null
+          fdd_issuance_date?: string | null
           file_name?: string
+          file_sha256?: string | null
           id?: string
           is_fdd?: boolean
           mime_type?: string | null
@@ -4206,6 +4276,10 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      log_fdd_emailed: {
+        Args: { _candidate_id: string; _fdd_file_id: string; _sent_at: string }
+        Returns: undefined
+      }
       match_teachers_to_schools: {
         Args: {
           p_city: string
@@ -4249,6 +4323,7 @@ export type Database = {
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
       portal_current_step: { Args: { _user_id: string }; Returns: number }
       portal_latest_fdd_id: { Args: never; Returns: string }
+      portal_log_fdd_available: { Args: never; Returns: string }
       portal_mark_activated: { Args: never; Returns: undefined }
       portal_my_path: { Args: never; Returns: Json }
       read_email_batch: {

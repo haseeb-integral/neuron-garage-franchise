@@ -17,6 +17,6 @@ export const ESIGN_CONSENT_AGREE =
 export const ESIGN_CONSENT_FULL_TEXT = [
   ESIGN_CONSENT_TITLE,
   ESIGN_CONSENT_INTRO,
-  ...ESIGN_CONSENT_POINTS.map((p) => `${p.label}: ${p.text}`),
+  ...ESIGN_CONSENT_POINTS.map((p) => `${p.label}${p.label.endsWith("?") ? "" : ":"} ${p.text}`),
   `[x] ${ESIGN_CONSENT_AGREE}`,
 ].join("\n");

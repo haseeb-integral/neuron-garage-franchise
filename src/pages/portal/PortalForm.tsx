@@ -338,7 +338,7 @@ function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise
           <div className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-portal-navy" /><h1 className="text-xl font-bold text-portal-navy">{ESIGN_CONSENT_TITLE}</h1></div>
           <p className="text-sm leading-relaxed">{ESIGN_CONSENT_INTRO}</p>
           <ul className="space-y-2 text-sm leading-relaxed list-disc pl-5">
-            {ESIGN_CONSENT_POINTS.map((pt) => <li key={pt.label}><span className="font-semibold">{pt.label}:</span> {pt.text}</li>)}
+            {ESIGN_CONSENT_POINTS.map((pt) => <li key={pt.label}><span className="font-semibold">{pt.label}{pt.label.endsWith("?") ? "" : ":"}</span> {pt.text}</li>)}
           </ul>
           <label className="flex items-start gap-2.5 text-sm cursor-pointer rounded-lg bg-muted/50 p-3">
             <Checkbox checked={ok} onCheckedChange={(v) => setOk(!!v)} className="mt-0.5" /> {ESIGN_CONSENT_AGREE}

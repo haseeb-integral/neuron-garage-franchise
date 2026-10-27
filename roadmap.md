@@ -35,6 +35,7 @@ Live SmartLead activation remains unverified because its key is rejected; the ca
   - [x] 5B Background, Credit, and Funding + compliant e-sign + signed PDF (wording approved Oct 26)
   - [ ] 5C Facility Prospect Form
   - [ ] 5D Staff "Prospect Forms" tab
-  - [ ] 5E Item 23 receipt (fills FDD received date)
+  - [x] 5E-1 FDD versions (issuance date + fingerprint), delivery log, logged downloads, staff version picker
+  - [ ] 5E-2 Item 23 e-sign (sellers Sam, Kaylie, Skyler), auto received date, proof box + proof packet
 - [ ] Phase 5b — email nudges (step unlocked, call booked or moved, day-before reminder)
 - [ ] Phase 6 — smoke test

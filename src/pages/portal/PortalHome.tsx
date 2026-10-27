@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Lock, CalendarClock, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { fromDbStage } from "@/lib/stageDbMapping";
 import { PORTAL_STEPS, stageToStep, stepState, type PortalStep, type StepState } from "@/lib/portalPath";
 import { PortalStepFiles, type StepFile, type MyUpload } from "@/components/portal/PortalStepFiles";
+import { formForItem } from "@/lib/portalForms/logic";
 import logo from "@/assets/neuron-garage-logo.png";
 
 interface PathData {
@@ -71,6 +72,17 @@ export default function PortalHome() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as MyUpload[];
+    },
+  });
+
+  const forms = useQuery({
+    queryKey: ["portal-forms", portalCandidateId],
+    enabled: !!portalCandidateId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("candidate_portal_forms")
+        .select("form_key, status, progress").eq("candidate_id", portalCandidateId!);
+      if (error) throw error;
+      return Object.fromEntries((data ?? []).map((r) => [r.form_key, r])) as FormStatusMap;
     },
   });
 
@@ -145,6 +157,7 @@ export default function PortalHome() {
                   date={data.step_dates?.[String(s.num)]}
                   ticked={ticks.data ?? new Set()}
                   onToggle={toggle}
+                  forms={forms.data ?? {}}
                   files={
                     <PortalStepFiles
                       stepNum={s.num}
@@ -197,8 +210,34 @@ function NextCallCard({ call }: { call: PathData["next_call"] }) {
   );
 }
 
-function StepRow({ step, state, last, date, ticked, onToggle, files }: {
-  step: PortalStep; state: StepState; last: boolean; date?: string; files: ReactNode;
+type FormStatusMap = Record<string, { form_key: string; status: string; progress: number }>;
+
+function FormItem({ formKey, label, status }: { formKey: string; label: string; status?: FormStatusMap[string] }) {
+  const done = status?.status === "submitted";
+  const started = !!status && !done;
+  return (
+    <li className="rounded-lg border bg-background p-3 space-y-2">
+      <div className="flex items-start gap-2.5">
+        <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center ${done ? "bg-success border-success text-success-foreground" : ""}`}>
+          {done && <Check className="h-3 w-3" />}
+        </span>
+        <span className={`text-sm ${done ? "text-muted-foreground" : "font-medium"}`}>{label}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2 pl-6">
+        <span className={`text-xs rounded-full px-2 py-0.5 ${done ? "bg-success/15 text-success" : started ? "bg-portal-yellow/25" : "bg-muted text-muted-foreground"}`}>
+          {done ? "Submitted ✓" : started ? `In progress — ${status!.progress}%` : "Not started"}
+        </span>
+        <Button asChild size="sm" variant={done ? "outline" : "default"}
+          className={done ? "" : "bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90"}>
+          <Link to={`/portal/form/${formKey}`}>{done ? "View" : started ? "Continue" : "Start"}</Link>
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function StepRow({ step, state, last, date, ticked, onToggle, files, forms }: {
+  step: PortalStep; state: StepState; last: boolean; date?: string; files: ReactNode; forms: FormStatusMap;
   ticked: Set<string>; onToggle: (s: number, k: string, l: string, on: boolean) => void;
 }) {
   const locked = state === "locked";
@@ -237,6 +276,8 @@ function StepRow({ step, state, last, date, ticked, onToggle, files }: {
               {step.items.map((it) => {
                 const id = `${step.num}:${it.key}`;
                 const on = ticked.has(id);
+                const fdef = formForItem(step.num, it.key);
+                if (fdef) return <FormItem key={it.key} formKey={fdef.key} label={it.label} status={forms[fdef.key]} />;
                 return (
                   <li key={it.key} className="flex items-start gap-2.5">
                     <Checkbox id={id} checked={on} onCheckedChange={(v) => onToggle(step.num, it.key, it.label, !!v)} className="mt-0.5" />

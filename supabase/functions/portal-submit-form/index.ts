@@ -21,6 +21,7 @@ const Body = z.object({
   esign_consent_text: z.string().max(5000).optional(),
   pdf_category: z.enum(['background_check', 'general']),
   pdf_item_key: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  fdd_issuance_date: z.string().min(4).max(40).nullable().optional(),
   sections: z.array(z.object({ title: z.string().max(300), rows: z.array(Row).max(200) })).max(40),
 })
 
@@ -131,6 +132,24 @@ Deno.serve(async (req) => {
   const consentAt = typeof a.__esign_consent_at === 'string' ? a.__esign_consent_at : null
   if (b.esign_consent_text && !consentAt) return json({ error: 'Please agree to electronic records and signatures first.' }, 400)
 
+  // Item 23 receipt: name the exact FDD version this prospect received (never the newest).
+  let item23Fdd: { id: string; date: string | null; receivedAt: string | null } | null = null
+  if (b.form_key === 'item23') {
+    const { data: comp } = await admin.from('candidate_compliance').select('fdd_file_id, fdd_received_at').eq('candidate_id', candId).maybeSingle()
+    let fddId: string | null = (comp?.fdd_file_id as string | null) ?? null
+    if (!fddId) {
+      const { data: ev } = await admin.from('fdd_delivery_events').select('fdd_file_id')
+        .eq('candidate_id', candId).not('fdd_file_id', 'is', null).order('at', { ascending: true }).limit(1).maybeSingle()
+      fddId = (ev?.fdd_file_id as string | null) ?? null
+    }
+    if (!fddId) return json({ error: "We can't confirm which FDD version you received yet. Please contact Skyler Bossen at 512-593-2750." }, 409)
+    const { data: f } = await admin.from('portal_step_files').select('fdd_issuance_date').eq('id', fddId).maybeSingle()
+    item23Fdd = { id: fddId, date: (f?.fdd_issuance_date as string | null) ?? null, receivedAt: (comp?.fdd_received_at as string | null) ?? null }
+    if (b.fdd_issuance_date && b.fdd_issuance_date !== item23Fdd.date) {
+      return json({ error: 'The FDD version on file has changed. Please refresh this page and review your receipt again.' }, 409)
+    }
+  }
+
   const now = new Date().toISOString()
   const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || req.headers.get('cf-connecting-ip') || null
   const ua = req.headers.get('user-agent')
@@ -181,5 +200,16 @@ Deno.serve(async (req) => {
     candidate_id: candId, type: 'note', content: `Prospect signed and submitted: ${b.form_title}`,
     metadata: { source: 'portal', form_key: b.form_key }, actor_email: email,
   })
+
+  // Item 23: the signing date counts as the FDD received date (starts the 16-day lock), and the event goes in the permanent log.
+  if (b.form_key === 'item23' && item23Fdd) {
+    if (!item23Fdd.receivedAt) {
+      await admin.from('candidate_compliance').upsert({ candidate_id: candId, fdd_received_at: now }, { onConflict: 'candidate_id' })
+    }
+    await admin.from('fdd_delivery_events').insert({
+      candidate_id: candId, fdd_file_id: item23Fdd.id, event: 'receipt_signed', actor_id: uid, actor_email: email, ip, user_agent: ua,
+      meta: { signer_name: b.signer_name, form_version: form.form_version, pdf_path: pdfPath, pdf_sha256: pdfHash, fdd_issuance_date: item23Fdd.date },
+    })
+  }
   return json({ status: 'submitted', signed_at: now, pdf_path: pdfPath })
 })

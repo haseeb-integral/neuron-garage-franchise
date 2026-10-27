@@ -24,3 +24,15 @@ export function callTemplateData(row: Record<string, unknown>, firstName: string
       .format(new Date(String(row.starts_at))),
   }
 }
+// Day-before reminder: the call must still be scheduled at the same saved time,
+// and its Mountain-time calendar date must be the day after "now".
+function denverDate(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+}
+export function reminderDue(savedStartsAt: string, current: { status: string; starts_at: string } | null, now: Date): boolean {
+  if (!current || current.status !== 'scheduled') return false
+  const start = new Date(current.starts_at)
+  if (start.getTime() !== new Date(savedStartsAt).getTime()) return false
+  const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000)
+  return start.getTime() > now.getTime() && denverDate(start) === denverDate(tomorrow)
+}

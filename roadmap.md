@@ -7,5 +7,5 @@
 - [x] Phase 5b Phase 1 inbox check: Sam confirmed receipt at his approved test address.
 - [x] Phase 5b Phase 2a: saved stage/call triggers send portal-only notices. Live checks: one booking, two distinct moves, one step notice sent; repeated step, completion/cancellation, and no-portal candidate produced no extra dispatches. Forged prospect request rejected (403). Thirty-three focused tests passed; test calls removed and original stages restored.
 - Phase 2a limits: direct saved-row checks exercised step changes; booking/time change used staff UI, then prospect read-back. Send failures retain dispatch records for retry; automatic retry of failed webhook handoff is not added. Existing email queue handles retries after successful enqueue. Call emails show labeled Mountain time. Inbox receipt of these new event-triggered samples awaits Sam's confirmation.
-- [ ] Phase 5b Phase 2b: day-before reminders; waits for Phase 2a review and approval.
+- [x] Phase 5b Phase 2b: daily 16:00 UTC job queues one reminder per prospect call on the next Mountain-time day; send-time recheck skips canceled/done/moved calls. Live run queued 2, rerun queued 0; both sent. Test call removed.
 - [ ] Phase 5b Phase 3: full notice smoke test; waits for reminder phase completion.

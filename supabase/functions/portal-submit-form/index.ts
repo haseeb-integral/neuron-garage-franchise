@@ -72,6 +72,7 @@ async function buildPdf(o: {
     for (const r of s.rows) { write(r.label, bold, 9, rgb(0.35, 0.38, 0.45), 1); write(r.value || '-', font, 10); y -= 4 }
   }
   y -= 10
+  write('SIGNATURE', bold, 12, navy); y -= 2
   if (o.preText) { write(o.preText, font, 9.5, rgb(0.25, 0.25, 0.3)); y -= 6 }
   write(o.signedText, font, 10); y -= 8
   write(`Signature: ${o.signer}`, italic, 14); write(`Date: ${new Date(o.signedAt).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}`, font, 10)

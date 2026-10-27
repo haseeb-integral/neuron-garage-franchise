@@ -30,6 +30,11 @@ Live SmartLead activation remains unverified because its key is rejected; the ca
 - [x] Phase 3 — path page + next call card + "3 of 4 done" badge + activity log
 - [x] Phase 4 — step files, latest FDD link, prospect uploads (+ activity log)
 
-- [ ] Phase 5 — forms, background/credit e-sign, Item 23 e-sign that fills the FDD received date
+- [ ] Phase 5 — forms and e-sign
+  - [x] 5A form engine + Request for Consideration
+  - [ ] 5B Background, Credit, and Funding + compliant e-sign + signed PDF (wording approval needed)
+  - [ ] 5C Facility Prospect Form
+  - [ ] 5D Staff "Prospect Forms" tab
+  - [ ] 5E Item 23 receipt (fills FDD received date)
 - [ ] Phase 5b — email nudges (step unlocked, call booked or moved, day-before reminder)
 - [ ] Phase 6 — smoke test

@@ -581,6 +581,143 @@ export type Database = {
           },
         ]
       }
+      candidate_portal_forms: {
+        Row: {
+          answers: Json
+          candidate_id: string
+          created_at: string
+          form_key: string
+          form_version: string
+          id: string
+          last_section: number
+          progress: number
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          candidate_id: string
+          created_at?: string
+          form_key: string
+          form_version?: string
+          id?: string
+          last_section?: number
+          progress?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          candidate_id?: string
+          created_at?: string
+          form_key?: string
+          form_version?: string
+          id?: string
+          last_section?: number
+          progress?: number
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_portal_forms_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_portal_signatures: {
+        Row: {
+          answers_sha256: string
+          answers_snapshot: Json
+          candidate_id: string
+          esign_consent_at: string | null
+          esign_consent_text: string | null
+          form_id: string
+          form_key: string
+          form_version: string
+          id: string
+          ip: string | null
+          pdf_path: string | null
+          pdf_sha256: string | null
+          signed_at: string
+          signed_text: string
+          signer_name: string
+          user_agent: string | null
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          answers_sha256: string
+          answers_snapshot: Json
+          candidate_id: string
+          esign_consent_at?: string | null
+          esign_consent_text?: string | null
+          form_id: string
+          form_key: string
+          form_version: string
+          id?: string
+          ip?: string | null
+          pdf_path?: string | null
+          pdf_sha256?: string | null
+          signed_at?: string
+          signed_text: string
+          signer_name: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          answers_sha256?: string
+          answers_snapshot?: Json
+          candidate_id?: string
+          esign_consent_at?: string | null
+          esign_consent_text?: string | null
+          form_id?: string
+          form_key?: string
+          form_version?: string
+          id?: string
+          ip?: string | null
+          pdf_path?: string | null
+          pdf_sha256?: string | null
+          signed_at?: string
+          signed_text?: string
+          signer_name?: string
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_portal_signatures_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_portal_signatures_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_portal_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_portal_users: {
         Row: {
           activated_at: string | null

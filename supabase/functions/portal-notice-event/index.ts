@@ -66,7 +66,8 @@ Deno.serve(async req => {
     templateData = { candidateId: cid, ...callTemplateData(event.after, cand.first_name ?? '', hostName) }
   }
   const { data, error } = await admin.functions.invoke('send-transactional-email', {
-    body: { templateName, idempotencyKey, recipientEmail: account.user.email, templateData },
+    body: { templateName, idempotencyKey, recipientEmail: account.user.email, templateData,
+      noticeDispatch: { id: request.data.dispatch_id, token: request.data.dispatch_token } },
   })
   if (error) {
     const response = error.context instanceof Response ? error.context : null

@@ -61,9 +61,11 @@ Deno.serve(async (req) => {
   let recipientEmail: string
   let idempotencyKey: string
   let messageId: string
+  let noticeDispatch: unknown
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
+    noticeDispatch = body.noticeDispatch
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
@@ -128,11 +130,17 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   if (templateName.startsWith('portal-')) {
-    if (req.headers.get('Authorization') !== `Bearer ${supabaseServiceKey}`) {
+    const dispatchInput = z.object({ id: z.string().uuid(), token: z.string().uuid() }).strict().safeParse(noticeDispatch)
+    if (!dispatchInput.success) {
       return new Response(JSON.stringify({ error: 'Server notice only' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+    const { data: dispatch, error: dispatchErr } = await supabase.from('portal_notice_dispatches')
+      .select('candidate_id').eq('id', dispatchInput.data.id).eq('dispatch_token', dispatchInput.data.token).maybeSingle()
+    if (dispatchErr || !dispatch) return new Response(JSON.stringify({ error: 'Invalid server dispatch' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
     const NoticeData = z.object({
       candidateId: z.string().uuid(), firstName: z.string().max(255),
       stepTitle: z.string().max(255).optional(), callTitle: z.string().max(255).optional(),
@@ -140,7 +148,7 @@ Deno.serve(async (req) => {
       duration: z.number().int().positive().max(480).optional(),
     }).strict()
     const parsed = NoticeData.safeParse(templateData)
-    if (!parsed.success || !z.string().email().safeParse(effectiveRecipient).success || !idempotencyKey.startsWith('portal-')) {
+    if (!parsed.success || parsed.data.candidateId !== dispatch.candidate_id || !z.string().email().safeParse(effectiveRecipient).success || !idempotencyKey.startsWith('portal-')) {
       return new Response(JSON.stringify({ error: 'Invalid notice data' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

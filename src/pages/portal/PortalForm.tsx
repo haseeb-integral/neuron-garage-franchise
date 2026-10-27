@@ -408,7 +408,10 @@ function SignedCopyButton({ formId, form }: { formId: string; form: PortalFormDe
       const url = URL.createObjectURL(new Blob([pdf.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = pdfPath.split("/").pop() || "signed-copy.pdf";
+      const signedDay = sig.data?.signed_at ? String(sig.data.signed_at).slice(0, 10) : "";
+      const base = [form.title.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, ""), "Signed", signedDay]
+        .filter(Boolean).join("-");
+      link.download = `${base}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();

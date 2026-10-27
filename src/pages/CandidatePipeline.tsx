@@ -36,7 +36,7 @@ import {
 import { startOnboardingForCandidate } from "@/lib/onboardingService";
 import { FIT_TAGS, FitTag, coerceFitTag } from "@/constants/fitTags";
 import { CANDIDATE_TAG_EVENT } from "@/components/candidate-pipeline/TagSelect";
-import { FDD_WAIT_DAYS, daysRemaining, earliestSigningDate, formatDay } from "@/lib/fddCompliance";
+import { FDD_WAIT_DAYS, daysRemaining, earliestSigningDate, formatDay, stageRequiresFddWait } from "@/lib/fddCompliance";
 
 
 
@@ -444,15 +444,13 @@ const CandidatePipeline = () => {
       }
     }
 
-    // Phase C2 — 16-day FDD hard-block (T3-06).
+    // The 16-day FDD wait protects franchise signing only.
     // Behind FF_FDD_GATE so it can be flipped off instantly if it misfires.
-    // Blocks any forward move OUT of fdd_review until 16 calendar days have
-    // elapsed since fdd_sent_at, unless compliance_override is on.
+    // Earlier process steps may continue while the waiting period runs.
     if (
       isEnabled("FF_FDD_GATE") &&
       dbId &&
-      candidate.stage === "fdd_review" &&
-      toStage !== "fdd_review"
+      stageRequiresFddWait(toStage)
     ) {
       console.log("[FDD_GATE] evaluating", { dbId, from: candidate.stage, to: toStage });
       const { data: comp, error: compErr } = await supabase
@@ -464,7 +462,7 @@ const CandidatePipeline = () => {
 
       if (compErr) {
         toast.error("Compliance check failed", {
-          description: "Could not verify FDD lock. Move blocked. Try again or use override.",
+          description: "Could not verify the FDD signing wait. Move to Signing blocked. Try again or use override.",
         });
         return;
       }
@@ -472,7 +470,7 @@ const CandidatePipeline = () => {
       if (!comp?.compliance_override) {
         if (!comp?.fdd_sent_at) {
           toast.error("FDD sent date required", {
-            description: "Set the FDD sent date on Step 4 of the Qualification Process (or the Uploaded Documents tab) before advancing.",
+            description: "Record the FDD sent date in Step 2 of the Qualification Process before moving to Signing.",
           });
           return;
         }

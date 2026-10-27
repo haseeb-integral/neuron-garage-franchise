@@ -9,6 +9,11 @@
 
 export const FDD_WAIT_DAYS = 16;
 
+/** Only franchise signing is held by the FDD wait, not earlier stage moves. */
+export function stageRequiresFddWait(toStage: string): boolean {
+  return toStage === "signing";
+}
+
 /** Parse an ISO timestamp into a local calendar date (midnight), or null. */
 function toDay(iso: string | null | undefined): Date | null {
   if (!iso) return null;

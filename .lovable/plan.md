@@ -39,6 +39,7 @@ Finish the same approved flow, run the end-to-end checks below, and fix only pro
 - Do not clear, replace, or reset the first recorded FDD received date. Do not restart the 16-day wait.
 - The waiting rule still blocks franchise signing only, not earlier process steps or Item 23 signing.
 - Keep the original receipt and corrected receipt in the proof history. Update the proof-packet download to include the receipt history, not only the latest copy.
+- Label a corrected receipt's delivery-log entry as a correction linked to the original receipt, not a new first-receipt event.
 - Do not change the approved disclosures or seller details.
 
 ## What may be affected

@@ -32,7 +32,7 @@ Live SmartLead activation remains unverified because its key is rejected; the ca
 
 - [ ] Phase 5 — forms and e-sign
   - [x] 5A form engine + Request for Consideration
-  - [ ] 5B Background, Credit, and Funding + compliant e-sign + signed PDF (wording approval needed)
+  - [x] 5B Background, Credit, and Funding + compliant e-sign + signed PDF (wording approved Oct 26)
   - [ ] 5C Facility Prospect Form
   - [ ] 5D Staff "Prospect Forms" tab
   - [ ] 5E Item 23 receipt (fills FDD received date)

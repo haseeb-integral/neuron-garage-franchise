@@ -519,6 +519,13 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                                 itemLabel="FDD sent — proof of date sent"
                                 category="fdd_proof"
                               />
+                            ) : item.key === "sent_bg_auth" ? (
+                              <HomeworkUploadButton
+                                candidateDbId={dbId}
+                                itemKey="bgcf"
+                                itemLabel="Signed Background, Credit, and Funding authorization"
+                                category="background_check"
+                              />
                             ) : null
                         : undefined
                     }

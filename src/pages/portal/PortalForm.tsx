@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CloudOff, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, CloudOff, Download, Loader2, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { getPortalForm, missingRequired, formProgress, signatureMatches } from "@/lib/portalForms/logic";
 import type { Answers, FormField, PortalFormDef } from "@/lib/portalForms/types";
 import { PORTAL_STEPS } from "@/lib/portalPath";
+import { ESIGN_CONSENT_AGREE, ESIGN_CONSENT_FULL_TEXT, ESIGN_CONSENT_INTRO, ESIGN_CONSENT_POINTS, ESIGN_CONSENT_TITLE, ESIGN_CONSENT_VERSION } from "@/lib/portalForms/esign";
 import { US_STATE_NAME_TO_ABBR } from "@/lib/usStates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 const STATE_ABBRS = [...new Set(Object.values(US_STATE_NAME_TO_ABBR))].sort();
@@ -110,6 +111,17 @@ export default function PortalForm() {
   if (!portalCandidateId) return <Navigate to="/" replace />;
   if (!form) return <Navigate to="/portal" replace />;
 
+  const needsConsent = !!form.esignConsent && !locked && ready && !answers.__esign_consent_at;
+  if (needsConsent) {
+    return (
+      <ConsentGate title={form.title} onAgree={async () => {
+        const next = { ...answers, __esign_consent_at: new Date().toISOString(), __esign_consent_version: ESIGN_CONSENT_VERSION };
+        setAnswers(next);
+        await persist(next, section);
+      }} />
+    );
+  }
+
   const total = form.sections.length; // review screen index = total
   const pct = formProgress(form, answers);
   const onReview = section >= total || locked;
@@ -140,7 +152,7 @@ export default function PortalForm() {
         )}
 
         {!ready ? <p className="text-sm text-muted-foreground">Loading your answers…</p> : onReview ? (
-          <ReviewAndSign form={form} answers={answers} locked={locked} submittedAt={row.data?.submitted_at ?? null}
+          <ReviewAndSign form={form} answers={answers} locked={locked} submittedAt={row.data?.submitted_at ?? null} formId={row.data?.id ?? null}
             pct={pct} onEdit={goTo}
             onSubmitted={() => {
               dirty.current = false;
@@ -309,8 +321,71 @@ function answerText(v: unknown) {
   return v == null || String(v).trim() === "" ? "—" : String(v);
 }
 
-function ReviewAndSign({ form, answers, locked, submittedAt, pct, onEdit, onSubmitted, onBeforeSubmit }: {
-  form: PortalFormDef; answers: Answers; locked: boolean; submittedAt: string | null; pct: number;
+function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise<void> }) {
+  const [ok, setOk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="bg-portal-navy text-portal-navy-foreground">
+        <div className="mx-auto max-w-3xl px-5 py-4 flex items-center justify-between gap-3">
+          <Link to="/portal" className="flex items-center gap-2 text-sm hover:underline"><ArrowLeft className="h-4 w-4" /> Back to my path</Link>
+          <img src={logo} alt="Neuron Garage" className="h-8 w-auto rounded bg-background p-0.5" />
+        </div>
+      </header>
+      <main className="mx-auto max-w-2xl px-5 py-8 space-y-5">
+        <div className="text-sm text-muted-foreground">Before you start: {title}</div>
+        <section className="rounded-xl border-2 border-portal-navy p-6 space-y-4">
+          <div className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-portal-navy" /><h1 className="text-xl font-bold text-portal-navy">{ESIGN_CONSENT_TITLE}</h1></div>
+          <p className="text-sm leading-relaxed">{ESIGN_CONSENT_INTRO}</p>
+          <ul className="space-y-2 text-sm leading-relaxed list-disc pl-5">
+            {ESIGN_CONSENT_POINTS.map((pt) => <li key={pt.label}><span className="font-semibold">{pt.label}{pt.label.endsWith("?") ? "" : ":"}</span> {pt.text}</li>)}
+          </ul>
+          <label className="flex items-start gap-2.5 text-sm cursor-pointer rounded-lg bg-muted/50 p-3">
+            <Checkbox checked={ok} onCheckedChange={(v) => setOk(!!v)} className="mt-0.5" /> {ESIGN_CONSENT_AGREE}
+          </label>
+          <Button disabled={!ok || busy} className="w-full h-12 bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90"
+            onClick={async () => { setBusy(true); await onAgree(); setBusy(false); }}>
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />} I agree — start the form
+          </Button>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function SignedCopyButton({ formId }: { formId: string }) {
+  const sig = useQuery({
+    queryKey: ["portal-signature", formId],
+    queryFn: async () => (await supabase.from("candidate_portal_signatures").select("pdf_path")
+      .eq("form_id", formId).order("signed_at", { ascending: false }).limit(1).maybeSingle()).data,
+  });
+  if (!sig.data?.pdf_path) return null;
+  return (
+    <Button size="sm" variant="outline" className="mt-3" onClick={async () => {
+      const w = window.open("", "_blank");
+      const { data, error } = await supabase.storage.from("candidate_documents").createSignedUrl(sig.data!.pdf_path!, 120);
+      if (error || !data) { w?.close(); toast.error("Could not open your signed copy."); return; }
+      if (w) w.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+    }}>
+      <Download className="h-3.5 w-3.5" /> Download your signed copy
+    </Button>
+  );
+}
+
+function buildRows(form: PortalFormDef, a: Answers) {
+  return form.sections.map((s) => {
+    const rows = (s.fields ?? []).map((f) => ({ label: f.label, value: answerText(a[f.key]) }));
+    if (s.repeater) {
+      ((a[s.repeater.key] as Answers[] | undefined) ?? []).forEach((it, j) => {
+        s.repeater!.fields.forEach((f) => rows.push({ label: `${s.repeater!.itemLabel} ${j + 1} - ${f.label}`, value: answerText(it?.[f.key]) }));
+      });
+    }
+    return { title: s.title, rows };
+  });
+}
+
+function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit, onSubmitted, onBeforeSubmit }: {
+  form: PortalFormDef; answers: Answers; locked: boolean; submittedAt: string | null; formId: string | null; pct: number;
   onEdit: (i: number) => void; onSubmitted: () => void; onBeforeSubmit: () => Promise<void>;
 }) {
   const missing = useMemo(() => missingRequired(form, answers), [form, answers]);
@@ -329,6 +404,9 @@ function ReviewAndSign({ form, answers, locked, submittedAt, pct, onEdit, onSubm
         form_key: form.key, signer_name: typed.trim(), signed_text: form.signature.text, form_title: form.title,
         step_num: form.stepNum, item_key: form.itemKey, item_label: item?.label ?? form.title,
         first_key: form.nameKeys.first, last_key: form.nameKeys.last,
+        pre_text: form.signature.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
+        esign_consent_text: form.esignConsent ? ESIGN_CONSENT_FULL_TEXT : undefined,
+        sections: buildRows(form, answers),
       },
     });
     setBusy(false);
@@ -352,6 +430,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, pct, onEdit, onSubm
             <div className="text-sm text-muted-foreground">
               Submitted {submittedAt ? new Date(submittedAt).toLocaleString() : ""}. If something needs to change, contact Skyler Bossen at 512-593-2750.
             </div>
+            {formId && <SignedCopyButton formId={formId} />}
           </div>
         </div>
       )}
@@ -394,7 +473,8 @@ function ReviewAndSign({ form, answers, locked, submittedAt, pct, onEdit, onSubm
       {!locked && (
         <section className="rounded-xl border-2 border-portal-navy p-5 space-y-4">
           <h3 className="font-bold text-portal-navy uppercase tracking-wide">{form.signature.heading}</h3>
-          <p className="text-sm leading-relaxed">{form.signature.text}</p>
+          {form.signature.preText && <p className="text-sm leading-relaxed text-muted-foreground">{form.signature.preText}</p>}
+          <p className="text-sm leading-relaxed rounded-lg bg-muted/50 p-3">{form.signature.text}</p>
           <div>
             <label htmlFor="sig" className="block text-sm font-medium mb-1.5">Type your full name to sign</label>
             <Input id="sig" className="h-12 text-lg font-serif italic" value={typed} onChange={(e) => setTyped(e.target.value)}
@@ -404,7 +484,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, pct, onEdit, onSubm
           </div>
           <label className="flex items-start gap-2.5 text-sm cursor-pointer">
             <Checkbox checked={agree} onCheckedChange={(v) => setAgree(!!v)} className="mt-0.5" />
-            I agree that my typed name is my electronic signature on this form.
+            {form.signature.agreeLabel ?? "I agree that my typed name is my electronic signature on this form."}
           </label>
           <Button disabled={!canSign} onClick={submit} className="w-full h-12 bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sign and Submit

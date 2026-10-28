@@ -14,6 +14,7 @@ import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSecti
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
+import { PortalInviteButton } from "../PortalInviteButton";
 import { syncProcessCallEvent } from "@/lib/candidateEvents";
 import { PROCESS_STEP_TITLES, EVENT_TYPE_OPTIONS } from "@/lib/candidateProcessSteps";
 
@@ -540,11 +541,16 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 )}
 
                 {step.num === 2 && (
-                  <FddSentDateField
-                    candidateDbId={dbId}
-                    fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
-                    onMirror={(v) => updateField(2, "fdd_sent_date", v)}
-                  />
+                  <>
+                    <div className="mt-3 flex justify-start">
+                      <PortalInviteButton candidateDbId={dbId} />
+                    </div>
+                    <FddSentDateField
+                      candidateDbId={dbId}
+                      fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
+                      onMirror={(v) => updateField(2, "fdd_sent_date", v)}
+                    />
+                  </>
                 )}
 
 

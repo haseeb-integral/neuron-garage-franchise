@@ -55,7 +55,12 @@ export function PortalInviteButton({ candidateDbId }: { candidateDbId?: string }
       <Button
         variant="outline"
         size="sm"
-        className="h-8 text-xs gap-1.5"
+        className={cn(
+          "h-8 text-xs gap-1.5",
+          status.kind === "none"
+            ? "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            : "border-success bg-success text-success-foreground hover:bg-success/90"
+        )}
         disabled={busy}
         onClick={send}
       >

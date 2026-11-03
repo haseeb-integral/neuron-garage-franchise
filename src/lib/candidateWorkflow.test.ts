@@ -11,3 +11,9 @@ describe("process advancement", () => {
   it("does not advance Signing or disqualified prospects", () => { expect(nextProcessStage(5, "signing")).toBeNull(); expect(nextProcessStage(2, "disqualified")).toBeNull(); });
   it("remembers the stable database ID instead of the reload-dependent row number", () => expect(candidatePanelId({ id: 7, dbId: "candidate-uuid" })).toBe("candidate-uuid"));
 });
+import { nextProcessStage as nps } from "@/lib/candidateWorkflow";
+describe("new website leads", () => {
+  it("Step 1 moves a New Lead to Business Overview", () => {
+    expect(nps(1, "new_lead")).toBe("business_overview");
+  });
+});

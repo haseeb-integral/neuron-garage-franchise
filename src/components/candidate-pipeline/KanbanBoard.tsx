@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { STAGES, Candidate, StageId } from "@/data/pipelineData";
+import { BOARD_STAGES as STAGES, Candidate, StageId } from "@/data/pipelineData";
 import { KanbanColumn } from "./KanbanColumn";
 import { getStageAccent } from "./stageColors";
 

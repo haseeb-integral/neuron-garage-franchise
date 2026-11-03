@@ -92,9 +92,6 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     goal: "Provide a deeper understanding of the business and camp. Review the FDD, and key Franchise Agreement terms.",
     trialClose: true,
     postCall: [
-      { key: "sent_rfc_part2", label: "Sent Background and Credit Check Authorization Form" },
-      { key: "sent_personality_profile_invite", label: "Send invite to personality profile assessment" },
-      { key: "sent_fdd", label: "Sent FDD and saved/uploaded proof of date sent" },
       { key: "mvs_site_run", label: "Run Market Validation and Site Analysis on desired location — INTERNAL ONLY" },
       { key: "sent_bg_auth", label: "Run Background Check and Run Credit Check" },
     ],
@@ -566,7 +563,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
 
                 {step.homework.length > 0 && (
                   <ChecklistBlock
-                    title="Track Homework"
+                    title="Status of Homework"
                     items={step.homework}
                     state={row.homework}
                     onToggle={(k, v) => toggleChecklist(step.num, "homework", k, v)}

@@ -106,6 +106,7 @@ registerRoutePrefetch("/glossary", Glossary.preload);
 
 const PortalHome = lazyWithPreload(() => import("./pages/portal/PortalHome"));
 const PortalForm = lazyWithPreload(() => import("./pages/portal/PortalForm"));
+const PortalSignIn = lazyWithPreload(() => import("./pages/portal/PortalSignIn"));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, refetchOnWindowFocus: false } } });
 
@@ -122,6 +123,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
+              <Route path="/portal/sign-in" element={<PortalSignIn />} />
               <Route path="/portal" element={<PortalHome />} />
               <Route path="/portal/form/:formKey" element={<PortalForm />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

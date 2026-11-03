@@ -135,7 +135,7 @@ export default function PortalForm() {
   };
 
   if (loading || (session && !accessChecked)) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
-  if (!session) return <Navigate to="/auth" replace />;
+  if (!session) return <Navigate to="/portal/sign-in" replace state={{ from: `/portal/form/${formKey}` }} />;
   if (!portalCandidateId) return <Navigate to="/" replace />;
   if (!form) return <Navigate to="/portal" replace />;
 

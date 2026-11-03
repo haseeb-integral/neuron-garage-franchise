@@ -549,6 +549,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                     items={step.postCall.filter((item) => step.num !== 4 || item.key !== "shared_personality_assessment_results")}
                     state={row.post_call_actions}
                     onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
+                    leading={step.num === 1 ? <div className="pb-1"><PortalInviteButton candidateDbId={dbId} /></div> : undefined}
                     renderAction={
                       step.num === 2
                         ? (item) =>
@@ -583,9 +584,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
 
                 {step.num === 2 && (
                   <>
-                    <div className="mt-3 flex justify-start">
-                      <PortalInviteButton candidateDbId={dbId} />
-                    </div>
                     <FddSentDateField
                       candidateDbId={dbId}
                       fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
@@ -725,6 +723,7 @@ function ChecklistBlock({
   renderAction,
   renderDetail,
   headingExtra,
+  leading,
 }: {
   title: string;
   items: { key: string; label: string }[];
@@ -734,11 +733,13 @@ function ChecklistBlock({
   renderAction?: (item: { key: string; label: string }) => React.ReactNode;
   renderDetail?: (item: { key: string; label: string }) => React.ReactNode;
   headingExtra?: React.ReactNode;
+  leading?: React.ReactNode;
 }) {
   return (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-2 text-xs font-semibold mb-2 text-primary">{title}{headingExtra}</div>
       <div className="space-y-1.5">
+        {leading}
         {items.map((i) => (
           <div key={i.key} className="text-sm" style={{ color: "#07142f" }}>
             <div className="flex items-start gap-2">

@@ -24,7 +24,7 @@ describe("prospect sign-in account rules", () => {
     m.login.mockResolvedValue({ error: new Error("Invalid login credentials") }); mount();
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "prospect@example.com" } });
     fireEvent.change(screen.getByLabelText("Password", { exact: true }), { target: { value: "wrong-password" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign In", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^Sign In$/ }));
     await waitFor(() => expect(m.login).toHaveBeenCalledWith({ email: "prospect@example.com", password: "wrong-password" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("don’t match");
   });

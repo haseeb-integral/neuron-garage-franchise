@@ -1,5 +1,7 @@
 # Architecture rules
 
+- Prospect sign-in lives at /portal/sign-in while staff keep /auth; portal path refresh uses one private user topic with data-free stage/call signals, refetches through portal_my_path on join and tab visibility, and never polls or exposes staff candidate rows.
+
 - Homework deadline offsets come from portalPath and use calendar days in the viewer's browser time zone; staff homework summaries read candidate-scoped portal submissions and ticks alongside staff checks, so signed-form completion is not inferred from a staff checkbox.
 
 - Keep mailing address validation in the pure shared function module, reused by the browser and lead-push function, so both enforce the same rule.

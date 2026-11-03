@@ -72,6 +72,15 @@ export default function PortalForm() {
       return (data as Array<{ fdd_file_id: string | null; issuance_date: string | null; source: string | null }> | null)?.[0] ?? null;
     },
   });
+  const fddAccess = useQuery({
+    queryKey: ["portal-fdd-access", portalCandidateId],
+    enabled: !!portalCandidateId && formKey === "item23",
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("portal_fdd_access");
+      if (error) throw error;
+      return data === true;
+    },
+  });
 
   const [answers, setAnswers] = useState<Answers>({});
   const [section, setSection] = useState(0);
@@ -138,6 +147,13 @@ export default function PortalForm() {
   if (!session) return <Navigate to="/portal/sign-in" replace state={{ from: `/portal/form/${formKey}` }} />;
   if (!portalCandidateId) return <Navigate to="/" replace />;
   if (!form) return <Navigate to="/portal" replace />;
+  if (formKey === "item23" && !locked && fddAccess.data !== true) return (
+    <main className="mx-auto max-w-3xl px-5 py-8 space-y-4">
+      <Button asChild variant="outline"><Link to="/portal">Back to your path</Link></Button>
+      <h1 className="text-xl font-bold">Item 23 receipt</h1>
+      <p>{fddAccess.isLoading ? "Checking FDD access…" : fddAccess.isError ? "We could not check your FDD access. Please refresh and try again." : "This receipt opens after the Neuron Garage team emails your FDD."}</p>
+    </main>
+  );
 
   const needsConsent = !!form.esignConsent && !locked && ready && !answers.__esign_consent_at;
   if (needsConsent) {

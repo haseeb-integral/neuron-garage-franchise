@@ -151,6 +151,9 @@ Deno.serve(async (req) => {
   // Item 23 receipt: name the exact FDD version this prospect received (never the newest).
   let item23Fdd: { id: string; date: string | null; receivedAt: string | null } | null = null
   if (b.form_key === 'item23') {
+    const { data: step } = await admin.rpc('portal_current_step', { _user_id: uid })
+    const { data: sent, error: sentError } = await admin.rpc('fdd_has_been_sent', { _candidate_id: candId })
+    if (!step || step < 2 || sentError || !sent) return json({ error: 'The Item 23 receipt opens after the Neuron Garage team emails your FDD.' }, 403)
     const { data: comp } = await admin.from('candidate_compliance').select('fdd_file_id, fdd_received_at').eq('candidate_id', candId).maybeSingle()
     let fddId: string | null = correction ? correction.fdd_file_id : (comp?.fdd_file_id as string | null) ?? null
     if (!fddId && !correction) {

@@ -56,6 +56,16 @@ export default function PortalHome() {
     },
   });
 
+  const fddAccess = useQuery({
+    queryKey: ["portal-fdd-access", portalCandidateId, path.data?.stage],
+    enabled: !!portalCandidateId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("portal_fdd_access");
+      if (error) throw error;
+      return data === true;
+    },
+  });
+
   const stepFiles = useQuery({
     queryKey: ["portal-step-files", portalCandidateId, path.data?.stage],
     enabled: !!portalCandidateId && !!path.data,
@@ -92,8 +102,8 @@ export default function PortalHome() {
   const stepNow = path.data ? stageToStep(fromDbStage(path.data.stage)) : null;
   useEffect(() => {
     // FDD audit trail: note when the current FDD version first becomes available to this prospect.
-    if (portalCandidateId && stepNow && stepNow >= 2) supabase.rpc("portal_log_fdd_available").then(() => {});
-  }, [portalCandidateId, stepNow]);
+    if (portalCandidateId && stepNow && stepNow >= 2 && fddAccess.data) supabase.rpc("portal_log_fdd_available").then(() => {});
+  }, [portalCandidateId, stepNow, fddAccess.data]);
 
   const toggle = async (step: number, key: string, label: string, on: boolean) => {
     if (!portalCandidateId || !user) return;
@@ -175,10 +185,12 @@ export default function PortalHome() {
                   ticked={ticks.data ?? new Set()}
                   onToggle={toggle}
                   forms={forms.data ?? {}}
+                  fddUnlocked={fddAccess.data === true}
                   nextCall={data.next_call?.starts_at ?? null}
                   files={
                     <PortalStepFiles
                       stepNum={s.num}
+                      fddUnlocked={fddAccess.data === true}
                       candidateId={portalCandidateId}
                       files={(stepFiles.data ?? []).filter((f) => f.step_num === s.num)}
                       uploads={(myUploads.data ?? []).filter((u) => u.portal_step === s.num)}
@@ -260,7 +272,7 @@ function DueChip({ due, done, show, days = 0 }: { due: Date | null; done: boolea
   );
 }
 
-function FormItem({ formKey, label, status, due }: { formKey: string; label: string; status?: FormStatusMap[string]; due: ReactNode }) {
+function FormItem({ formKey, label, status, due, blocked = false }: { formKey: string; label: string; status?: FormStatusMap[string]; due: ReactNode; blocked?: boolean }) {
   const done = status?.status === "submitted";
   const started = !!status && !done;
   return (
@@ -278,19 +290,21 @@ function FormItem({ formKey, label, status, due }: { formKey: string; label: str
         <span className={`text-xs rounded-full px-2 py-0.5 ${done ? "bg-success/15 text-success" : started ? "bg-portal-yellow/25" : "bg-muted text-muted-foreground"}`}>
           {done ? "Submitted ✓" : status?.status === "reopened" ? "Correction requested" : started ? `In progress — ${status?.progress}%` : "Not started"}
         </span>
-        <Button asChild size="sm" variant={done ? "outline" : "default"}
+        {blocked && !done ? <Button size="sm" variant="outline" disabled><Lock className="h-3.5 w-3.5" /> Locked</Button> : <Button asChild size="sm" variant={done ? "outline" : "default"}
           className={done ? "" : "bg-portal-red text-portal-red-foreground hover:bg-portal-red/90"}>
           <Link to={`/portal/form/${formKey}`}>{done ? "View" : started ? "Continue" : "Start"}</Link>
-        </Button>
+        </Button>}
       </div>
       {status?.status === "reopened" && <p className="text-sm pl-6">{status.reopen_reason}</p>}
+      {blocked && !done && <p className="text-xs pl-6 text-muted-foreground">Available after the Neuron Garage team emails your FDD.</p>}
     </li>
   );
 }
 
-function StepRow({ step, state, last, date, ticked, onToggle, files, forms, nextCall }: {
+function StepRow({ step, state, last, date, ticked, onToggle, files, forms, nextCall, fddUnlocked }: {
   step: PortalStep; state: StepState; last: boolean; date?: string; files: ReactNode; forms: FormStatusMap; nextCall: string | null;
   ticked: Set<string>; onToggle: (s: number, k: string, l: string, on: boolean) => void;
+  fddUnlocked: boolean;
 }) {
   const locked = state === "locked";
   const circle =
@@ -335,6 +349,7 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                 if (fdef) {
                   const st = forms[fdef.key];
                   return <FormItem key={it.key} formKey={fdef.key} label={it.label} status={st}
+                    blocked={fdef.key === "item23" && !fddUnlocked}
                     due={<DueChip due={due} days={it.dueDaysBefore} done={st?.status === "submitted"} show={showDue} />} />;
                 }
                 return (

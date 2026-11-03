@@ -1,6 +1,7 @@
 # Architecture rules
 
 - Prospect sign-in lives at /portal/sign-in while staff keep /auth; portal path refresh uses one private user topic with data-free stage/call signals, refetches through portal_my_path on join and tab visibility, and never polls or exposes staff candidate rows.
+- Process advancement buttons reuse the pipeline move confirmation and compliance checks; both score-editing surfaces reuse QualificationSection; candidate selection stays in the URL by database ID, and portal call dates use source_process_step + 1 because each process step schedules the next conversation.
 
 - Homework deadline offsets come from portalPath and use calendar days in the viewer's browser time zone; staff homework summaries read candidate-scoped portal submissions and ticks alongside staff checks, so signed-form completion is not inferred from a staff checkbox.
 

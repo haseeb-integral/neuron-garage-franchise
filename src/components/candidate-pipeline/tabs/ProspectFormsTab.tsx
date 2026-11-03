@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { PORTAL_FORMS } from "@/lib/portalForms/logic";
+import { PORTAL_FORMS, submissionForm } from "@/lib/portalForms/logic";
 import { staffFormView, staffAnswerSections, formCopyFilename } from "@/lib/portalForms/staffView";
 import type { PortalFormDef } from "@/lib/portalForms/types";
 import { Button } from "@/components/ui/button";
@@ -67,8 +67,9 @@ function CandidateForms({ candidateId }: { candidateId: string }) {
   if (data.isError) return <div className="space-y-3 py-6"><p className="text-sm text-destructive">Could not load prospect forms.</p><Button variant="outline" onClick={() => data.refetch()}><RefreshCw className="h-4 w-4" /> Retry</Button></div>;
   return <div className="space-y-3 pt-4">
     <div className="flex items-center justify-between"><h2 className="font-semibold">Prospect Forms</h2><Button size="sm" variant="ghost" aria-label="Refresh prospect forms" title="Refresh prospect forms" onClick={() => data.refetch()}><RefreshCw className="h-4 w-4" /></Button></div>
-    {PORTAL_FORMS.map((form: PortalFormDef) => {
-      const view = staffFormView(candidateId, form.key, data.data.forms, data.data.signatures);
+    {PORTAL_FORMS.map((currentForm: PortalFormDef) => {
+      const view = staffFormView(candidateId, currentForm.key, data.data.forms, data.data.signatures);
+      const form = view.submitted ? submissionForm(currentForm, view.signature?.form_version ?? view.record?.form_version) : currentForm;
       const open = expanded === form.key;
       return <section key={form.key} className="rounded-lg border overflow-hidden">
         <Button variant="ghost" className="h-auto w-full rounded-none justify-between whitespace-normal text-left px-4 py-4 gap-3" aria-expanded={open} onClick={() => setExpanded(open ? null : form.key)}>

@@ -3,7 +3,7 @@ import type { PortalFormDef } from "./types";
 /** Request for Consideration — text word for word from the PDF (email line adapted for the web). */
 export const RFC_FORM: PortalFormDef = {
   key: "rfc",
-  version: "2",
+  version: "3",
   title: "Request for Consideration",
   stepNum: 1,
   itemKey: "rfc",
@@ -23,9 +23,9 @@ export const RFC_FORM: PortalFormDef = {
         { key: "preferred_name", label: "Preferred Name", type: "text", width: "third", optional: true },
         { key: "street", label: "Current Street Address", type: "text", width: "half" },
         { key: "unit", label: "Apartment/Unit #", type: "text", width: "half", optional: true },
+        { key: "zip", label: "ZIP Code", type: "text", width: "third" },
         { key: "city", label: "City", type: "text", width: "third" },
         { key: "state", label: "State", type: "state", width: "third" },
-        { key: "zip", label: "Zip", type: "text", width: "third" },
         { key: "cell", label: "Cell Phone", type: "tel", width: "half" },
         { key: "email", label: "Email Address", type: "email", width: "half" },
         { key: "occupation", label: "Current Occupation", type: "text", width: "half" },
@@ -46,8 +46,8 @@ export const RFC_FORM: PortalFormDef = {
       id: "market",
       title: "Where You'd Like to Run Camp",
       fields: [
+        { key: "camp_zip", label: "ZIP Code", type: "text", width: "third" },
         { key: "camp_city", label: "City", type: "text", width: "third" },
-        { key: "camp_county", label: "County", type: "text", width: "third" },
         { key: "camp_state", label: "State", type: "state", width: "third" },
         { key: "open_when", label: "If this turns out to be a good fit, when would you ideally like to open?", type: "radio", options: ["This coming summer", "The following summer", "Not sure yet"] },
       ],
@@ -113,20 +113,6 @@ export const RFC_FORM: PortalFormDef = {
         { key: "family_involved", label: "Will family or friends be involved in your business? If yes, who, and how?", type: "textarea" },
         { key: "anything_else", label: "Is there anything else you'd like us to know about you?", type: "textarea", optional: true },
       ],
-    },
-    {
-      id: "references",
-      title: "References",
-      intro: "Please share three people who know you well, ideally someone who has seen you work with children and someone who has seen you lead. We'll let you know before we contact them.",
-      repeater: {
-        key: "references", itemLabel: "Reference", startWith: 3, max: 3, requiredCount: 3,
-        fields: [
-          { key: "name", label: "Name", type: "text", width: "half" },
-          { key: "relationship", label: "Relationship to You", type: "text", width: "half" },
-          { key: "email", label: "Email", type: "email", width: "half" },
-          { key: "phone", label: "Phone", type: "tel", width: "half" },
-        ],
-      },
     },
   ],
   signature: {

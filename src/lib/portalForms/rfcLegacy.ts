@@ -1,7 +1,7 @@
 import type { PortalFormDef } from "./types";
 
 /** Request for Consideration — text word for word from the PDF (email line adapted for the web). */
-export const RFC_FORM: PortalFormDef = {
+export const RFC_LEGACY_FORM: PortalFormDef = {
   key: "rfc",
   version: "2",
   title: "Request for Consideration",

@@ -3,9 +3,14 @@ import { RFC_FORM } from "./rfc";
 import { BGCF_FORM } from "./bgcf";
 import { ITEM23_FORM } from "./item23";
 import { FACILITY_FORM } from "./facility";
+import { REFERENCES_FORM } from "./references";
+import { RFC_LEGACY_FORM } from "./rfcLegacy";
 
-export const PORTAL_FORMS: PortalFormDef[] = [RFC_FORM, BGCF_FORM, ITEM23_FORM, FACILITY_FORM];
+export const PORTAL_FORMS: PortalFormDef[] = [RFC_FORM, BGCF_FORM, ITEM23_FORM, FACILITY_FORM, REFERENCES_FORM];
 export const getPortalForm = (key: string) => PORTAL_FORMS.find((f) => f.key === key);
+/** Old signed RFCs retain the questions they actually answered. */
+export const submissionForm = (form: PortalFormDef, version: string | null | undefined) =>
+  form.key === "rfc" && version !== "3" ? RFC_LEGACY_FORM : form;
 export const formForItem = (step: number, itemKey: string) =>
   PORTAL_FORMS.find((f) => f.stepNum === step && f.itemKey === itemKey);
 

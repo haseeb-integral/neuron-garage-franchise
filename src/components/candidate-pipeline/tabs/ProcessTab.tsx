@@ -21,6 +21,7 @@ import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
 import { PortalInviteButton } from "../PortalInviteButton";
+import { SubmittedReferences } from "../SubmittedReferences";
 import { syncProcessCallEvent } from "@/lib/candidateEvents";
 import { PROCESS_STEP_TITLES, EVENT_TYPE_OPTIONS } from "@/lib/candidateProcessSteps";
 
@@ -59,7 +60,7 @@ const TRIAL_CLOSE_ITEMS: { key: string; label: string }[] = [
 ];
 
 /** Homework items that do not require the candidate to send a document back. */
-const NO_UPLOAD_HOMEWORK = new Set(["review_websites"]);
+const NO_UPLOAD_HOMEWORK = new Set(["review_websites", "references"]);
 
 const TIMEZONES = [
   "ET (Eastern)",
@@ -126,6 +127,7 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     ],
     homework: [
       { key: "facility_form", label: "Facility prospect form — primary + backup locations (attach to contact card)" },
+      { key: "references", label: "Complete the References form" },
     ],
   },
   {
@@ -596,6 +598,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
 
                 {step.num === 3 && (
                   <ReferencesBlock
+                    candidateId={dbId}
                     data={row.data ?? {}}
                     onField={(k, v) => updateField(step.num, k, v)}
                   />
@@ -972,15 +975,18 @@ const REFERENCE_FIELDS: { key: string; label: string; type: "text" | "email" | "
 ];
 
 function ReferencesBlock({
+  candidateId,
   data,
   onField,
 }: {
+  candidateId: string;
   data: Record<string, any>;
   onField: (key: string, value: any) => void;
 }) {
   return (
     <div className="mt-4 rounded-md p-3" style={{ backgroundColor: "#fafbfd", border: "1px solid #e3e8ef" }}>
       <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>References</div>
+      <SubmittedReferences key={candidateId} candidateId={candidateId} />
       <div className="space-y-4">
         {[1, 2, 3].map((n) => (
           <div key={n}>

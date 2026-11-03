@@ -18,13 +18,30 @@ interface InviteEmailProps {
   siteName: string
   siteUrl: string
   confirmationUrl: string
+  prospect?: boolean
+  firstName?: string
 }
 
 export const InviteEmail = ({
   siteName,
   siteUrl,
   confirmationUrl,
-}: InviteEmailProps) => (
+  prospect,
+  firstName,
+}: InviteEmailProps) => prospect ? (
+  <Html lang="en" dir="ltr"><Head /><Preview>Welcome to your Neuron Garage path to ownership</Preview>
+    <Body style={main}><Container style={container}>
+      <Heading style={h1}>Welcome to your Neuron Garage path to ownership</Heading>
+      <Text style={text}>{firstName ? `Hi ${firstName},` : 'Hi there,'}</Text>
+      <Text style={text}>It was great to start the conversation with you. Your Neuron Garage portal is ready.</Text>
+      <Text style={text}>Over the next few weeks, we'll get to know each other and explore what owning a Neuron Garage camp could look like. Your portal keeps your five conversations, call details, and between-call tasks in one place.</Text>
+      <Text style={text}>Our first conversation is already behind us. You can still finish the Step 1 tasks before we talk again.</Text>
+      <Text style={text}>Set your password to get started. We're glad you're here.</Text>
+      <Button style={button} href={confirmationUrl}>Set my password</Button>
+      <Text style={text}>The Neuron Garage team</Text>
+    </Container></Body>
+  </Html>
+) : (
   <Html lang="en" dir="ltr">
     <Head>
       <style>{darkModeCss}</style>

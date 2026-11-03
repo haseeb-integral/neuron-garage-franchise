@@ -13,6 +13,7 @@
 - Conditional school fields use the form config's showWhen predicate for entry, review, and PDF rows, so hidden answers cannot appear in a new submission's PDF.
 - Staff Prospect Forms is candidate-scoped; correction requests use a staff-verified locked action to copy immutable submission snapshots into working drafts, while all previous signatures/PDFs remain available. Submission completion is atomic and service-role-only so repeated calls cannot produce competing records.
 - Prospect email notices use registered templates on the existing app-email rail; saved stage/call changes trigger asynchronous server-only sends, keyed by opened step or call/time, and recipients must match a non-staff portal account. Database triggers cover manual and process calls without browser-dependent sends; reminders require a separate approved phase.
+- Auth invitation copy uses the signed webhook's portal setup destination to select prospect-only wording; all recovery and staff invitation paths retain their own copy, and confirmation links are passed through unchanged.
 
 ## Item 23 receipt + FDD version rules
 - Staff FDD sends use the existing app-email rail and snapshot one version in fdd_email_sends; only a provider-accepted sent log atomically records delivery/date. The shared database gate protects FDD downloads and new Item 23 signatures; prior staff send records count, and resends never rewrite signed receipt evidence.

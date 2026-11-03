@@ -9,6 +9,7 @@ import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
 import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
 import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
+import { isProspectInvite, PROSPECT_INVITE_SUBJECT } from '../_shared/portalInviteEmailRules.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +75,8 @@ const SAMPLE_DATA: Record<string, object> = {
     siteName: SITE_NAME,
     siteUrl: SAMPLE_PROJECT_URL,
     confirmationUrl: SAMPLE_PROJECT_URL,
+    prospect: true,
+    firstName: 'Sam',
   },
   email_change: {
     siteName: SITE_NAME,
@@ -225,6 +228,13 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  const prospectInvite = isProspectInvite(emailType, payload.data.url)
+  let firstName: string | undefined
+  if (prospectInvite) {
+    const client = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
+    const { data: candidate } = await client.from('candidates').select('first_name').ilike('email', payload.data.email).maybeSingle()
+    firstName = candidate?.first_name ?? undefined
+  }
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
@@ -235,6 +245,8 @@ async function handleWebhook(req: Request): Promise<Response> {
     email: payload.data.email,
     oldEmail: payload.data.old_email,
     newEmail: payload.data.new_email,
+    prospect: prospectInvite,
+    firstName,
   }
 
   // Render React Email to HTML and plain text
@@ -267,7 +279,7 @@ async function handleWebhook(req: Request): Promise<Response> {
       to: payload.data.email,
       from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
-      subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+      subject: prospectInvite ? PROSPECT_INVITE_SUBJECT : EMAIL_SUBJECTS[emailType] || 'Notification',
       html,
       text,
       purpose: 'transactional',

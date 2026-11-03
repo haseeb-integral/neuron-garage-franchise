@@ -15,7 +15,7 @@ describe("Qualification Process step 2 consolidation", () => {
       "mvs_site_run",
       "sent_bg_auth",
     ]);
-    expect(step?.postCall.find(({ key }) => key === "sent_rfc_part2")?.label).toBe("Sent Background and Credit Check Authorization Form");
+    expect(step?.postCall.some(({ key }) => key === "sent_rfc_part2" || key === "sent_fdd")).toBe(false);
     expect(step?.postCall.find(({ key }) => key === "mvs_site_run")?.label).toContain("INTERNAL ONLY");
     expect(step?.postCall.find(({ key }) => key === "sent_bg_auth")?.label).toBe("Run Background Check and Run Credit Check");
     expect(step?.homework.map(({ key }) => key)).toEqual([

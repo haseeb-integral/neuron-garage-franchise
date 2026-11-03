@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { getPortalForm, missingRequired, formProgress, signatureMatches } from "@/lib/portalForms/logic";
+import { getPortalForm, missingRequired, formProgress, signatureMatches, submissionForm } from "@/lib/portalForms/logic";
+import { applyZipPlace, lookupZip } from "@/lib/portalForms/zipLookup";
 import { formatFddIssuance } from "@/lib/portalForms/item23";
 import { buildPrefill, hiddenKnownKeys, type KnownProfile } from "@/lib/portalForms/prefill";
 import type { Answers, FormField, PortalFormDef } from "@/lib/portalForms/types";
@@ -27,22 +28,23 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 
 export default function PortalForm() {
   const { formKey = "" } = useParams();
-  const form = getPortalForm(formKey);
+  const currentForm = getPortalForm(formKey);
   const { session, loading, accessChecked, portalCandidateId, user } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
 
   const row = useQuery({
     queryKey: ["portal-form", portalCandidateId, formKey],
-    enabled: !!portalCandidateId && !!form,
+    enabled: !!portalCandidateId && !!currentForm,
     queryFn: async () => {
       const { data, error } = await supabase.from("candidate_portal_forms")
-        .select("id, answers, status, last_section, submitted_at, reopen_reason")
-        .eq("candidate_id", portalCandidateId!).eq("form_key", formKey).maybeSingle();
+        .select("id, answers, status, form_version, last_section, submitted_at, reopen_reason")
+        .eq("candidate_id", portalCandidateId ?? "").eq("form_key", formKey).maybeSingle();
       if (error) throw error;
       return data;
     },
   });
+  const form = currentForm && row.data?.status === "submitted" ? submissionForm(currentForm, row.data.form_version) : currentForm;
   const path = useQuery({
     queryKey: ["portal-path", portalCandidateId],
     enabled: !!portalCandidateId,
@@ -59,7 +61,7 @@ export default function PortalForm() {
     queryFn: async () => {
       const { data } = await supabase.from("candidate_portal_forms")
         .select("id, answers, status, last_section, submitted_at")
-        .eq("candidate_id", portalCandidateId!).eq("form_key", "rfc").maybeSingle();
+        .eq("candidate_id", portalCandidateId ?? "").eq("form_key", "rfc").maybeSingle();
       return data;
     },
   });
@@ -314,6 +316,21 @@ function FieldInput({ f, value, onChange, idPrefix }: { f: FormField; value: unk
 }
 
 function SectionView({ form, index, answers, onChange, hidden }: { form: PortalFormDef; index: number; answers: Answers; onChange: (a: Answers) => void; hidden: Set<string> }) {
+  const latest = useRef(answers);
+  latest.current = answers;
+  const zipRequest = useRef<Record<string, number>>({});
+  const changeField = (field: FormField, value: unknown) => {
+    onChange({ ...latest.current, [field.key]: value });
+    if (form.key !== "rfc" || !["zip", "camp_zip"].includes(field.key)) return;
+    const request = (zipRequest.current[field.key] ?? 0) + 1;
+    zipRequest.current[field.key] = request;
+    const prefix = field.key === "camp_zip" ? "camp_" : "";
+    const city = latest.current[`${prefix}city`], state = latest.current[`${prefix}state`];
+    void lookupZip(String(value ?? "")).then((place) => {
+      if (zipRequest.current[field.key] !== request || latest.current[field.key] !== value || latest.current[`${prefix}city`] !== city || latest.current[`${prefix}state`] !== state) return;
+      if (place) onChange(applyZipPlace(latest.current, field.key, value, place));
+    });
+  };
   const s = form.sections[index];
   const rep = s.repeater;
   const items = rep ? ((answers[rep.key] as Answers[] | undefined) ?? []) : [];
@@ -339,7 +356,7 @@ function SectionView({ form, index, answers, onChange, hidden }: { form: PortalF
       {s.fields && s.fields.some((f) => !hidden.has(f.key)) && (
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           {s.fields.filter((f) => !hidden.has(f.key)).map((f) => (
-            <FieldInput key={f.key} f={f} idPrefix={s.id} value={answers[f.key]} onChange={(v) => onChange({ ...answers, [f.key]: v })} />
+            <FieldInput key={f.key} f={f} idPrefix={s.id} value={answers[f.key]} onChange={(v) => changeField(f, v)} />
           ))}
         </div>
       )}

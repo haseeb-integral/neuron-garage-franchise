@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
 import { formCopyFilename, staffAnswerSections } from "@/lib/portalForms/staffView";
 import type { Answers, PortalFormDef } from "@/lib/portalForms/types";
+import { submissionForm } from "@/lib/portalForms/logic";
 
 function Copy({ path, title, date }: { path: string; title: string; date: string }) {
   const file = useQuery({ queryKey: ["submission-history-pdf", path], gcTime: 0, retry: false, queryFn: async () => {
@@ -31,7 +32,7 @@ export function FormSubmissionHistory({ formId, form }: { formId: string; form: 
   if (!history.data.length) return null;
   return <section className="space-y-3"><h3 className="font-semibold">Previous submissions</h3>{history.data.map((s) => <details key={s.id} className="border rounded-lg p-3">
     <summary className="cursor-pointer text-sm font-medium">{s.correction_request_id ? "Corrected submission" : "Original submission"} · {new Date(s.signed_at).toLocaleString()}</summary>
-    <div className="space-y-3 mt-3">{staffAnswerSections(form, s.answers_snapshot as Answers).map((section) => <div key={section.title}><h4 className="text-sm font-semibold">{section.title}</h4><dl className="text-sm space-y-2">{section.rows.map((r) => <div key={r.label}><dt className="text-muted-foreground">{r.label}</dt><dd className="whitespace-pre-wrap break-words">{Array.isArray(r.value) ? r.value.join(", ") : String(r.value ?? "—")}</dd></div>)}</dl></div>)}
+    <div className="space-y-3 mt-3">{staffAnswerSections(submissionForm(form, s.form_version), s.answers_snapshot as Answers).map((section) => <div key={section.title}><h4 className="text-sm font-semibold">{section.title}</h4><dl className="text-sm space-y-2">{section.rows.map((r) => <div key={r.label}><dt className="text-muted-foreground">{r.label}</dt><dd className="whitespace-pre-wrap break-words">{Array.isArray(r.value) ? r.value.join(", ") : String(r.value ?? "—")}</dd></div>)}</dl></div>)}
     <p className="text-sm whitespace-pre-wrap">{s.signed_text}</p>{s.pdf_path && <Copy path={s.pdf_path} title={form.title} date={s.signed_at} />}</div>
   </details>)}</section>;
 }

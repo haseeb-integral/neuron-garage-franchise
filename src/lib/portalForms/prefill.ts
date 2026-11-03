@@ -32,6 +32,9 @@ export function buildPrefill(form: PortalFormDef, existing: Answers, profile: Kn
   if (form.key === "rfc") { known.city = s(p.city); known.state = s(p.state); known.street = s(p.street); known.zip = s(p.zip); known.cell = s(p.phone); known.first_name = s(p.first_name); known.last_name = s(p.last_name); known.email = s(accountEmail) ?? s(p.email); }
   const keys = new Set(form.sections.flatMap((sec) => (sec.fields ?? []).map((f) => f.key)));
   const out: Answers = { ...existing };
+  if (form.key === "references" && !Array.isArray(out.references) && Array.isArray(r.references)) {
+    out.references = r.references.map((reference) => ({ ...(reference as Answers) }));
+  }
   for (const k of keys) if (blank(out[k]) && known[k]) out[k] = known[k];
   return out;
 }

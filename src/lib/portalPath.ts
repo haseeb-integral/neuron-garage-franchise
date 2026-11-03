@@ -39,6 +39,7 @@ export const PORTAL_STEPS: PortalStep[] = [
     afterLabel: "After this call",
     items: [
       { key: "facility_form", label: "Complete the facility prospect form", dueDaysBefore: 2 },
+      { key: "references", label: "Complete the References form" },
       { key: "talk_site_director", label: "Optional: talk with a current Site Director" },
     ],
   },

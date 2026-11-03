@@ -1,4 +1,6 @@
 - [x] Phase 5D Phase 1: staff Prospect Forms answers, status, existing PDF download, and verification.
+- [ ] Pipeline + Portal Phase 7: RFC county/references removal, local ZIP lookup, separate Step 3 References form and staff submitted-answer display; verify save/submit/read-back without changing old signatures.
+- [ ] Pipeline + Portal Phase 7 email wording: draft exact invite/booked/other notice copy; await Sam's approval before changing sending templates.
 - [x] Phase 5D correction flow: implemented; Item 23 staff-to-prospect-to-staff flow, PDF and access tests passed.
 - [x] Final validation: all four live correction flows, staff read-back, PDF downloads, duplicate request/submission rejection, original evidence preservation, later staff FDD selection, and multi-receipt proof packet.
 - [x] Narrow proof-packet repair: each receipt/event names its own saved FDD version; correction events have readable labels and source links. Thirty form tests and five live permission tests passed. Temporary submissions/files removed and test prospect restored.

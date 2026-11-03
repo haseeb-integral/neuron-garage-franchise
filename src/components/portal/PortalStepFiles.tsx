@@ -8,6 +8,8 @@ import { toastUploadSuccess, useUploadFlash } from "@/lib/uploadFeedback";
 export interface StepFile { id: string; step_num: number; title: string; bucket_path: string; file_name: string; is_fdd: boolean }
 export interface MyUpload { id: string; portal_step: number | null; file_name: string; created_at: string }
 
+const PROSPECT_UPLOADS_ENABLED = false;
+
 const safeName = (n: string) => n.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
 
 async function openSigned(bucket: string, path: string, fileName: string) {
@@ -73,6 +75,9 @@ export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUpload
   const fdd = files.find((f) => f.is_fdd);
   const shared = files.filter((f) => !f.is_fdd);
 
+  // Prospects have nothing to upload, so the "Send us a file" box is hidden (Sam, Nov 2026).
+  if (!fdd && shared.length === 0 && !PROSPECT_UPLOADS_ENABLED) return null;
+
   return (
     <div className="mt-4 border-t pt-4 space-y-3">
       {(fdd || shared.length > 0) && (
@@ -92,7 +97,7 @@ export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUpload
           ))}
         </div>
       )}
-      <div className="space-y-1.5">
+      {PROSPECT_UPLOADS_ENABLED && <div className="space-y-1.5">
         <div className="text-xs font-bold uppercase tracking-wider text-portal-navy">Send us a file</div>
         <input ref={ref} type="file" multiple className="hidden"
           onChange={(e) => { if (e.target.files?.length) void handle(e.target.files); e.target.value = ""; }} />
@@ -125,7 +130,7 @@ export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUpload
             ))}
           </ul>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

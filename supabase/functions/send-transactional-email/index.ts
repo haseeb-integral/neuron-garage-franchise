@@ -62,10 +62,12 @@ Deno.serve(async (req) => {
   let idempotencyKey: string
   let messageId: string
   let noticeDispatch: unknown
+  let fddRequest: unknown
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
     noticeDispatch = body.noticeDispatch
+    fddRequest = body.fddRequest
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     messageId = crypto.randomUUID()
@@ -112,9 +114,9 @@ Deno.serve(async (req) => {
   // Resolve effective recipient: template-level `to` takes precedence over
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
-  const effectiveRecipient = template.to || recipientEmail
+  let effectiveRecipient = template.to || recipientEmail
 
-  if (!effectiveRecipient) {
+  if (!effectiveRecipient && templateName !== 'fdd-delivery') {
     return new Response(
       JSON.stringify({
         error: 'recipientEmail is required (unless the template defines a fixed recipient)',
@@ -128,6 +130,38 @@ Deno.serve(async (req) => {
 
   // Create Supabase client with service role (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  let fddSendId: string | null = null
+  if (templateName === 'fdd-delivery') {
+    const input = z.object({ candidateId: z.string().uuid(), sendId: z.string().uuid() }).strict().safeParse(fddRequest)
+    const auth = req.headers.get('Authorization') ?? ''
+    const { data: caller, error: authError } = await supabase.auth.getUser(auth.replace(/^Bearer /, ''))
+    if (authError || !caller.user) return new Response(JSON.stringify({ error: 'Please sign in again.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: staff, error: staffError } = await supabase.rpc('is_staff', { _user_id: caller.user.id })
+    if (staffError || !staff) return new Response(JSON.stringify({ error: 'Staff only.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    if (!input.success) return new Response(JSON.stringify({ error: 'Invalid FDD request.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: existing } = await supabase.from('fdd_email_sends').select('candidate_id,status').eq('id', input.data.sendId).maybeSingle()
+    if (existing) return new Response(JSON.stringify(existing.candidate_id === input.data.candidateId ? { success: existing.status === 'sent' || existing.status === 'queued', status: existing.status } : { error: 'Request does not match.' }), { status: existing.candidate_id === input.data.candidateId ? 200 : 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: link } = await supabase.from('candidate_portal_users').select('user_id').eq('candidate_id', input.data.candidateId).maybeSingle()
+    const { data: candidate } = await supabase.from('candidates').select('first_name,email').eq('id', input.data.candidateId).maybeSingle()
+    if (!link || !candidate) return new Response(JSON.stringify({ error: 'Invite this prospect to the portal first.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: account } = await supabase.auth.admin.getUserById(link.user_id)
+    const { data: targetStaff, error: targetError } = await supabase.rpc('is_staff', { _user_id: link.user_id })
+    const targetEmail = account.user?.email
+    if (targetError || targetStaff || !targetEmail || targetEmail.toLowerCase() !== candidate.email?.toLowerCase()) return new Response(JSON.stringify({ error: 'The prospect email and portal email must match before sending.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: latest } = await supabase.rpc('portal_latest_fdd_id')
+    const { data: file } = await supabase.from('portal_step_files').select('id,file_name,bucket_path,fdd_issuance_date,file_sha256').eq('id', latest ?? '').maybeSingle()
+    if (!file?.fdd_issuance_date || !file.file_sha256) return new Response(JSON.stringify({ error: 'Upload an FDD with its issuance date first.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: signed, error: downloadError } = await supabase.storage.from('portal_files').createSignedUrl(file.bucket_path, 7 * 86400, { download: file.file_name })
+    if (downloadError || !signed) return new Response(JSON.stringify({ error: 'Could not prepare the FDD link.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    fddSendId = input.data.sendId
+    messageId = fddSendId
+    idempotencyKey = `fdd-delivery-${fddSendId}`
+    effectiveRecipient = targetEmail
+    templateData = { firstName: candidate.first_name, fileName: file.file_name, issuanceDate: new Date(file.fdd_issuance_date + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' }), downloadUrl: signed.signedUrl }
+    const { error: saveError } = await supabase.from('fdd_email_sends').insert({ id: fddSendId, candidate_id: input.data.candidateId, fdd_file_id: file.id, recipient_email: targetEmail, actor_id: caller.user.id, actor_email: caller.user.email, file_name: file.file_name, issuance_date: file.fdd_issuance_date, file_sha256: file.file_sha256 })
+    if (saveError) return new Response(JSON.stringify({ error: 'Could not save the FDD send request. Please try again.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  }
 
   if (templateName.startsWith('portal-')) {
     const dispatchInput = z.object({ id: z.string().uuid(), token: z.string().uuid() }).strict().safeParse(noticeDispatch)
@@ -362,9 +396,7 @@ Deno.serve(async (req) => {
     status: 'pending',
   })
 
-  const { error: enqueueError } = await supabase.rpc('enqueue_email', {
-    queue_name: 'transactional_emails',
-    payload: {
+  const payload = {
       message_id: messageId,
       to: effectiveRecipient,
       from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
@@ -377,8 +409,10 @@ Deno.serve(async (req) => {
       idempotency_key: idempotencyKey,
       unsubscribe_token: unsubscribeToken,
       queued_at: new Date().toISOString(),
-    },
-  })
+    }
+  const { error: enqueueError } = fddSendId
+    ? await supabase.rpc('enqueue_fdd_email', { _send_id: fddSendId, _payload: payload })
+    : await supabase.rpc('enqueue_email', { queue_name: 'transactional_emails', payload })
 
   if (enqueueError) {
     console.error('Failed to enqueue email', {
@@ -405,7 +439,7 @@ Deno.serve(async (req) => {
   console.log('Transactional email enqueued', { templateName, recipient_redacted: redactEmail(effectiveRecipient) })
 
   return new Response(
-    JSON.stringify({ success: true, queued: true }),
+    JSON.stringify({ success: true, queued: true, messageId }),
     {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

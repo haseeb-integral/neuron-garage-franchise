@@ -19,6 +19,8 @@ describe("private portal refresh", () => {
     expect(m.channel).toHaveBeenCalledWith("portal-path:prospect-user", { config: { private: true } });
     act(() => m.on.mock.calls[0][2]());
     expect(m.invalidate).toHaveBeenCalledWith({ queryKey: ["portal-path", "candidate-one"] });
+    expect(m.invalidate).toHaveBeenCalledWith({ queryKey: ["portal-fdd-access", "candidate-one"] });
+    expect(m.invalidate).toHaveBeenCalledWith({ queryKey: ["portal-fdd-version", "candidate-one"] });
   });
   it("does not connect without both a user and their candidate link", () => {
     renderHook(() => usePortalPathRefresh(undefined, "candidate-one"));
@@ -28,13 +30,13 @@ describe("private portal refresh", () => {
   it("checks on join and when the tab is visible, without a timer", () => {
     renderHook(() => usePortalPathRefresh("user", "candidate-one"));
     act(() => m.subscribe.mock.calls[0][0]("SUBSCRIBED"));
-    expect(m.invalidate).toHaveBeenCalledTimes(1);
+    expect(m.invalidate).toHaveBeenCalledTimes(3);
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
     act(() => document.dispatchEvent(new Event("visibilitychange")));
-    expect(m.invalidate).toHaveBeenCalledTimes(1);
+    expect(m.invalidate).toHaveBeenCalledTimes(3);
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
     act(() => document.dispatchEvent(new Event("visibilitychange")));
-    expect(m.invalidate).toHaveBeenCalledTimes(2);
+    expect(m.invalidate).toHaveBeenCalledTimes(6);
     vi.restoreAllMocks();
   });
   it("removes the channel on leave and ignores late messages", () => {

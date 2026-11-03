@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
   if (!candId) return json({ error: 'Prospects only' }, 403)
   const { data: step } = await admin.rpc('portal_current_step', { _user_id: uid })
   if (!step || step < 2) return json({ error: 'The FDD unlocks at Step 2.' }, 403)
+  const { data: sent, error: sentError } = await admin.rpc('fdd_has_been_sent', { _candidate_id: candId })
+  if (sentError || !sent) return json({ error: 'The FDD download opens after the Neuron Garage team emails your FDD.' }, 403)
   const { data: fddId } = await admin.rpc('portal_latest_fdd_id')
   if (!fddId) return json({ error: 'No FDD is available yet.' }, 404)
   const { data: f } = await admin.from('portal_step_files').select('id, bucket_path, file_name, fdd_issuance_date, file_sha256')

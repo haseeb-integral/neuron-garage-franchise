@@ -1988,6 +1988,69 @@ export type Database = {
           },
         ]
       }
+      fdd_email_sends: {
+        Row: {
+          actor_email: string | null
+          actor_id: string
+          candidate_id: string
+          created_at: string
+          error_message: string | null
+          fdd_file_id: string
+          file_name: string
+          file_sha256: string
+          id: string
+          issuance_date: string
+          recipient_email: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id: string
+          candidate_id: string
+          created_at?: string
+          error_message?: string | null
+          fdd_file_id: string
+          file_name: string
+          file_sha256: string
+          id: string
+          issuance_date: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string
+          candidate_id?: string
+          created_at?: string
+          error_message?: string | null
+          fdd_file_id?: string
+          file_name?: string
+          file_sha256?: string
+          id?: string
+          issuance_date?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fdd_email_sends_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fdd_email_sends_fdd_file_id_fkey"
+            columns: ["fdd_file_id"]
+            isOneToOne: false
+            referencedRelation: "portal_step_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imports: {
         Row: {
           batch_label: string | null
@@ -4379,10 +4442,15 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      enqueue_fdd_email: {
+        Args: { _payload: Json; _send_id: string }
+        Returns: undefined
+      }
       fdd_effective_date: {
         Args: { _received: string; _sent: string }
         Returns: string
       }
+      fdd_has_been_sent: { Args: { _candidate_id: string }; Returns: boolean }
       get_top_teacher_cities: {
         Args: { _limit?: number }
         Returns: {
@@ -4445,6 +4513,7 @@ export type Database = {
       mvs_sweep_stale_runs: { Args: never; Returns: number }
       portal_candidate_id: { Args: { _user_id: string }; Returns: string }
       portal_current_step: { Args: { _user_id: string }; Returns: number }
+      portal_fdd_access: { Args: never; Returns: boolean }
       portal_finish_submission: {
         Args: {
           _details: Json

@@ -29,8 +29,8 @@ async function openFdd() {
 }
 
 /** Downloads + uploads for one unlocked step on the prospect's path. */
-export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUploaded }: {
-  stepNum: number; candidateId: string; files: StepFile[]; uploads: MyUpload[]; onUploaded: () => void;
+export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUploaded, fddUnlocked = false }: {
+  stepNum: number; candidateId: string; files: StepFile[]; uploads: MyUpload[]; onUploaded: () => void; fddUnlocked?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -85,10 +85,12 @@ export function PortalStepFiles({ stepNum, candidateId, files, uploads, onUpload
           <div className="text-xs font-bold uppercase tracking-wider text-portal-navy">Files for you</div>
           {fdd && (
             <Button size="sm" className="bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90"
+              disabled={!fddUnlocked}
               onClick={() => openFdd()}>
               <Download className="h-3.5 w-3.5" /> Download latest FDD
             </Button>
           )}
+          {fdd && !fddUnlocked && <p className="text-xs text-muted-foreground">The FDD download opens after the Neuron Garage team emails your FDD.</p>}
           {shared.map((f) => (
             <button key={f.id} onClick={() => openSigned("portal_files", f.bucket_path, f.file_name)}
               className="flex items-center gap-2 text-sm hover:underline text-left">

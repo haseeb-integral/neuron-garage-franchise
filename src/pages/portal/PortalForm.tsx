@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const STATE_ABBRS = [...new Set(Object.values(US_STATE_NAME_TO_ABBR))].sort();
 import logo from "@/assets/neuron-garage-logo.png";
 import { FormSubmissionHistory } from "@/components/portal/FormSubmissionHistory";
+import { fddAccessAllowed } from "@/lib/fddPortalAccess";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -70,6 +71,15 @@ export default function PortalForm() {
       const { data, error } = await supabase.rpc("portal_form_fdd_version", { _form_key: formKey });
       if (error) throw error;
       return (data as Array<{ fdd_file_id: string | null; issuance_date: string | null; source: string | null }> | null)?.[0] ?? null;
+    },
+  });
+  const fddAccess = useQuery({
+    queryKey: ["portal-fdd-access", portalCandidateId],
+    enabled: !!portalCandidateId && formKey === "item23",
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("portal_fdd_access");
+      if (error) throw error;
+      return data === true;
     },
   });
 
@@ -138,6 +148,13 @@ export default function PortalForm() {
   if (!session) return <Navigate to="/portal/sign-in" replace state={{ from: `/portal/form/${formKey}` }} />;
   if (!portalCandidateId) return <Navigate to="/" replace />;
   if (!form) return <Navigate to="/portal" replace />;
+  if (formKey === "item23" && !locked && !fddAccessAllowed(fddAccess.data)) return (
+    <main className="mx-auto max-w-3xl px-5 py-8 space-y-4">
+      <Button asChild variant="outline"><Link to="/portal">Back to your path</Link></Button>
+      <h1 className="text-xl font-bold">Item 23 receipt</h1>
+      <p>{fddAccess.isLoading ? "Checking FDD access…" : fddAccess.isError ? "We could not check your FDD access. Please refresh and try again." : "This receipt opens after the Neuron Garage team emails your FDD."}</p>
+    </main>
+  );
 
   const needsConsent = !!form.esignConsent && !locked && ready && !answers.__esign_consent_at;
   if (needsConsent) {

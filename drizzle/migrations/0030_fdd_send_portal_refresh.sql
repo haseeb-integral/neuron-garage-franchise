@@ -1,0 +1,1 @@
+CREATE TRIGGER portal_fdd_send_refresh AFTER INSERT ON public.fdd_delivery_events FOR EACH ROW WHEN (NEW.event='emailed') EXECUTE FUNCTION public.portal_path_refresh_signal();

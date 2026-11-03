@@ -125,6 +125,10 @@ Deno.serve(async (req) => {
     const who = e.actor_email ? ` · ${e.actor_email}` : ''
     const ipUa = e.ip || e.user_agent ? ` · IP ${e.ip ?? 'n/a'}${e.user_agent ? ` · ${String(e.user_agent).slice(0, 120)}` : ''}` : ''
     write(`- ${at} — ${EVENT_LABELS[e.event] ?? e.event}${v}${who}${ipUa}`, font, 9)
+    if (e.meta?.send_id) {
+      write(`Email send ID: ${e.meta.send_id} · recipient: ${e.meta.recipient_email ?? 'not recorded'} · provider accepted: ${e.meta.provider_accepted === true ? 'yes' : 'not confirmed'}`, font, 8)
+      write(`Sent file fingerprint (SHA-256): ${e.meta.file_sha256 ?? 'not recorded'}`, font, 8)
+    }
     if (e.meta?.correction_request_id) write(`Correction request: ${e.meta.correction_request_id} · source receipt: ${e.meta.source_signature_id ?? 'not recorded'}`, font, 8)
   }
   y -= 6

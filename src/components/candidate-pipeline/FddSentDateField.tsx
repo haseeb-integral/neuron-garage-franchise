@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,8 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
   const [received, setReceived] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [sendStatus, setSendStatus] = useState<string | null>(null);
   const [versionId, setVersionId] = useState<string>("");
   const [versions, setVersions] = useState<{ id: string; file_name: string; fdd_issuance_date: string | null; created_at: string }[]>([]);
   const [log, setLog] = useState<{ event: string; at: string; actor_email: string | null; fdd_file_id: string | null }[]>([]);
@@ -95,13 +97,47 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
 
   useEffect(() => { void load(); }, [load]);
 
+  const emailFdd = async () => {
+    setEmailBusy(true);
+    try {
+      const sendId = crypto.randomUUID();
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "fdd-delivery", fddRequest: { candidateId: candidateDbId, sendId } },
+      });
+      if (error) {
+        const details = await error.context?.json?.().catch(() => null);
+        throw new Error(details?.error ?? error.message);
+      }
+      if (!data?.success) throw new Error(data?.reason === "email_suppressed" ? "This prospect has stopped app emails. The FDD was not sent." : data?.error ?? "The FDD was not sent.");
+      setSendStatus("Queued — waiting for send confirmation");
+      toast.success("FDD email queued. The sent date will fill in after it is sent.");
+      for (let attempt = 0; attempt < 15; attempt++) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        const { data: send, error: statusError } = await supabase.from("fdd_email_sends").select("status,error_message").eq("id", sendId).maybeSingle();
+        if (statusError) throw statusError;
+        if (send?.status === "sent") {
+          setSendStatus("FDD email sent");
+          await load();
+          toast.success("FDD email sent. The date and version are saved.");
+          return;
+        }
+        if (send?.status === "failed" || send?.status === "suppressed") throw new Error(send.error_message ?? "The FDD email could not be sent. No sent date was added.");
+      }
+      setSendStatus("Still queued. Reopen this card to check the sent date.");
+    } catch (e) {
+      setSendStatus("FDD email was not confirmed sent");
+      toast.error(e instanceof Error ? e.message : "Could not send the FDD.");
+    } finally { setEmailBusy(false); }
+  };
+
   const save = async (next: string, ver = versionId) => {
     setValue(next);
     setVersionId(ver);
     setSaving(true);
+    const sentAt = fromDateInput(next);
     // With a version picked, log it in the permanent FDD delivery log; otherwise just save the date.
     const { error } = next && ver
-      ? await supabase.rpc("log_fdd_emailed", { _candidate_id: candidateDbId, _fdd_file_id: ver, _sent_at: fromDateInput(next)! })
+      ? await supabase.rpc("log_fdd_emailed", { _candidate_id: candidateDbId, _fdd_file_id: ver, _sent_at: sentAt ?? new Date().toISOString() })
       : await supabase
           .from("candidate_compliance")
           .upsert({ candidate_id: candidateDbId, fdd_sent_at: fromDateInput(next) }, { onConflict: "candidate_id" });
@@ -119,6 +155,12 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
 
   return (
     <div className="mt-3 rounded-md p-3" style={{ backgroundColor: "#f7faff", border: "1px solid #dee2e6" }}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" disabled={loading || saving || emailBusy} onClick={() => void emailFdd()} className="bg-portal-red text-portal-red-foreground hover:bg-portal-red/90">
+          {emailBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {emailBusy ? "Sending…" : "Email FDD"}
+        </Button>
+        {sendStatus && <span role="status" className="text-xs text-muted-foreground">{sendStatus}</span>}
+      </div>
       <div className="flex items-center justify-between gap-2">
         <Label className="text-xs" style={{ color: "#07142f" }}>FDD sent date</Label>
         <Button size="sm" variant="outline" className="h-7 text-xs" disabled={packetBusy} onClick={() => void downloadPacket()}>
@@ -150,8 +192,8 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
         <div className="text-[11px] mt-1 font-semibold" style={{ color: "#b45309" }}>Version not recorded — pick the FDD version so the audit trail is complete.</div>
       )}
       <div className="text-[11px] mt-1" style={{ color: "#8893a7" }}>
-        Upload the proof of sending above, then enter the date here. This is the same date the
-        compliance lock uses — signing cannot happen until 16 days after it.
+        Email FDD saves the sent date and version once sending is confirmed. If sent outside the app,
+        record the date and version here. The 16-day rule for franchise signing stays in place.
       </div>
       {log.length > 0 && (
         <details className="mt-2 text-[11px]" style={{ color: "#526078" }}>

@@ -11,6 +11,8 @@ export function usePortalPathRefresh(userId: string | undefined, candidateId: st
     const refresh = () => {
       if (!active) return;
       void qc.invalidateQueries({ queryKey: ["portal-path", candidateId] });
+      void qc.invalidateQueries({ queryKey: ["portal-fdd-access", candidateId] });
+      void qc.invalidateQueries({ queryKey: ["portal-fdd-version", candidateId] });
     };
     const visible = () => { if (document.visibilityState === "visible") refresh(); };
     const channel = supabase.channel(`portal-path:${userId}`, { config: { private: true } })

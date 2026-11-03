@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const STATE_ABBRS = [...new Set(Object.values(US_STATE_NAME_TO_ABBR))].sort();
 import logo from "@/assets/neuron-garage-logo.png";
 import { FormSubmissionHistory } from "@/components/portal/FormSubmissionHistory";
+import { fddAccessAllowed } from "@/lib/fddPortalAccess";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -147,7 +148,7 @@ export default function PortalForm() {
   if (!session) return <Navigate to="/portal/sign-in" replace state={{ from: `/portal/form/${formKey}` }} />;
   if (!portalCandidateId) return <Navigate to="/" replace />;
   if (!form) return <Navigate to="/portal" replace />;
-  if (formKey === "item23" && !locked && fddAccess.data !== true) return (
+  if (formKey === "item23" && !locked && !fddAccessAllowed(fddAccess.data)) return (
     <main className="mx-auto max-w-3xl px-5 py-8 space-y-4">
       <Button asChild variant="outline"><Link to="/portal">Back to your path</Link></Button>
       <h1 className="text-xl font-bold">Item 23 receipt</h1>

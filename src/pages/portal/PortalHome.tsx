@@ -14,6 +14,7 @@ import { PortalStepFiles, type StepFile, type MyUpload } from "@/components/port
 import { formForItem } from "@/lib/portalForms/logic";
 import logo from "@/assets/neuron-garage-logo.png";
 import { usePortalPathRefresh } from "@/hooks/usePortalPathRefresh";
+import { fddAccessAllowed } from "@/lib/fddPortalAccess";
 
 interface PathData {
   first_name: string | null;
@@ -185,12 +186,12 @@ export default function PortalHome() {
                   ticked={ticks.data ?? new Set()}
                   onToggle={toggle}
                   forms={forms.data ?? {}}
-                  fddUnlocked={fddAccess.data === true}
+                  fddUnlocked={fddAccessAllowed(fddAccess.data)}
                   nextCall={data.next_call?.starts_at ?? null}
                   files={
                     <PortalStepFiles
                       stepNum={s.num}
-                      fddUnlocked={fddAccess.data === true}
+                      fddUnlocked={fddAccessAllowed(fddAccess.data)}
                       candidateId={portalCandidateId}
                       files={(stepFiles.data ?? []).filter((f) => f.step_num === s.num)}
                       uploads={(myUploads.data ?? []).filter((u) => u.portal_step === s.num)}

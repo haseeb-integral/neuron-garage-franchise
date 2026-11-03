@@ -34,17 +34,22 @@ export function noticeComponent(kind: NoticeKind) {
   return function PortalNotice({ firstName, stepTitle, callTitle, dateTime, hostName, duration }: Props) {
     const call = callTitle || 'Neuron Garage call'
     const time = dateTime || 'the time shown in your portal'
-    const withWhom = hostName ? `Your call is with ${hostName}` : 'Your host is shown in the portal'
-    const length = duration ? ` and will last ${duration} minutes.` : '.'
+    const details = hostName && duration ? `You'll meet with ${hostName}, and we've set aside ${duration} minutes.` : hostName ? `You'll meet with ${hostName}.` : duration ? `We've set aside ${duration} minutes.` : null
     return <Html lang="en" dir="ltr"><Head /><Preview>{labels[kind].heading}</Preview>
       <Body style={styles.body}><Container style={styles.container}>
         <Text style={styles.brand}>Neuron Garage</Text>
         <Heading style={styles.heading}>{labels[kind].heading}</Heading>
         <Text style={styles.text}>{firstName ? `Hi ${firstName},` : 'Hi there,'}</Text>
-        {kind === 'step' ? <Text style={styles.text}>Your next step, {stepTitle || 'shown in your portal'}, is now open. Sign in to see your next tasks and available files.</Text> : <>
-          <Text style={styles.text}>{kind === 'booked' ? `Your ${call} is booked for ${time}.` : kind === 'moved' ? `Your ${call} has moved to ${time}.` : `Your ${call} is tomorrow at ${time}.`} {withWhom}{length}{kind === 'reminder' ? ' Sign in to check your call details and any remaining tasks.' : ''}</Text>
+        {kind === 'step' ? <>
+          <Text style={styles.text}>You're ready for the next conversation. {stepTitle || 'Your next step'} is now open in your portal.</Text>
+          <Text style={styles.text}>Take a look at your next tasks and available files before we talk again. We're looking forward to learning more together.</Text>
+        </> : <>
+          <Text style={styles.text}>{kind === 'booked' ? `Your ${call} is booked for ${time}. We're looking forward to taking the next step with you.` : kind === 'moved' ? `We've updated your ${call}. The new time is ${time}.` : `We're looking forward to your ${call} tomorrow at ${time}.`}</Text>
+          {details && <Text style={styles.text}>{details}</Text>}
+          <Text style={styles.text}>{kind === 'booked' ? 'Before we talk, check your portal for anything still to complete. Each conversation builds on the one before.' : kind === 'moved' ? 'Your portal has the latest details. We look forward to continuing the conversation.' : 'Take a quick look at your portal for any remaining tasks before we talk. See you tomorrow!'}</Text>
         </>}
-        <Button href="https://neuron-garage-franchise.lovable.app/auth" style={styles.button}>{labels[kind].button}</Button>
+        <Button href="https://neuron-garage-franchise.lovable.app/portal" style={styles.button}>{labels[kind].button}</Button>
+        <Text style={styles.text}>The Neuron Garage team</Text>
       </Container></Body>
     </Html>
   }

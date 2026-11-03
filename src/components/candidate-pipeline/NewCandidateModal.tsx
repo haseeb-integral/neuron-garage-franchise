@@ -40,7 +40,7 @@ interface Props {
 import { toDbStage } from "@/lib/stageDbMapping";
 const uiStageToDb = (s: StageId): string => toDbStage(s);
 
-const ACTIVE_STAGES = STAGES.filter((s) => s.id !== "disqualified");
+const ACTIVE_STAGES = STAGES.filter((s) => s.id !== "disqualified" && s.id !== "fdd_review");
 
 const schema = z.object({
   first_name: z.string().trim().min(1, "Required").max(60),

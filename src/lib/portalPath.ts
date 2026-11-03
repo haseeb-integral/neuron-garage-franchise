@@ -8,7 +8,8 @@ export interface PortalStep {
   description: string;
   afterLabel: string;
   /** dueDaysBefore: days before the next call this item is due (from the form PDFs). Omitted = due before the next call. */
-  items: { key: string; label: string; dueDaysBefore?: number }[];
+  /** noDue: never show a due date (e.g. info-only items). */
+  items: { key: string; label: string; dueDaysBefore?: number; noDue?: boolean }[];
 }
 
 export const PORTAL_STEPS: PortalStep[] = [
@@ -26,7 +27,7 @@ export const PORTAL_STEPS: PortalStep[] = [
     description: "A closer look at how the business works, and a walk through the Franchise Disclosure Document (FDD).",
     afterLabel: "After this call",
     items: [
-      { key: "fdd_attorney", label: "Review the FDD with an attorney" },
+      { key: "fdd_attorney", label: "Review the FDD" },
       { key: "item23", label: "Sign and return the Item 23 receipt" },
       { key: "bg_credit_funding", label: "Complete the Background, Credit, and Funding form", dueDaysBefore: 5 },
       { key: "personality", label: "Complete the personality profile" },
@@ -38,7 +39,6 @@ export const PORTAL_STEPS: PortalStep[] = [
     afterLabel: "After this call",
     items: [
       { key: "facility_form", label: "Complete the facility prospect form", dueDaysBefore: 2 },
-      { key: "notice_schools", label: "Start noticing schools in your market" },
       { key: "talk_site_director", label: "Optional: talk with a current Site Director" },
     ],
   },
@@ -47,7 +47,6 @@ export const PORTAL_STEPS: PortalStep[] = [
     description: "We share our Selection Committee’s decision, align on commitments, and answer your questions.",
     afterLabel: "After this call",
     items: [
-      { key: "final_questions", label: "Prepare any final questions" },
       { key: "fee_ready", label: "Have your $1,000 initial franchise fee ready" },
     ],
   },
@@ -55,7 +54,7 @@ export const PORTAL_STEPS: PortalStep[] = [
     num: 5, title: "Signing Call", time: "Brief call",
     description: "A live call where we both sign the Franchise Agreement and its exhibits, at least 14 days after you received the FDD.",
     afterLabel: "Next",
-    items: [{ key: "welcome", label: "Watch for your welcome and onboarding details" }],
+    items: [{ key: "welcome", label: "Watch for your welcome and onboarding details", noDue: true }],
   },
 ];
 

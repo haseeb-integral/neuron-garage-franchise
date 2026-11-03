@@ -308,7 +308,7 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                 const id = `${step.num}:${it.key}`;
                 const on = ticked.has(id);
                 const fdef = formForItem(step.num, it.key);
-                const showDue = state === "current";
+                const showDue = state === "current" && !it.noDue;
                 const due = itemDueDate(nextCall, it.dueDaysBefore);
                 if (fdef) {
                   const st = forms[fdef.key];

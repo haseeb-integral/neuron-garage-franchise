@@ -197,3 +197,6 @@ export const STAGE_PROCESS_ROADMAP: Partial<Record<StageId, string[]>> = {
     "Mark candidate Qualified",
   ],
 };
+
+/** Stages shown as board columns / pickers. FDD Review is merged into Business Overview (Step 2). */
+export const BOARD_STAGES: Stage[] = STAGES.filter((s) => s.id !== "fdd_review");

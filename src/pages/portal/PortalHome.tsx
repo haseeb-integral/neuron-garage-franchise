@@ -244,15 +244,18 @@ function celebrate() {
   toast.success("🎉 Congratulations — welcome to the Neuron Garage family! 🎉", { duration: 8000 });
 }
 
-function DueChip({ due, done, show }: { due: Date | null; done: boolean; show: boolean }) {
+function DueChip({ due, done, show, days = 0 }: { due: Date | null; done: boolean; show: boolean; days?: number }) {
   if (done) return <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3 w-3" /> Done and submitted — thank you!</span>;
   if (!show) return null;
   const late = !!due && due.getTime() < Date.now();
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${late ? "bg-destructive text-destructive-foreground" : "bg-portal-yellow text-portal-yellow-foreground"}`}>
-      <AlarmClock className="h-3.5 w-3.5" />
-      {due ? `${late ? "Was due" : "Due"} ${due.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}` : "Due before your next call"}
-    </span>
+    <div className="space-y-1">
+      <span className="block text-xs font-medium">{days ? `Due ${days} ${days === 1 ? "day" : "days"} before your next call` : "Due before your next call"}</span>
+      {due && <span className={`inline-flex flex-wrap items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${late ? "bg-destructive text-destructive-foreground" : "bg-portal-yellow text-portal-yellow-foreground"}`}>
+        <AlarmClock className="h-3.5 w-3.5 shrink-0" />
+        {late && "Overdue · "}{due.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
+      </span>}
+    </div>
   );
 }
 
@@ -325,20 +328,20 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                 const id = `${step.num}:${it.key}`;
                 const on = ticked.has(id);
                 const fdef = formForItem(step.num, it.key);
-                const showDue = state === "current" && !it.noDue;
+                const showDue = !locked && !it.noDue;
                 const isSigned = it.key === SIGNED_KEY;
                 const due = itemDueDate(nextCall, it.dueDaysBefore);
                 if (fdef) {
                   const st = forms[fdef.key];
                   return <FormItem key={it.key} formKey={fdef.key} label={it.label} status={st}
-                    due={<DueChip due={due} done={st?.status === "submitted"} show={showDue} />} />;
+                    due={<DueChip due={due} days={it.dueDaysBefore} done={st?.status === "submitted"} show={showDue} />} />;
                 }
                 return (
                   <li key={it.key} className={`flex items-start gap-2.5 rounded-lg border-2 p-3 shadow-sm transition-colors ${on ? "border-success bg-success/10" : "border-border bg-card"}`}>
                     <Checkbox id={id} checked={on} onCheckedChange={(v) => { onToggle(step.num, it.key, it.label, !!v); if (v && isSigned) celebrate(); }} className="mt-0.5" />
                     <div className="space-y-1">
                       <label htmlFor={id} className={`block text-sm cursor-pointer ${on ? "font-semibold text-success" : "font-medium"}`}>{it.label}</label>
-                      {!it.noDue || on ? <DueChip due={due} done={on} show={showDue || on} /> : null}
+                      {!it.noDue || on ? <DueChip due={due} days={it.dueDaysBefore} done={on} show={showDue || on} /> : null}
                     </div>
                   </li>
                 );

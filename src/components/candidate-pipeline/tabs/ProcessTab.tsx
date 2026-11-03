@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { PORTAL_STEPS, homeworkSummary, itemDueDate } from "@/lib/portalPath";
+import { formForItem } from "@/lib/portalForms/logic";
 import { Candidate, stateRequiresRegistration } from "@/data/pipelineData";
 import { CandidateScheduleSection } from "@/components/candidate-pipeline/CandidateScheduleSection";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,6 +190,27 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
   const [loading, setLoading] = useState(true);
   const saveTimers = useRef<Record<number, number>>({});
   const needsReg = stateRequiresRegistration(candidate.state);
+  const homeworkData = useQuery({
+    queryKey: ["process-homework-status", dbId],
+    enabled: !!dbId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      if (!dbId) return null;
+      const [links, ticks, forms, calls] = await Promise.all([
+        supabase.from("candidate_portal_users").select("candidate_id").eq("candidate_id", dbId),
+        supabase.from("candidate_portal_checklist").select("step_num,item_key").eq("candidate_id", dbId),
+        supabase.from("candidate_portal_forms").select("form_key,status").eq("candidate_id", dbId),
+        supabase.from("candidate_events").select("starts_at,duration_minutes").eq("candidate_id", dbId).eq("status", "scheduled").eq("event_type", "call").order("starts_at"),
+      ]);
+      for (const result of [links, ticks, forms, calls]) if (result.error) throw result.error;
+      return {
+        linked: !!links.data?.length,
+        ticks: ticks.data ?? [],
+        forms: forms.data ?? [],
+        nextCall: calls.data?.find((call) => new Date(call.starts_at).getTime() + call.duration_minutes * 60000 > Date.now())?.starts_at ?? null,
+      };
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -411,6 +435,16 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
           const row = rows[step.num] ?? emptyRow(dbId, step.num);
           const { done, total } = stepProgress(step, row);
           const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+          const portalStep = PORTAL_STEPS.find((s) => s.num === step.num);
+          const aliases: Record<string, string> = { rfc_part1: "rfc", review_websites: "explore_sites", rfc_part2: "bg_credit_funding", signed_item23: "item23", personality_profile: "personality" };
+          const homeworkItems = step.homework.map((item) => ({ ...item, ...portalStep?.items.find((p) => p.key === (aliases[item.key] ?? item.key)), key: item.key }));
+          const homeworkDone = homeworkItems.filter((item) => {
+            const portalKey = aliases[item.key] ?? item.key;
+            const form = formForItem(step.num, portalKey);
+            if (homeworkData.data?.linked && form) return homeworkData.data.forms.some((f) => f.form_key === form.key && f.status === "submitted");
+            return row.homework[item.key] || homeworkData.data?.ticks.some((tick) => tick.step_num === step.num && tick.item_key === portalKey);
+          }).map((item) => item.key);
+          const homework = homeworkSummary(homeworkItems, homeworkDone, homeworkData.data?.nextCall ?? null);
 
           return (
             <AccordionItem
@@ -567,6 +601,26 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     items={step.homework}
                     state={row.homework}
                     onToggle={(k, v) => toggleChecklist(step.num, "homework", k, v)}
+                    headingExtra={<>
+                      {homeworkData.isError ? <span className="text-destructive">Couldn’t load homework status</span> : homeworkData.isLoading ? <span className="text-muted-foreground">Loading status…</span> : <>
+                        <Badge variant="secondary">{homework.percent}% complete</Badge>
+                        {homework.overdue && <Badge variant="destructive">Overdue</Badge>}
+                      </>}
+                    </>}
+                    renderDetail={(item) => {
+                      const rule = homeworkItems.find((i) => i.key === item.key);
+                      if (!rule || rule.noDue) return null;
+                      const due = itemDueDate(homeworkData.data?.nextCall, rule.dueDaysBefore);
+                      const complete = homeworkDone.includes(item.key);
+                      const late = !complete && !!due && due.getTime() < Date.now();
+                      return <div className="ml-6 mt-1 text-xs text-muted-foreground">
+                        {complete ? <span className="text-success">Done — submitted</span> : <>
+                          {rule.dueDaysBefore ? `Due ${rule.dueDaysBefore} ${rule.dueDaysBefore === 1 ? "day" : "days"} before the next call` : "Due before the next call"}
+                          {due && <> · {due.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>}
+                          {late && <Badge variant="destructive" className="ml-2">Overdue</Badge>}
+                        </>}
+                      </div>;
+                    }}
                     renderAction={(item) =>
                       NO_UPLOAD_HOMEWORK.has(item.key) ? null : (
                         <HomeworkUploadButton
@@ -650,6 +704,7 @@ function ChecklistBlock({
   onToggle,
   renderAction,
   renderDetail,
+  headingExtra,
 }: {
   title: string;
   items: { key: string; label: string }[];
@@ -658,10 +713,11 @@ function ChecklistBlock({
   /** Optional trailing control per item (used for homework uploads). */
   renderAction?: (item: { key: string; label: string }) => React.ReactNode;
   renderDetail?: (item: { key: string; label: string }) => React.ReactNode;
+  headingExtra?: React.ReactNode;
 }) {
   return (
     <div className="mt-3">
-      <div className="text-xs font-semibold mb-2" style={{ color: "#003c7e" }}>{title}</div>
+      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold mb-2 text-primary">{title}{headingExtra}</div>
       <div className="space-y-1.5">
         {items.map((i) => (
           <div key={i.key} className="text-sm" style={{ color: "#07142f" }}>

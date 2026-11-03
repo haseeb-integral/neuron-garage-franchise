@@ -91,10 +91,31 @@ export function stepProgress(stepNum: number, doneKeys: string[]): { done: numbe
 }
 
 /** Due date for a homework item: N days before the next call, or null when no call is booked. */
-export function itemDueDate(nextCallIso: string | null | undefined, dueDaysBefore = 0): Date | null {
+export function itemDueDate(nextCallIso: string | null | undefined, dueDaysBefore = 0, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): Date | null {
   if (!nextCallIso) return null;
   const d = new Date(nextCallIso);
   if (Number.isNaN(d.getTime())) return null;
-  d.setDate(d.getDate() - dueDaysBefore);
-  return d;
+  // Subtract calendar days in the viewer's zone, not 24-hour blocks across DST.
+  const parts = (date: Date) => {
+    const p = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(date);
+    const n = (key: string) => Number(p.find((v) => v.type === key)?.value ?? 0);
+    return Date.UTC(n("year"), n("month") - 1, n("day"), n("hour"), n("minute"), n("second"));
+  };
+  const desired = parts(d) - dueDaysBefore * 86400000;
+  let instant = desired;
+  for (let attempt = 0; attempt < 4; attempt++) instant += desired - parts(new Date(instant));
+  return new Date(instant);
+}
+
+export function homeworkSummary(items: { key: string; dueDaysBefore?: number; noDue?: boolean }[], doneKeys: string[], nextCall: string | null, now = new Date(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
+  const done = new Set(doneKeys);
+  const completed = items.filter((item) => done.has(item.key)).length;
+  return {
+    percent: items.length ? Math.round(completed / items.length * 100) : 0,
+    overdue: items.some((item) => {
+      if (item.noDue || done.has(item.key)) return false;
+      const due = itemDueDate(nextCall, item.dueDaysBefore, timeZone);
+      return due !== null && due.getTime() < now.getTime();
+    }),
+  };
 }

@@ -1,4 +1,4 @@
-import { Candidate, QualificationScores } from "@/data/pipelineData";
+import { Candidate, QualificationScores, type StageId } from "@/data/pipelineData";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -25,9 +25,10 @@ interface Props {
   onUpdate: (c: Candidate) => void;
   onSaveProfile?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
   teamMembers?: TeamMember[];
+  onStageMove?: (id: number, stage: StageId) => Promise<void>;
 }
 
-export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfile, teamMembers }: Props) {
+export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfile, teamMembers, onStageMove }: Props) {
   if (!candidate) return null;
 
   const handleScoresReplace = (scores: QualificationScores) => {
@@ -101,7 +102,7 @@ export function CandidateDetailPanel({ candidate, onClose, onUpdate, onSaveProfi
             <OverviewTab candidate={candidate} teamMembers={teamMembers} onScoresReplace={handleScoresReplace} />
           </TabsContent>
           <TabsContent value="process">
-            <ProcessTab candidate={candidate} teamMembers={teamMembers} onSaveProfile={onSaveProfile} />
+            <ProcessTab candidate={candidate} teamMembers={teamMembers} onSaveProfile={onSaveProfile} onScoresReplace={handleScoresReplace} onStageMove={onStageMove} />
           </TabsContent>
           <TabsContent value="prospect-forms">
             <ProspectFormsTab candidateId={(candidate as Candidate & { dbId?: string }).dbId} />

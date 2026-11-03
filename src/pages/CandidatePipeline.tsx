@@ -21,6 +21,7 @@ import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
 import { getEffectivePillarScores, computeComposite } from "@/lib/candidateScoring";
 import { toDbStage, fromDbStage } from "@/lib/stageDbMapping";
+import { candidatePanelId } from "@/lib/candidateWorkflow";
 
 
 import {
@@ -307,18 +308,34 @@ const CandidatePipeline = () => {
     };
   }, []);
 
-  // Open detail panel when arriving via global search (?candidate=ID)
+  const openCandidate = (candidate: Candidate) => {
+    setActive(candidate);
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set("candidate", candidatePanelId(candidate));
+      return next;
+    });
+  };
+  const closeCandidate = () => {
+    setActive(null);
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("candidate");
+      return next;
+    }, { replace: true });
+  };
+
+  // Keep the detail panel in the URL, including global-search links and reloads.
   // ID may be the DB uuid (from global search) or numeric local id.
   useEffect(() => {
     const id = searchParams.get("candidate");
-    if (!id || candidates.length === 0) return;
+    if (!id) { setActive(null); return; }
+    if (candidates.length === 0) return;
     const found = candidates.find(
       (c: any) => c.dbId === id || String(c.id) === id,
     );
     if (!found) return;
     setActive(found);
-    searchParams.delete("candidate");
-    setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, candidates]);
 
@@ -1079,7 +1096,7 @@ const CandidatePipeline = () => {
         <KanbanBoard
           candidates={filteredCandidates}
           onStageChange={handleStageDrop}
-          onCardClick={setActive}
+          onCardClick={openCandidate}
           onStartOnboarding={handleStartOnboarding}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
@@ -1089,7 +1106,7 @@ const CandidatePipeline = () => {
         <CandidatesTable
           candidates={filteredCandidates}
           allCandidates={candidates}
-          onOpenCandidate={setActive}
+          onOpenCandidate={openCandidate}
           onImportClick={() => setImportOpen(true)}
         />
 
@@ -1099,7 +1116,7 @@ const CandidatePipeline = () => {
 
 
       {viewMode === "calendar" && (
-        <CandidateCalendar candidates={candidates} onOpenCandidate={setActive} />
+        <CandidateCalendar candidates={candidates} onOpenCandidate={openCandidate} />
       )}
 
       <CandidateImportWizard
@@ -1113,10 +1130,11 @@ const CandidatePipeline = () => {
 
       <CandidateDetailPanel
         candidate={active}
-        onClose={() => setActive(null)}
+        onClose={closeCandidate}
         onUpdate={handleUpdate}
         onSaveProfile={handleSaveProfile}
         teamMembers={teamMembers}
+        onStageMove={handleStageDrop}
       />
 
       {/* Drag-drop confirm */}

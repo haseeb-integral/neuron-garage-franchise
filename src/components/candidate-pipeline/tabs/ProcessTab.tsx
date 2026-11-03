@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PORTAL_STEPS, homeworkSummary, itemDueDate } from "@/lib/portalPath";
 import { formForItem } from "@/lib/portalForms/logic";
-import { Candidate, stateRequiresRegistration } from "@/data/pipelineData";
+import { Candidate, type QualificationScores, type StageId, STAGES, stateRequiresRegistration } from "@/data/pipelineData";
 import { CandidateScheduleSection } from "@/components/candidate-pipeline/CandidateScheduleSection";
 import { supabase } from "@/integrations/supabase/client";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { QualificationSection } from "../QualificationSection";
+import { nextProcessStage } from "@/lib/candidateWorkflow";
 import { toast } from "sonner";
 import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
 import { LeadSheetSection } from "./LeadSheetSection";
@@ -29,6 +32,8 @@ interface Props {
   candidate: Candidate;
   teamMembers?: TeamMember[];
   onSaveProfile?: (patch: Record<string, any>, localPatch: Partial<Candidate>) => Promise<void> | void;
+  onScoresReplace?: (scores: QualificationScores) => void;
+  onStageMove?: (id: number, stage: StageId) => Promise<void>;
 }
 
 type ChecklistMap = Record<string, boolean>;
@@ -82,7 +87,7 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     goal: "20–30 min phone call. Quickly determine if the prospect is a viable fit. This is more of a disqualification call. Assert process leadership -- our process has been designed very deliberately to maximize exposure to our business model so you and we can make an informed decision.",
     trialClose: true,
     postCall: [
-      { key: "update_qualification_scores", label: "Update the qualification scores on the Overview tab" },
+      { key: "update_qualification_scores", label: "Update the qualification scores" },
     ],
     homework: [
       { key: "rfc_part1", label: "Complete Request for Consideration form due 1 day before next call." },
@@ -184,7 +189,7 @@ const emptyRow = (candidateId: string, step: number): StepRow => ({
   completed: false,
 });
 
-export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props) {
+export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScoresReplace, onStageMove }: Props) {
   const dbId = (candidate as any).dbId as string | undefined;
   const [rows, setRows] = useState<Record<number, StepRow>>({});
   const [loading, setLoading] = useState(true);
@@ -445,6 +450,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
             return row.homework[item.key] || homeworkData.data?.ticks.some((tick) => tick.step_num === step.num && tick.item_key === portalKey);
           }).map((item) => item.key);
           const homework = homeworkSummary(homeworkItems, homeworkDone, homeworkData.data?.nextCall ?? null);
+          const nextStage = nextProcessStage(step.num, candidate.stage);
 
           return (
             <AccordionItem
@@ -527,7 +533,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                 {step.trialClose && (
                   <TrialCloseBlock
                     nameKey={`step-${step.num}`}
-                    items={trialCloseItemsFor(step)}
+                    items={trialCloseItemsFor(step).map((item) => step.num === 2 && item.key === "scheduled_next_call" ? { ...item, label: "Schedule the Business Immersion and Evaluation call" } : item)}
                     state={row.trial_close}
                     data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
@@ -561,7 +567,9 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                             ) : null
                         : undefined
                     }
-                    renderDetail={step.num === 2 ? (item) => item.key === "sent_bg_auth" ? (
+                    renderDetail={step.num === 1 ? (item) => item.key === "update_qualification_scores" ? (
+                      <div className="mt-3"><QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} /></div>
+                    ) : null : step.num === 2 ? (item) => item.key === "sent_bg_auth" ? (
                       <StepFields
                         fields={step.fields?.filter((f) => f.key === "background_result" || f.key === "credit_score") ?? []}
                         data={row.data}
@@ -591,6 +599,15 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile }: Props
                     data={row.data ?? {}}
                     onField={(k, v) => updateField(step.num, k, v)}
                   />
+                )}
+
+                {step.num < 5 && onStageMove && (
+                  <div className="mt-3">
+                    <Button variant="outline" disabled={!nextStage} className="h-auto min-h-9 max-w-full whitespace-normal text-left" onClick={() => { if (nextStage) void onStageMove(candidate.id, nextStage); }}>
+                      <ArrowRight className="mr-2 h-4 w-4 shrink-0" />
+                      Move prospect to next stage: {STAGES.find((stage) => stage.id === ({ 1: "business_overview", 2: "immersion", 3: "confirmation", 4: "signing" }[step.num]))?.label}
+                    </Button>
+                  </div>
                 )}
 
 

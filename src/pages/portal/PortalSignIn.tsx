@@ -39,7 +39,7 @@ export default function PortalSignIn() {
     try {
       if (reset) {
         const result = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${window.location.origin}/reset-password?portal=1`,
         });
         if (result.error) throw result.error;
         setSent(true);

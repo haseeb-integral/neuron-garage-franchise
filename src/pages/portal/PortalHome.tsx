@@ -13,6 +13,7 @@ import { PORTAL_STEPS, itemDueDate, stageToStep, stepState, type PortalStep, typ
 import { PortalStepFiles, type StepFile, type MyUpload } from "@/components/portal/PortalStepFiles";
 import { formForItem } from "@/lib/portalForms/logic";
 import logo from "@/assets/neuron-garage-logo.png";
+import { usePortalPathRefresh } from "@/hooks/usePortalPathRefresh";
 
 interface PathData {
   first_name: string | null;
@@ -29,6 +30,7 @@ const fmtTime = (iso: string) =>
 export default function PortalHome() {
   const { session, user, loading, accessChecked, role, portalCandidateId, signOut } = useAuth();
   const qc = useQueryClient();
+  usePortalPathRefresh(user?.id, portalCandidateId);
 
   useEffect(() => {
     if (portalCandidateId) supabase.rpc("portal_mark_activated").then(() => {});
@@ -37,7 +39,6 @@ export default function PortalHome() {
   const path = useQuery({
     queryKey: ["portal-path", portalCandidateId],
     enabled: !!portalCandidateId,
-    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("portal_my_path");
       if (error) throw error;
@@ -49,7 +50,7 @@ export default function PortalHome() {
     enabled: !!portalCandidateId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("candidate_portal_checklist").select("step_num, item_key").eq("candidate_id", portalCandidateId!);
+        .from("candidate_portal_checklist").select("step_num, item_key").eq("candidate_id", portalCandidateId ?? "");
       if (error) throw error;
       return new Set((data ?? []).map((r) => `${r.step_num}:${r.item_key}`));
     },
@@ -82,7 +83,7 @@ export default function PortalHome() {
     enabled: !!portalCandidateId,
     queryFn: async () => {
       const { data, error } = await supabase.from("candidate_portal_forms")
-        .select("form_key, status, progress, reopen_reason").eq("candidate_id", portalCandidateId!);
+        .select("form_key, status, progress, reopen_reason").eq("candidate_id", portalCandidateId ?? "");
       if (error) throw error;
       return Object.fromEntries((data ?? []).map((r) => [r.form_key, r])) as FormStatusMap;
     },
@@ -110,8 +111,8 @@ export default function PortalHome() {
   if (loading || (session && !accessChecked)) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
-  if (!session) return <Navigate to="/auth" replace state={{ from: "/portal" }} />;
-  if (!portalCandidateId) return <Navigate to={role ? "/" : "/auth"} replace />;
+  if (!session) return <Navigate to="/portal/sign-in" replace state={{ from: "/portal" }} />;
+  if (!portalCandidateId) return <Navigate to={role ? "/" : "/portal/sign-in"} replace />;
 
   const data = path.data;
   const current = data ? stageToStep(fromDbStage(data.stage)) : null;

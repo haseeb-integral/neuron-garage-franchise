@@ -57,7 +57,7 @@ describe("Qualification Process step 2 consolidation", () => {
 
   it("removes the local marketing plan from step 3 homework", () => {
     const step = QUALIFICATION_STEPS.find(({ num }) => num === 3);
-    expect(step?.homework.map(({ key }) => key)).toEqual(["facility_form"]);
+    expect(step?.homework.map(({ key }) => key)).toEqual(["facility_form", "references"]);
     expect(step?.homework.map(({ key }) => key)).not.toContain("marketing_plan");
   });
 });

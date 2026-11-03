@@ -5,7 +5,7 @@ const NEXT_STAGE: Record<number, StageId> = { 1: "business_overview", 2: "immers
 
 /** Only the current conversation can advance a prospect; never skip stages. */
 export function nextProcessStage(step: number, current: StageId): StageId | null {
-  if (STEP_STAGE[step] !== current && !(step === 2 && current === "fdd_review")) return null;
+  if (STEP_STAGE[step] !== current && !(step === 2 && current === "fdd_review") && !(step === 1 && current === "new_lead")) return null;
   return NEXT_STAGE[step] ?? null;
 }
 

@@ -162,7 +162,7 @@ export default function PortalForm() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="bg-portal-navy text-portal-navy-foreground">
         <div className="mx-auto max-w-3xl px-5 py-4 flex items-center justify-between gap-3">
-          <Link to="/portal" className="flex items-center gap-2 text-sm hover:underline"><ArrowLeft className="h-4 w-4" /> Back to my path</Link>
+          <Link to="/portal" className="inline-flex items-center gap-2 rounded-md bg-portal-red px-3 py-1.5 text-sm font-semibold text-portal-red-foreground hover:bg-portal-red/90"><ArrowLeft className="h-4 w-4" /> Back to your path</Link>
           <img src={logo} alt="Neuron Garage" className="h-8 w-auto rounded bg-background p-0.5" />
         </div>
       </header>
@@ -371,7 +371,7 @@ function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise
     <div className="min-h-screen bg-background text-foreground">
       <header className="bg-portal-navy text-portal-navy-foreground">
         <div className="mx-auto max-w-3xl px-5 py-4 flex items-center justify-between gap-3">
-          <Link to="/portal" className="flex items-center gap-2 text-sm hover:underline"><ArrowLeft className="h-4 w-4" /> Back to my path</Link>
+          <Link to="/portal" className="inline-flex items-center gap-2 rounded-md bg-portal-red px-3 py-1.5 text-sm font-semibold text-portal-red-foreground hover:bg-portal-red/90"><ArrowLeft className="h-4 w-4" /> Back to your path</Link>
           <img src={logo} alt="Neuron Garage" className="h-8 w-auto rounded bg-background p-0.5" />
         </div>
       </header>

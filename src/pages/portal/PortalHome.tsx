@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { useEffect, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -227,9 +229,24 @@ function NextCallCard({ call }: { call: PathData["next_call"] }) {
 
 type FormStatusMap = Record<string, { form_key: string; status: string; progress: number; reopen_reason?: string | null }>;
 
+const SIGNED_KEY = "signed";
+
+/** Confetti + a short congratulations when the prospect marks the Franchise Agreement signed. */
+function celebrate() {
+  const end = Date.now() + 2500;
+  const colors = ["#D62839", "#F7C531", "#14325A", "#ffffff"];
+  (function frame() {
+    confetti({ particleCount: 6, angle: 60, spread: 70, origin: { x: 0 }, colors });
+    confetti({ particleCount: 6, angle: 120, spread: 70, origin: { x: 1 }, colors });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+  confetti({ particleCount: 160, spread: 100, origin: { y: 0.6 }, colors });
+  toast.success("🎉 Congratulations — welcome to the Neuron Garage family! 🎉", { duration: 8000 });
+}
+
 function DueChip({ due, done, show }: { due: Date | null; done: boolean; show: boolean }) {
+  if (done) return <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3 w-3" /> Done and submitted — thank you!</span>;
   if (!show) return null;
-  if (done) return <span className="inline-flex items-center gap-1 text-xs font-semibold text-success"><Check className="h-3 w-3" /> Done</span>;
   const late = !!due && due.getTime() < Date.now();
   return (
     <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${late ? "bg-destructive text-destructive-foreground" : "bg-portal-yellow text-portal-yellow-foreground"}`}>
@@ -243,7 +260,7 @@ function FormItem({ formKey, label, status, due }: { formKey: string; label: str
   const done = status?.status === "submitted";
   const started = !!status && !done;
   return (
-    <li className="rounded-lg border bg-background p-3 space-y-2">
+    <li className={`rounded-lg border-2 p-3 space-y-2 shadow-sm ${done ? "border-success bg-success/10" : "border-border bg-card"}`}>
       <div className="flex items-start gap-2.5">
         <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center ${done ? "bg-success border-success text-success-foreground" : ""}`}>
           {done && <Check className="h-3 w-3" />}
@@ -258,7 +275,7 @@ function FormItem({ formKey, label, status, due }: { formKey: string; label: str
           {done ? "Submitted ✓" : status?.status === "reopened" ? "Correction requested" : started ? `In progress — ${status?.progress}%` : "Not started"}
         </span>
         <Button asChild size="sm" variant={done ? "outline" : "default"}
-          className={done ? "" : "bg-portal-navy text-portal-navy-foreground hover:bg-portal-navy/90"}>
+          className={done ? "" : "bg-portal-red text-portal-red-foreground hover:bg-portal-red/90"}>
           <Link to={`/portal/form/${formKey}`}>{done ? "View" : started ? "Continue" : "Start"}</Link>
         </Button>
       </div>
@@ -309,6 +326,7 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                 const on = ticked.has(id);
                 const fdef = formForItem(step.num, it.key);
                 const showDue = state === "current" && !it.noDue;
+                const isSigned = it.key === SIGNED_KEY;
                 const due = itemDueDate(nextCall, it.dueDaysBefore);
                 if (fdef) {
                   const st = forms[fdef.key];
@@ -316,11 +334,11 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                     due={<DueChip due={due} done={st?.status === "submitted"} show={showDue} />} />;
                 }
                 return (
-                  <li key={it.key} className="flex items-start gap-2.5">
-                    <Checkbox id={id} checked={on} onCheckedChange={(v) => onToggle(step.num, it.key, it.label, !!v)} className="mt-0.5" />
+                  <li key={it.key} className={`flex items-start gap-2.5 rounded-lg border-2 p-3 shadow-sm transition-colors ${on ? "border-success bg-success/10" : "border-border bg-card"}`}>
+                    <Checkbox id={id} checked={on} onCheckedChange={(v) => { onToggle(step.num, it.key, it.label, !!v); if (v && isSigned) celebrate(); }} className="mt-0.5" />
                     <div className="space-y-1">
-                      <label htmlFor={id} className={`block text-sm cursor-pointer ${on ? "line-through text-muted-foreground" : ""}`}>{it.label}</label>
-                      <DueChip due={due} done={on} show={showDue} />
+                      <label htmlFor={id} className={`block text-sm cursor-pointer ${on ? "font-semibold text-success" : "font-medium"}`}>{it.label}</label>
+                      {!it.noDue || on ? <DueChip due={due} done={on} show={showDue || on} /> : null}
                     </div>
                   </li>
                 );

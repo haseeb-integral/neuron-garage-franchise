@@ -54,7 +54,10 @@ export const PORTAL_STEPS: PortalStep[] = [
     num: 5, title: "Signing Call", time: "Brief call",
     description: "A live call where we both sign the Franchise Agreement and its exhibits, at least 14 days after you received the FDD.",
     afterLabel: "Next",
-    items: [{ key: "welcome", label: "Watch for your welcome and onboarding details", noDue: true }],
+    items: [
+      { key: "signed", label: "We signed the Franchise Agreement!", noDue: true },
+      { key: "welcome", label: "Watch for your welcome and onboarding details", noDue: true },
+    ],
   },
 ];
 

@@ -49,6 +49,9 @@ export default {
           "yellow-foreground": "hsl(var(--portal-yellow-foreground))",
           red: "hsl(var(--portal-red))",
           "red-foreground": "hsl(var(--portal-red-foreground))",
+          orange: "hsl(var(--portal-orange))",
+          "light-blue": "hsl(var(--portal-light-blue))",
+          "dark-blue": "hsl(var(--portal-dark-blue))",
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",

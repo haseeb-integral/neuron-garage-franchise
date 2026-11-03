@@ -234,7 +234,7 @@ const SIGNED_KEY = "signed";
 /** Confetti + a short congratulations when the prospect marks the Franchise Agreement signed. */
 function celebrate() {
   const end = Date.now() + 2500;
-  const colors = ["#D62839", "#F7C531", "#14325A", "#ffffff"];
+  const colors = ["#FF4438", "#FAE345", "#F5B335", "#8DC6E8", "#0A2240", "#ffffff"];
   (function frame() {
     confetti({ particleCount: 6, angle: 60, spread: 70, origin: { x: 0 }, colors });
     confetti({ particleCount: 6, angle: 120, spread: 70, origin: { x: 1 }, colors });

@@ -25,12 +25,16 @@
     --muted-foreground: 210 7% 46%;
 
     --accent: 210 14% 89%;
-    --portal-navy: 214 64% 20%;
+    /* Neuron Garage brand palette (Brand Guide v.2024) */
+    --portal-navy: 213 73% 15%; /* #0A2240 */
     --portal-navy-foreground: 0 0% 100%;
-    --portal-yellow: 45 96% 56%;
-    --portal-yellow-foreground: 214 64% 16%;
-    --portal-red: 356 76% 46%;
+    --portal-yellow: 52 95% 63%; /* #FAE345 */
+    --portal-yellow-foreground: 213 73% 15%;
+    --portal-red: 4 100% 61%; /* #FF4438 */
     --portal-red-foreground: 0 0% 100%;
+    --portal-orange: 39 91% 58%; /* #F5B335 */
+    --portal-light-blue: 202 66% 73%; /* #8DC6E8 */
+    --portal-dark-blue: 217 100% 36%; /* #0047BA */
     --accent-foreground: 210 11% 25%;
 
     --destructive: 0 84% 60%;

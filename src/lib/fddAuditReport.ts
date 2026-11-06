@@ -104,7 +104,7 @@ export function buildAuditRows(input: {
       resendCount: Math.max(0, sends.length - 1), sends,
       item23Date: dayOf(cc?.fdd_received_at),
       item23Method, item23Proof, item23Signature,
-      faSignedDate: dayOf(cc?.fa_signed_at) + (faProofFiles.length ? "" : ""),
+      faSignedDate: dayOf(cc?.fa_signed_at),
       daysSentToSigned: daysBetween(cc?.fdd_sent_at ?? first?.sent_at, cc?.fa_signed_at),
     });
   }

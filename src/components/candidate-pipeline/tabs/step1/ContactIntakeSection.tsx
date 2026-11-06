@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { StateSelect } from "@/components/ui/state-select";
 import { Candidate } from "@/data/pipelineData";
 import { CandidateAvatar } from "@/components/ui/CandidateAvatar";
 import { Button } from "@/components/ui/button";
@@ -414,9 +415,8 @@ export function MailingAddressCard({
           </Field>
           <Field label="State / ZIP">
             <div className="flex gap-2">
-              <input className={cn(inputCls, "w-16")} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
-                placeholder="ST" maxLength={2} value={state}
-                onChange={(e) => setState(e.target.value.toUpperCase())} />
+              <StateSelect className={cn(inputCls, "w-24")} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
+                value={state} onChange={setState} />
               <input className={inputCls} style={{ borderColor: "#e3e8ef" }} disabled={readOnly}
                 placeholder="ZIP" value={zip} onChange={(e) => setZip(e.target.value)} />
             </div>

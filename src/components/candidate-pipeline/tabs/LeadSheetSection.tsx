@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { StateSelect } from "@/components/ui/state-select";
 import { Candidate } from "@/data/pipelineData";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -440,12 +441,7 @@ export function LeadSheetSection({ candidate }: Props) {
             onChange={(e) => update("city", e.target.value)}
             placeholder="City (e.g. Nashville)"
           />
-          <Input
-            id="ls-state"
-            value={form.state}
-            onChange={(e) => update("state", e.target.value)}
-            placeholder="State (e.g. TN)"
-          />
+          <StateSelect id="ls-state" value={form.state} onChange={(v) => update("state", v)} />
         </div>
         <div
           className="flex items-start gap-2 rounded-md p-2 text-xs"
@@ -466,12 +462,7 @@ export function LeadSheetSection({ candidate }: Props) {
             onChange={(e) => update("desired_market_city", e.target.value)}
             placeholder="City (e.g. Nashville)"
           />
-          <Input
-            id="ls-market-state"
-            value={form.desired_market_state}
-            onChange={(e) => update("desired_market_state", e.target.value)}
-            placeholder="State (e.g. TN)"
-          />
+          <StateSelect id="ls-market-state" value={form.desired_market_state} onChange={(v) => update("desired_market_state", v)} />
         </div>
       </div>
 

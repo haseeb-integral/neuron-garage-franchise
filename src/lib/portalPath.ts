@@ -14,7 +14,7 @@ export interface PortalStep {
 
 export const PORTAL_STEPS: PortalStep[] = [
   {
-    num: 1, title: "Start the Conversation", time: "45-60 minutes",
+    num: 1, title: "Initial Qualification", time: "45-60 minutes",
     description: "We get to know each other, talk through your background and goals, and share an overview of Neuron Garage.",
     afterLabel: "After this call",
     items: [

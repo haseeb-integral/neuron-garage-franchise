@@ -35,6 +35,9 @@ export function CandidateScheduleSection({ candidate }: Props) {
 
   useEffect(() => {
     load();
+    const h = () => load();
+    window.addEventListener("candidate-events-changed", h);
+    return () => window.removeEventListener("candidate-events-changed", h);
   }, [load]);
 
   if (!dbId) return null;
@@ -90,6 +93,7 @@ export function CandidateScheduleSection({ candidate }: Props) {
                   </div>
                   <div className="text-[11px]" style={{ color: "#526078" }}>
                     {EVENT_TYPE_LABEL[ev.event_type]} · {ev.duration_minutes} min · {ev.status}
+                    {ev.meet_url && <> · <a href={ev.meet_url} target="_blank" rel="noreferrer" className="underline">Google Meet</a></>}
                   </div>
                 </div>
                 {ev.status === "scheduled" && (

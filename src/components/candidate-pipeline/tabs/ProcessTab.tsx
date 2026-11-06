@@ -540,6 +540,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                     data={row.data ?? {}}
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
                     onField={(k, v) => updateField(step.num, k, v)}
+                    homeworkLabels={step.homework.map((h) => h.label)}
                   />
                 )}
 
@@ -582,6 +583,14 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                   />
                 )}
 
+                {step.num !== 5 && (
+                  <SignalsBlock
+                    nameKey={`step-${step.num}`}
+                    data={row.data ?? {}}
+                    onField={(k, v) => updateField(step.num, k, v)}
+                  />
+                )}
+
                 {step.num === 2 && (
                   <>
                     <FddSentDateField
@@ -602,14 +611,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                   />
                 )}
 
-                {step.num < 5 && onStageMove && (
-                  <div className="mt-3">
-                    <Button variant="outline" disabled={!nextStage} className="h-auto min-h-9 max-w-full whitespace-normal text-left" onClick={() => { if (nextStage) void onStageMove(candidate.id, nextStage); }}>
-                      <ArrowRight className="mr-2 h-4 w-4 shrink-0" />
-                      Move prospect to next stage: {STAGES.find((stage) => stage.id === ({ 1: "business_overview", 2: "immersion", 3: "confirmation", 4: "signing" }[step.num]))?.label}
-                    </Button>
-                  </div>
-                )}
 
 
 
@@ -658,13 +659,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                   </div>
                 )}
 
-                {step.num !== 5 && (
-                  <SignalsBlock
-                    nameKey={`step-${step.num}`}
-                    data={row.data ?? {}}
-                    onField={(k, v) => updateField(step.num, k, v)}
-                  />
-                )}
 
                 {[2, 5].includes(step.num) && (
                   <div className="mt-4">
@@ -687,7 +681,17 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                 )}
 
 
-                <div className="mt-3 flex items-center gap-2">
+                {step.num < 5 && onStageMove ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <Button disabled={!nextStage} className="h-auto min-h-10 max-w-full whitespace-normal text-left font-semibold"
+                      onClick={() => { if (nextStage) void moveToNext(step, nextStage); }}>
+                      <ArrowRight className="mr-2 h-4 w-4 shrink-0" />
+                      Move prospect to next stage: {STAGES.find((stage) => stage.id === ({ 1: "business_overview", 2: "immersion", 3: "confirmation", 4: "signing" }[step.num]))?.label}
+                    </Button>
+                    {row.completed && <Badge variant="secondary" className="text-[10px]">Step done</Badge>}
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-center gap-2">
                   <Checkbox
                     id={`step-${step.num}-done`}
                     checked={row.completed}
@@ -705,6 +709,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                   </Label>
                   {row.completed && <Badge variant="secondary" className="text-[10px]">Done</Badge>}
                 </div>
+                )}
 
               </AccordionContent>
             </AccordionItem>
@@ -802,8 +807,10 @@ function TrialCloseBlock({
   data,
   onToggle,
   onField,
+  homeworkLabels = [],
 }: {
   nameKey: string;
+  homeworkLabels?: string[];
   items: { key: string; label: string }[];
   state: ChecklistMap;
   data: Record<string, any>;
@@ -825,6 +832,11 @@ function TrialCloseBlock({
               />
               <span>{i.label}</span>
             </label>
+            {i.key === "assigned_homework" && homeworkLabels.length > 0 && (
+              <ul className="ml-6 mt-1 list-disc pl-4 text-xs text-muted-foreground space-y-0.5">
+                {homeworkLabels.map((l) => <li key={l}>{l}</li>)}
+              </ul>
+            )}
 
             {i.key === "answered_questions" && (
               <div className={sub}>

@@ -410,6 +410,20 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
     return <div className="pt-4 text-sm" style={{ color: "#526078" }}>Loading process…</div>;
   }
 
+  /** Move to the next stage with no prospect email; also marks this step complete. */
+  const moveToNext = async (step: (typeof STEPS)[number], nextStage: StageId) => {
+    if (!onStageMove) return;
+    const { error } = await supabase.rpc("suppress_portal_step_notice", { _candidate_id: dbId, _step: step.num + 1 });
+    if (error) { toast.error("Couldn't move the prospect. Please try again."); return; }
+    await onStageMove(candidate.id, nextStage);
+    if (!rows[step.num]?.completed) {
+      updateStep(step.num, { completed: true }, {
+        description: `Step ${step.num} (${step.title}) — marked complete ✓ (moved to next stage)`,
+        metadata: { field: "completed", value: true },
+      });
+    }
+  };
+
   return (
     <div className="space-y-3 pt-4">
       <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "#eef4ff", border: "1px solid #c7d8ff", color: "#003c7e" }}>

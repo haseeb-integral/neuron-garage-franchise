@@ -17,6 +17,9 @@ export interface CandidateEvent {
   owner_email: string | null;
   created_by: string | null;
   source_process_step: number | null;
+  notify_prospect?: boolean;
+  google_event_id?: string | null;
+  meet_url?: string | null;
 }
 
 export interface CandidateEventInput {
@@ -30,6 +33,7 @@ export interface CandidateEventInput {
   status?: CandidateEventStatus;
   owner_email?: string | null;
   source_process_step?: number | null;
+  notify_prospect?: boolean;
 }
 
 const TABLE = "candidate_events";

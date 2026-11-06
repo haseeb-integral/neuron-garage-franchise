@@ -381,3 +381,8 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
     </li>
   );
 }
+
+const SITE_DIRECTORS = [
+  { name: "Zainab White", email: "Zainab.White@NeuronGarage.com", phone: "512-537-4448" },
+  { name: "Tanya Livingston", email: "Tanya.Livingston@NeuronGarage.com", phone: "512-593-1476" },
+];

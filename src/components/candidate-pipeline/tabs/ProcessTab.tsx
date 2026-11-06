@@ -412,7 +412,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
 
   /** Move to the next stage with no prospect email; also marks this step complete. */
   const moveToNext = async (step: (typeof STEPS)[number], nextStage: StageId) => {
-    if (!onStageMove) return;
+    if (!onStageMove || !dbId) return;
     const { error } = await supabase.rpc("suppress_portal_step_notice", { _candidate_id: dbId, _step: step.num + 1 });
     if (error) { toast.error("Couldn't move the prospect. Please try again."); return; }
     await onStageMove(candidate.id, nextStage);

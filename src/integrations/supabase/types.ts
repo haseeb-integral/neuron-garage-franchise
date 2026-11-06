@@ -4577,6 +4577,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      suppress_portal_step_notice: {
+        Args: { _candidate_id: string; _step: number }
+        Returns: undefined
+      }
       teacher_prospects_cities: {
         Args: never
         Returns: {

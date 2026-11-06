@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -45,6 +46,8 @@ interface Props {
   /** Pre-filled date when creating from a calendar cell. */
   defaultDate?: Date | null;
   onSaved: () => void;
+  /** New call sends only a Google Calendar invite (with Meet link) — no app email. */
+  googleInviteOnly?: boolean;
 }
 
 const toLocalInput = (iso: string) => format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
@@ -57,6 +60,7 @@ export function EventDialog({
   event,
   defaultDate,
   onSaved,
+  googleInviteOnly,
 }: Props) {
   const editing = !!event;
   const [candidateId, setCandidateId] = useState<string>("");
@@ -151,7 +155,16 @@ export function EventDialog({
           all_day: false,
           notes: notes.trim() || null,
           status,
+          ...(googleInviteOnly ? { notify_prospect: false } : {}),
         });
+        if (googleInviteOnly) {
+          const { data: g, error: gErr } = await supabase.functions.invoke("google-calendar-event", { body: { event_id: created.id } });
+          if (gErr || !g?.meet_url) {
+            toast.error("Call saved, but the Google invite didn't go out. Please try again or check the calendar.");
+          } else {
+            toast.success("Google invite sent with a Meet link", { description: g.meet_url, duration: 8000 });
+          }
+        }
         await logActivity(
           candidateId,
           "event_scheduled",

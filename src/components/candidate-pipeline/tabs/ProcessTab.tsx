@@ -17,6 +17,7 @@ import { QualificationSection } from "../QualificationSection";
 import { nextProcessStage } from "@/lib/candidateWorkflow";
 import { toast } from "sonner";
 import { ContactIntakeSection, LeadSourceCard } from "./step1/ContactIntakeSection";
+import { ScheduleCallButton } from "./step1/ScheduleCallButton";
 import { LeadSheetSection } from "./LeadSheetSection";
 import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
@@ -502,6 +503,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
 
                 {step.num === 1 && (
                   <>
+                    <ScheduleCallButton candidate={candidate} />
                     <ContactIntakeSection candidate={candidate} teamMembers={teamMembers} onSave={onSaveProfile} />
                     <div className="mb-4">
                       <LeadSheetSection candidate={candidate} />

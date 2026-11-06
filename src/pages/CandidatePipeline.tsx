@@ -17,6 +17,7 @@ import { PipelineAnalyticsBar } from "@/components/candidate-pipeline/PipelineAn
 import { CandidateDetailPanel } from "@/components/candidate-pipeline/CandidateDetailPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { PortalFilesDialog } from "@/components/candidate-pipeline/PortalFilesDialog";
+import { FddAuditReportDialog } from "@/components/candidate-pipeline/FddAuditReportDialog";
 import { useCandidatePipelineStore } from "@/stores/candidatePipelineStore";
 import { isEnabled } from "@/lib/featureFlags";
 import { getEffectivePillarScores, computeComposite } from "@/lib/candidateScoring";
@@ -874,6 +875,7 @@ const CandidatePipeline = () => {
         action={
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <PortalFilesDialog />
+            <FddAuditReportDialog />
             <Button
               size="sm"
               variant="outline"

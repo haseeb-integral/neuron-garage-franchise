@@ -67,7 +67,6 @@ export function buildAuditRows(input: {
     const events = input.events.filter((e) => e.candidate_id === c.id);
     const proofs = input.proofFiles.filter((p) => p.candidate_id === c.id);
     const fddProofFiles = proofs.filter((p) => p.category === "fdd_proof").map((p) => p.file_name);
-    const faProofFiles = proofs.filter((p) => p.category === "fa_proof").map((p) => p.file_name);
     const downloads = events.filter((e) => e.event === "downloaded").length;
 
     const fileId = cc?.fdd_file_id ?? first?.fdd_file_id ?? events.find((e) => e.fdd_file_id)?.fdd_file_id ?? null;

@@ -137,16 +137,7 @@ export function EventDialog({
           all_day: false,
           notes: notes.trim() || null,
           status,
-          ...(googleInviteOnly ? { notify_prospect: false } : {}),
         });
-        if (googleInviteOnly) {
-          const { data: g, error: gErr } = await supabase.functions.invoke("google-calendar-event", { body: { event_id: created.id } });
-          if (gErr || !g?.meet_url) {
-            toast.error("Call saved, but the Google invite didn't go out. Please try again or check the calendar.");
-          } else {
-            toast.success("Google invite sent with a Meet link", { description: g.meet_url, duration: 8000 });
-          }
-        }
         await logActivity(
           candidateId,
           "event_updated",
@@ -164,7 +155,16 @@ export function EventDialog({
           all_day: false,
           notes: notes.trim() || null,
           status,
+          ...(googleInviteOnly ? { notify_prospect: false } : {}),
         });
+        if (googleInviteOnly) {
+          const { data: g, error: gErr } = await supabase.functions.invoke("google-calendar-event", { body: { event_id: created.id } });
+          if (gErr || !g?.meet_url) {
+            toast.error("Call saved, but the Google invite didn't go out. Please try again or check the calendar.");
+          } else {
+            toast.success("Google invite sent with a Meet link", { description: g.meet_url, duration: 8000 });
+          }
+        }
         await logActivity(
           candidateId,
           "event_scheduled",

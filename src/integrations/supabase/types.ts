@@ -454,8 +454,11 @@ export type Database = {
           created_by: string | null
           duration_minutes: number
           event_type: string
+          google_event_id: string | null
           id: string
+          meet_url: string | null
           notes: string | null
+          notify_prospect: boolean
           owner_email: string | null
           source_process_step: number | null
           starts_at: string
@@ -470,8 +473,11 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number
           event_type?: string
+          google_event_id?: string | null
           id?: string
+          meet_url?: string | null
           notes?: string | null
+          notify_prospect?: boolean
           owner_email?: string | null
           source_process_step?: number | null
           starts_at: string
@@ -486,8 +492,11 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number
           event_type?: string
+          google_event_id?: string | null
           id?: string
+          meet_url?: string | null
           notes?: string | null
+          notify_prospect?: boolean
           owner_email?: string | null
           source_process_step?: number | null
           starts_at?: string

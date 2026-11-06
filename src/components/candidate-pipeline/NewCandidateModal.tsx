@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StateSelect } from "@/components/ui/state-select";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -226,13 +227,8 @@ export function NewCandidateModal({ open, onOpenChange, teamMembers, onCreated }
           </div>
 
           <div>
-            <Label htmlFor="state">State * (2 letters)</Label>
-            <Input
-              id="state"
-              maxLength={2}
-              value={form.state}
-              onChange={(e) => set("state", e.target.value.toUpperCase())}
-            />
+            <Label htmlFor="state">State *</Label>
+            <StateSelect id="state" value={form.state} onChange={(v) => set("state", v)} />
             {fieldErr("state")}
           </div>
 

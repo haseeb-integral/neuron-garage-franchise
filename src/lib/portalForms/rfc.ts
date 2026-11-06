@@ -118,7 +118,7 @@ export const RFC_FORM: PortalFormDef = {
   signature: {
     heading: "Acknowledgment and Signature",
     text:
-      "By signing, I confirm that the information I've shared is complete and accurate to the best of my knowledge. I understand that this form is not a contract or an offer to sell a franchise, that completing it creates no obligation for either party, and that any offer can be made only through a Franchise Disclosure Document. I also understand that, before any franchise is awarded, Neuron Garage Franchise Support, LLC will conduct credit and criminal background checks, and I'll be asked to provide the information and authorization needed to run them.",
+      "By signing, I confirm that what I shared is true and complete to the best of my knowledge. This form is not a contract or an offer to sell a franchise, and it does not commit me or Neuron Garage to anything. A franchise can only be offered through a Franchise Disclosure Document. Before any franchise is awarded, Neuron Garage Franchise Support, LLC will run credit and criminal background checks, and I'll be asked for the details and permission needed to run them.",
     note: "When completing this form electronically, typing your full name counts as your signature.",
   },
 };

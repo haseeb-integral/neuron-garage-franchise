@@ -117,7 +117,7 @@ export const RFC_LEGACY_FORM: PortalFormDef = {
     {
       id: "references",
       title: "References",
-      intro: "Please share three people who know you well, ideally someone who has seen you work with children and someone who has seen you lead. We'll let you know before we contact them.",
+      intro: "Please share three people who know you well, ideally someone who has seen you work with children and someone who has seen you lead.",
       repeater: {
         key: "references", itemLabel: "Reference", startWith: 3, max: 3, requiredCount: 3,
         fields: [

@@ -358,6 +358,17 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                     <Checkbox id={id} checked={on} onCheckedChange={(v) => { onToggle(step.num, it.key, it.label, !!v); if (v && isSigned) celebrate(); }} className="mt-0.5" />
                     <div className="space-y-1">
                       <label htmlFor={id} className={`block text-sm cursor-pointer ${on ? "font-semibold text-success" : "font-medium"}`}>{it.label}</label>
+                      {it.key === "talk_site_director" && (
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          {SITE_DIRECTORS.map((d) => (
+                            <li key={d.email}>
+                              <span className="font-semibold text-foreground">{d.name}</span> ·{" "}
+                              <a className="underline" href={`mailto:${d.email}`}>{d.email}</a> ·{" "}
+                              <a className="underline" href={`tel:${d.phone.replace(/-/g, "")}`}>{d.phone}</a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {!it.noDue || on ? <DueChip due={due} days={it.dueDaysBefore} done={on} show={showDue || on} /> : null}
                     </div>
                   </li>
@@ -370,3 +381,8 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
     </li>
   );
 }
+
+const SITE_DIRECTORS = [
+  { name: "Zainab White", email: "Zainab.White@NeuronGarage.com", phone: "512-537-4448" },
+  { name: "Tanya Livingston", email: "Tanya.Livingston@NeuronGarage.com", phone: "512-593-1476" },
+];

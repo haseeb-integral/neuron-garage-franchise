@@ -1,5 +1,5 @@
 export const NOTICE_STEP_TITLES: Record<number, string> = {
-  1: 'Start the Conversation', 2: 'Business Overview and FDD Review',
+  1: 'Initial Qualification', 2: 'Business Overview and FDD Review',
   3: 'Business Immersion and Evaluation', 4: 'Confirmation Call', 5: 'Signing Call',
 }
 export function noticeStep(stage: string): number | null {

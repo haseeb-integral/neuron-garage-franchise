@@ -40,7 +40,7 @@ export const BGCF_FORM: PortalFormDef = {
       id: "funding",
       title: "Your Funding Plan",
       intro:
-        "Every new owner has some start-up costs before camp revenue begins. Item 7 of the Franchise Disclosure Document estimates the initial investment at $14,110 to $21,050.",
+        "Every new owner has some start-up costs before camp revenue begins. Item 7 of the Franchise Disclosure Document estimates the initial investment at $8,575 to $13,825.",
       fields: [
         { key: "funding_plan", label: "How do you plan to cover those initial costs until your camp starts generating revenue? For example: personal savings, support from a spouse or partner, a small loan, or a combination.", type: "textarea" },
       ],

@@ -54,6 +54,17 @@ export function FddAuditReportDialog() {
     setTimeout(() => URL.revokeObjectURL(url), 30_000);
   };
 
+  const downloadPdf = async () => {
+    const { auditRowsToPdf } = await import("@/lib/fddAuditReportPdf");
+    const f = [search && `search "${search}"`, from && `from ${from}`, to && `to ${to}`, signedOnly && "signed agreements only"].filter(Boolean).join(", ");
+    const url = URL.createObjectURL(auditRowsToPdf(rows, f));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `FDD-Audit-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -70,6 +81,7 @@ export function FddAuditReportDialog() {
           <label className="text-xs text-muted-foreground">to<Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" /></label>
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={signedOnly} onCheckedChange={(v) => setSignedOnly(v === true)} /> Only signed agreements</label>
           <Button size="sm" onClick={download} disabled={!rows.length} className="ml-auto"><Download size={14} /> Download CSV</Button>
+          <Button size="sm" variant="outline" onClick={downloadPdf} disabled={!rows.length}><Download size={14} /> Download PDF</Button>
         </div>
         <div className="overflow-auto border rounded-md flex-1">
           {q.isLoading ? (

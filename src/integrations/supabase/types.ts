@@ -455,6 +455,9 @@ export type Database = {
           duration_minutes: number
           event_type: string
           google_event_id: string | null
+          google_notice_before: Json | null
+          google_sync_pending: boolean
+          google_sync_revision: string
           id: string
           meet_url: string | null
           notes: string | null
@@ -474,6 +477,9 @@ export type Database = {
           duration_minutes?: number
           event_type?: string
           google_event_id?: string | null
+          google_notice_before?: Json | null
+          google_sync_pending?: boolean
+          google_sync_revision?: string
           id?: string
           meet_url?: string | null
           notes?: string | null
@@ -493,6 +499,9 @@ export type Database = {
           duration_minutes?: number
           event_type?: string
           google_event_id?: string | null
+          google_notice_before?: Json | null
+          google_sync_pending?: boolean
+          google_sync_revision?: string
           id?: string
           meet_url?: string | null
           notes?: string | null

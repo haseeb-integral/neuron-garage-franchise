@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CalendarProviderError, replacementEventId, syncCalendarCall, type CalendarCall } from '../../supabase/functions/google-calendar-event/lifecycle';
+import { replacementEventId, syncCalendarCall, type CalendarCall } from '../../supabase/functions/google-calendar-event/lifecycle';
 
 const call: CalendarCall = {
   id: '8c664e96-3ec7-4445-abbd-da81e36ad02a', title: 'Initial Qualification', notes: 'Agenda',
@@ -57,7 +57,7 @@ describe('Google call lifecycle', () => {
   });
   it('keeps provider status and failure text rather than masking failed cancellation', async () => {
     const request = vi.fn().mockResolvedValue(response({ error: 'Forbidden' }, 403));
-    await expect(syncCalendarCall(call, attendee, request, true)).rejects.toMatchObject<Partial<CalendarProviderError>>({ status: 403, details: '{"error":"Forbidden"}' });
+    await expect(syncCalendarCall(call, attendee, request, true)).rejects.toMatchObject({ status: 403, details: '{"error":"Forbidden"}' });
   });
   it('treats an already-canceled invite as a successful retry', async () => {
     const request = vi.fn().mockResolvedValue(response({}, 410));

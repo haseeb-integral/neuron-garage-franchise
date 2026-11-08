@@ -58,10 +58,9 @@ export async function syncCalendarCall(
     return { google_event_id: call.google_event_id, meet_url: call.meet_url, operation: 'unchanged' };
   }
   if (removing || call.status === 'canceled') {
-    if (call.google_event_id) {
-      const response = await request('DELETE', `/events/${encodeURIComponent(call.google_event_id)}?sendUpdates=all`);
-      if (!response.ok && response.status !== 404 && response.status !== 410) await readEvent(response);
-    }
+    const id = call.google_event_id ?? call.id.replaceAll('-', '');
+    const response = await request('DELETE', `/events/${encodeURIComponent(id)}?sendUpdates=all`);
+    if (!response.ok && response.status !== 404 && response.status !== 410) await readEvent(response);
     return { google_event_id: call.google_event_id, meet_url: null, operation: 'canceled' };
   }
   if (call.status !== 'scheduled') throw new Error('Only scheduled calls get an invite');

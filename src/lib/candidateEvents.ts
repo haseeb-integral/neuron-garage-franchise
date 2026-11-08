@@ -222,7 +222,11 @@ export async function syncProcessCallEvent(
 
   const complete = !!(details.date && details.time && details.timeZone);
   if (!complete) {
-    if (!existing || existing.status === "canceled") return "unchanged";
+    if (!existing) return "unchanged";
+    if (existing.status === "canceled") {
+      await syncLinkedGoogleEvent(existing.id);
+      return "unchanged";
+    }
     await updateEvent(existing.id, { status: "canceled" });
     return "canceled";
   }

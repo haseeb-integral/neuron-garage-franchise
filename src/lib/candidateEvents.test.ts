@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { processCallStartsAt, syncProcessCallEvent } from "./candidateEvents";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { deleteEvent, processCallStartsAt, syncProcessCallEvent, updateEvent } from "./candidateEvents";
 
-const mock = vi.hoisted(() => ({ upsert: vi.fn(), eq: vi.fn() }));
+const mock = vi.hoisted(() => ({ upsert: vi.fn(), eq: vi.fn(), update: vi.fn(), remove: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   auth: { getUser: async () => ({ data: { user: { email: "staff@example.com" } } }) },
-  from: () => ({ select: () => ({ eq: mock.eq }), upsert: mock.upsert }),
+  from: () => ({ select: () => ({ eq: mock.eq }), upsert: mock.upsert, update: mock.update, delete: mock.remove }),
+  functions: { invoke: mock.invoke },
 } }));
 
 describe("processCallStartsAt", () => {
@@ -25,6 +26,41 @@ describe("processCallStartsAt", () => {
     expect(() => processCallStartsAt("2026-03-08", "02:30", "ET (Eastern)")).toThrow(
       "does not exist",
     );
+  });
+});
+
+describe('linked Google call saving', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: 'google-id', notify_prospect: false, status: 'scheduled' }, error: null }) });
+    mock.update.mockReturnValue({ eq: async () => ({ error: null }) });
+    mock.remove.mockReturnValue({ eq: async () => ({ error: null }) });
+    mock.invoke.mockResolvedValue({ data: { meet_url: 'https://meet.google.com/test-link' }, error: null });
+  });
+  it('syncs edits while leaving the no-app-email setting unchanged', async () => {
+    await updateEvent('call-id', { starts_at: '2026-11-11T20:00:00Z', duration_minutes: 60 });
+    expect(mock.update).toHaveBeenCalledWith({ starts_at: '2026-11-11T20:00:00Z', duration_minutes: 60 });
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'sync' } });
+  });
+  it('does not delete the saved Google ID when cancellation fails', async () => {
+    mock.invoke.mockResolvedValue({ data: { error: 'Calendar unavailable' }, error: null });
+    await expect(deleteEvent('call-id')).rejects.toThrow('Call not deleted');
+    expect(mock.remove).not.toHaveBeenCalled();
+  });
+  it('deletes locally only after Google cancellation succeeds', async () => {
+    await deleteEvent('call-id');
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'delete' } });
+    expect(mock.invoke.mock.invocationCallOrder[0]).toBeLessThan(mock.remove.mock.invocationCallOrder[0]);
+  });
+  it('does not create invites for ordinary unlinked calls in Phase A', async () => {
+    mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: null, notify_prospect: true, status: 'scheduled' }, error: null }) });
+    await updateEvent('call-id', { notes: 'Updated' });
+    expect(mock.invoke).not.toHaveBeenCalled();
+  });
+  it('preserves completed Google history without a provider update', async () => {
+    mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: 'google-id', notify_prospect: false, status: 'completed' }, error: null }) });
+    await updateEvent('call-id', { status: 'completed' });
+    expect(mock.invoke).not.toHaveBeenCalled();
   });
 });
 

@@ -3,6 +3,7 @@ import { Candidate, QualificationScores } from "@/data/pipelineData";
 import { StarRating } from "./StarRating";
 import { Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { computeComposite, getEffectivePillarScores } from "@/lib/candidateScoring";
@@ -162,24 +163,22 @@ export function QualificationSection({ candidate, onScoresReplace }: Props) {
                   }}
                 />
               ) : noteVal.trim() ? (
-                <button
+                <Button size="sm"
                   type="button"
-                  className="flex items-start gap-1.5 text-left text-xs hover:underline"
-                  style={{ color: "#6c757d" }}
+                  className="h-auto whitespace-normal items-start gap-1.5 text-left text-xs"
                   onClick={() => setOpenNotes((s) => new Set(s).add(c.key as string))}
                 >
                   <Pencil size={12} className="mt-0.5 shrink-0" />
                   <span>{noteVal}</span>
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button size="sm"
                   type="button"
-                  className="text-xs hover:underline"
-                  style={{ color: "#003c7e" }}
+                  className="text-xs"
                   onClick={() => setOpenNotes((s) => new Set(s).add(c.key as string))}
                 >
                   + Add note
-                </button>
+                </Button>
               )}
             </div>
           );

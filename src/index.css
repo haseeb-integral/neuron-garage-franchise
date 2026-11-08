@@ -17,6 +17,8 @@
 
     --primary: 27 98% 54%;
     --primary-foreground: 0 0% 100%;
+    --pipeline-action: 225 82% 50%; /* Existing app blue: #174BE8 */
+    --pipeline-action-foreground: 0 0% 100%;
 
     --secondary: 210 14% 89%;
     --secondary-foreground: 210 11% 25%;
@@ -199,6 +201,27 @@ button[role="checkbox"]:focus-visible {
 }
 
 /* Neuron AI typing indicator dots */
+/* Pipeline actions share one color, including React-portaled windows.
+   Important overrides legacy inline colors and status-colored button variants. */
+[data-pipeline-button="action"] {
+  background-color: hsl(var(--pipeline-action)) !important;
+  color: hsl(var(--pipeline-action-foreground)) !important;
+  border-color: hsl(var(--pipeline-action)) !important;
+}
+[data-pipeline-button="action"]:hover:not(:disabled) {
+  background-color: hsl(var(--pipeline-action) / 0.9) !important;
+}
+[data-pipeline-button]:focus-visible {
+  outline: 2px solid hsl(var(--pipeline-action));
+  outline-offset: 2px;
+}
+[data-pipeline-button="icon"] {
+  color: hsl(var(--pipeline-action)) !important;
+}
+[data-pipeline-button="icon"]:hover:not(:disabled) {
+  background-color: hsl(var(--pipeline-action) / 0.1) !important;
+}
+
 @keyframes neuron-dot {
   0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-2px); }

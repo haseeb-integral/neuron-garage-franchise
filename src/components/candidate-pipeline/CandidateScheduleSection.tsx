@@ -97,24 +97,22 @@ export function CandidateScheduleSection({ candidate }: Props) {
                   </div>
                 </div>
                 {ev.status === "scheduled" && (
-                  <button
+                  <Button size="sm"
                     onClick={() => markDone(ev)}
                     className="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-white/60 flex items-center gap-1"
-                    style={{ color: "#20c997" }}
                   >
                     <Check size={12} /> Done
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button size="sm"
                   onClick={() => {
                     setEditing(ev);
                     setOpen(true);
                   }}
                   className="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-white/60"
-                  style={{ color: "#174be8" }}
                 >
                   Edit
-                </button>
+                </Button>
               </div>
             );
           })}

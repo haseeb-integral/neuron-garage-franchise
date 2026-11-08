@@ -7,6 +7,7 @@ import { CANDIDATE_CSV_COLUMNS, parseStage } from "@/lib/candidatePipelineCsv";
 import { toDbStage } from "@/lib/stageDbMapping";
 import { FIT_TAGS } from "@/constants/fitTags";
 import { candidatesToCsv } from "@/lib/candidatePipelineCsv";
+import { Button } from "@/components/ui/button";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -262,7 +263,7 @@ export function CandidateImportWizard({
               <div>
                 <div className="font-bold">How it works</div>
                 <div className="mt-0.5">First Name, Last Name and Email are required. Column names are matched to the download format (spaces and case are ignored). Score and date columns are ignored.</div>
-                <button onClick={downloadTemplate} className="mt-1 font-bold underline">Download a blank template</button>
+                <Button size="sm" onClick={downloadTemplate} className="mt-1 font-bold">Download a blank template</Button>
               </div>
             </div>
           </div>
@@ -274,9 +275,9 @@ export function CandidateImportWizard({
 
           {rawRows.length > 0 && staged.length === 0 && (
             <div className="flex justify-end">
-              <button disabled={checking} onClick={review} className="rounded-lg px-4 py-2 text-xs font-black text-white disabled:opacity-50" style={{ backgroundColor: "#174be8" }}>
+              <Button disabled={checking} onClick={review} className="px-4 py-2 text-xs font-black disabled:opacity-50">
                 {checking ? <span className="flex items-center gap-2"><Loader2 size={12} className="animate-spin" /> Checking…</span> : "Review rows"}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -308,9 +309,9 @@ export function CandidateImportWizard({
                             : <span className="inline-flex items-center gap-1 font-bold" style={{ color: "#ef4444" }} title={r.reason}><AlertTriangle size={11} /> {r.reason}</span>}
                         </td>
                         <td className="text-right">
-                          <button disabled={!!done} onClick={() => toggleRow(i)} className="rounded-md border px-2 py-1 text-[10px] font-bold disabled:opacity-40" style={{ borderColor: "#dbe4f2", color: "#174be8" }}>
+                          <Button size="sm" disabled={!!done} onClick={() => toggleRow(i)} className="px-2 py-1 text-[10px] font-bold disabled:opacity-40">
                             {r.qa === "approved" ? "Skip" : "Include"}
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -323,18 +324,18 @@ export function CandidateImportWizard({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="flex items-center gap-2 font-black"><CheckCircle2 size={14} /> Imported {done.inserted}, skipped {done.rejected}</span>
                     <div className="flex items-center gap-2">
-                      <button onClick={undoImport} disabled={undoing} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 font-black disabled:opacity-50" style={{ borderColor: "#ef4444", color: "#ef4444", backgroundColor: "#ffffff" }}>
+                      <Button size="sm" onClick={undoImport} disabled={undoing} className="gap-1 px-3 py-1.5 font-black disabled:opacity-50">
                         {undoing ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} />} Undo this import
-                      </button>
-                      <button onClick={onClose} className="rounded-lg px-3 py-1.5 font-black text-white" style={{ backgroundColor: "#174be8" }}>Close</button>
+                      </Button>
+                      <Button size="sm" onClick={onClose} className="px-3 py-1.5 font-black">Close</Button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="flex justify-end">
-                  <button onClick={runImport} disabled={importing || counts.approved === 0} className="rounded-lg px-4 py-2 text-xs font-black text-white disabled:opacity-50" style={{ backgroundColor: "#174be8" }}>
+                  <Button onClick={runImport} disabled={importing || counts.approved === 0} className="px-4 py-2 text-xs font-black disabled:opacity-50">
                     {importing ? <span className="flex items-center gap-2"><Loader2 size={12} className="animate-spin" /> Importing…</span> : `Import ${counts.approved} candidates`}
-                  </button>
+                  </Button>
                 </div>
               )}
             </>

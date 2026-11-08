@@ -178,13 +178,13 @@ export function CandidateCalendar({ candidates, onOpenCandidate }: Props) {
             >
               <ChevronLeft size={16} />
             </button>
-            <button
+            <Button size="sm"
               onClick={() => setCursor(new Date())}
               className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f3f6fb]"
               style={{ color: "#174be8" }}
             >
               Today
-            </button>
+            </Button>
             <button
               onClick={() => step(1)}
               className="p-1 rounded-md hover:bg-[#f3f6fb]"
@@ -319,21 +319,21 @@ export function CandidateCalendar({ candidates, onOpenCandidate }: Props) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
+                    <Button size="sm"
                       onClick={() => openEdit(ev)}
                       className="text-xs font-medium px-2 py-1 rounded-md hover:bg-white/60"
                       style={{ color: "#174be8" }}
                     >
                       Edit
-                    </button>
+                    </Button>
                     {cand && (
-                      <button
+                      <Button size="sm"
                         onClick={() => onOpenCandidate(cand)}
                         className="text-xs font-medium px-2 py-1 rounded-md hover:bg-white/60"
                         style={{ color: "#526078" }}
                       >
                         Open card
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

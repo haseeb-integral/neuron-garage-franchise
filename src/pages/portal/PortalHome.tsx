@@ -15,7 +15,7 @@ import { formForItem } from "@/lib/portalForms/logic";
 import logo from "@/assets/neuron-garage-logo.png";
 import { usePortalPathRefresh } from "@/hooks/usePortalPathRefresh";
 import { fddAccessAllowed } from "@/lib/fddPortalAccess";
-import { safeMeetUrl } from "../../..//supabase/functions/_shared/portalNoticeRules";
+import { safeMeetUrl } from "../../../supabase/functions/_shared/portalNoticeRules";
 
 interface PathData {
   first_name: string | null;

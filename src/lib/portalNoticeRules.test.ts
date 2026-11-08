@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { opensStep, callNotice, callTemplateData } from '../../supabase/functions/_shared/portalNoticeRules';
+import { opensStep, callNotice, callTemplateData, callReadyForNotice, safeMeetUrl } from '../../supabase/functions/_shared/portalNoticeRules';
 describe('prospect notice rules', () => {
   it('opens step 3 when FDD review advances to immersion', () => {
     expect(opensStep('fdd_review', 'immersion')).toBe(3);
@@ -30,5 +30,26 @@ describe('prospect notice rules', () => {
     expect(Object.keys(result).sort()).toEqual(['callTitle','dateTime','duration','firstName','hostName']);
     expect(result.dateTime).toContain('3:00:00 PM MDT');
     expect(JSON.stringify(result)).not.toContain('Private staff note');
+  });
+});
+describe('Google call email safeguards', () => {
+  const starts_at = '2026-11-11T21:00:00Z';
+  const live = { starts_at, status: 'scheduled', notify_prospect: true, google_sync_pending: false, meet_url: 'https://meet.google.com/abc-defg-hij' };
+  it('waits for the Google result before sending', () => {
+    expect(callReadyForNotice(starts_at, { ...live, google_sync_pending: true })).toBe(false);
+    expect(callReadyForNotice(starts_at, { ...live, meet_url: null })).toBe(false);
+    expect(callReadyForNotice(starts_at, live)).toBe(true);
+  });
+  it('keeps Step 1 Google-only calls out of app emails', () => {
+    expect(callReadyForNotice(starts_at, { ...live, notify_prospect: false })).toBe(false);
+  });
+  it('rejects moved and canceled saved notices', () => {
+    expect(callReadyForNotice('2026-11-11T22:00:00Z', live)).toBe(false);
+    expect(callReadyForNotice(starts_at, { ...live, status: 'canceled' })).toBe(false);
+  });
+  it('includes only a safe Google Meet link in email data', () => {
+    expect(callTemplateData({ ...live, duration_minutes: 30 }, 'Sam').meetUrl).toBe(live.meet_url);
+    expect(safeMeetUrl('https://meet.google.com.evil.example/a')).toBeUndefined();
+    expect(safeMeetUrl('javascript:alert(1)')).toBeUndefined();
   });
 });

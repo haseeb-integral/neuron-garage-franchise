@@ -52,10 +52,10 @@ describe('linked Google call saving', () => {
     expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'delete' } });
     expect(mock.invoke.mock.invocationCallOrder[0]).toBeLessThan(mock.remove.mock.invocationCallOrder[0]);
   });
-  it('does not create invites for ordinary unlinked calls in Phase A', async () => {
+  it('creates invites for ordinary unlinked calls in Phase B', async () => {
     mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: null, notify_prospect: true, status: 'scheduled' }, error: null }) });
     await updateEvent('call-id', { notes: 'Updated' });
-    expect(mock.invoke).not.toHaveBeenCalled();
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'sync' } });
   });
   it('preserves completed Google history without a provider update', async () => {
     mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: 'google-id', notify_prospect: false, status: 'completed' }, error: null }) });
@@ -66,15 +66,16 @@ describe('linked Google call saving', () => {
 
 describe("Step 2 next-call saving", () => {
   it("saves one Step 3 call linked to its Step 2 source", async () => {
-    mock.eq.mockReturnValue({ eq: mock.eq, maybeSingle: async () => ({ data: null, error: null }) });
-    mock.upsert.mockResolvedValue({ error: null });
+    mock.eq.mockReturnValue({ eq: mock.eq, maybeSingle: async () => ({ data: { id: 'saved-call', status: 'scheduled', notify_prospect: true }, error: null }) });
+    mock.upsert.mockReturnValue({ select: () => ({ single: async () => ({ data: { id: 'saved-call' }, error: null }) }) });
     expect(await syncProcessCallEvent("candidate", 2, "Business Immersion & Evaluation", {
       date: "2026-11-10", time: "15:00", timeZone: "MT (Mountain)",
-    })).toBe("created");
+    })).toBe("updated");
     expect(mock.upsert).toHaveBeenCalledWith(expect.objectContaining({
       candidate_id: "candidate", source_process_step: 2,
       starts_at: "2026-11-10T22:00:00.000Z", event_type: "call",
       title: "Step 3 — Business Immersion & Evaluation",
     }), { onConflict: "candidate_id,source_process_step" });
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'saved-call', action: 'sync' } });
   });
 });

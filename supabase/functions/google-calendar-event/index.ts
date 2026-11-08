@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400)
 
     const { data: ev, error: eErr } = await admin.from('candidate_events')
-      .select('id,candidate_id,title,notes,starts_at,duration_minutes,status,google_event_id,meet_url')
+      .select('id,candidate_id,title,notes,starts_at,duration_minutes,status,google_event_id,meet_url,google_sync_revision')
       .eq('id', parsed.data.event_id).maybeSingle()
     if (eErr || !ev) return json({ error: 'Event not found' }, 404)
     const { data: cand } = await admin.from('candidates')
@@ -50,13 +50,16 @@ Deno.serve(async (req) => {
         headers: { Authorization: `Bearer ${LOVABLE}`, 'X-Connection-Api-Key': GCAL, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
       }), parsed.data.action === 'delete')
-    const { error: saveError } = await admin.from('candidate_events').update({
+    const { data: saved, error: saveError } = await admin.from('candidate_events').update({
       google_event_id: result.google_event_id, meet_url: result.meet_url,
-    }).eq('id', ev.id)
+      google_sync_pending: ev.status === 'scheduled' && !result.meet_url,
+      ...(result.meet_url ? { google_notice_before: null } : {}),
+    }).eq('id', ev.id).eq('google_sync_revision', ev.google_sync_revision).select('id').maybeSingle()
     if (saveError) {
       console.error('Google call result save failed', saveError.code)
       return json({ error: 'Google changed the invite, but the app could not save the result. Please retry this call.' }, 500)
     }
+    if (!saved) return json({ error: 'This call changed while Google was updating. Save it again to sync the latest details.' }, 409)
     return json(result)
   } catch (e) {
     console.error(e)

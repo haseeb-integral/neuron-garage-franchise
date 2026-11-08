@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { CalendarProviderError, syncCalendarCall } from './lifecycle.ts'
+import { savedResultMatches } from './savedResult.ts'
 
 // Shared "Shared NG Franchise Development" calendar (owner: sam.reed@neurongarage.com).
 const CALENDAR_ID = 'c_2657dd51a7eb8df6bb86775a5b4aa780644ed97abb01fd24ca65ada54b09140a@group.calendar.google.com'
@@ -59,7 +60,14 @@ Deno.serve(async (req) => {
       console.error('Google call result save failed', saveError.code)
       return json({ error: 'Google changed the invite, but the app could not save the result. Please retry this call.' }, 500)
     }
-    if (!saved) return json({ error: 'This call changed while Google was updating. Save it again to sync the latest details.' }, 409)
+    if (!saved) {
+      const { data: live, error: readError } = await admin.from('candidate_events')
+        .select('candidate_id,title,notes,starts_at,duration_minutes,status,google_event_id,meet_url,google_sync_pending')
+        .eq('id', ev.id).maybeSingle()
+      if (readError) return json({ error: 'Could not confirm the saved call. Please refresh and try again.' }, 500)
+      if (savedResultMatches(ev, live, result, parsed.data.action === 'delete')) return json({ ...result, operation: 'unchanged' })
+      return json({ conflict: true, message: 'This call changed while Google was updating. Reopen the call to review its latest details, then save it again.' })
+    }
     return json(result)
   } catch (e) {
     console.error(e)

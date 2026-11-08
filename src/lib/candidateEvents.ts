@@ -110,6 +110,10 @@ async function syncLinkedGoogleEvent(id: string, action: "sync" | "delete" = "sy
   const { data: result, error: invokeError } = await supabase.functions.invoke("google-calendar-event", {
     body: { event_id: id, action },
   });
+  if (result?.conflict) {
+    window.dispatchEvent(new Event("candidate-events-changed"));
+    throw new Error(result.message ?? "This call changed. Reopen it to review the latest details before saving again.");
+  }
   if (invokeError || result?.error) {
     let detail = result?.error ?? invokeError?.message;
     if (invokeError instanceof FunctionsHttpError) {

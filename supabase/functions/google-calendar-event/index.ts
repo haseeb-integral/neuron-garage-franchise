@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
+import { CalendarProviderError, syncCalendarCall } from './lifecycle.ts'
 
 // Shared "Shared NG Franchise Development" calendar (owner: sam.reed@neurongarage.com).
 const CALENDAR_ID = 'c_2657dd51a7eb8df6bb86775a5b4aa780644ed97abb01fd24ca65ada54b09140a@group.calendar.google.com'
@@ -9,14 +10,16 @@ const GATEWAY = 'https://connector-gateway.lovable.dev/google_calendar/calendar/
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
-const Body = z.object({ event_id: z.string().uuid() })
+const Body = z.object({ event_id: z.string().uuid(), action: z.enum(['sync', 'delete']).default('sync') }).strict()
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   try {
-    const URL_ = Deno.env.get('SUPABASE_URL')!
-    const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
-    const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const URL_ = Deno.env.get('SUPABASE_URL')
+    const ANON = Deno.env.get('SUPABASE_ANON_KEY')
+    const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!URL_ || !ANON || !SERVICE) return json({ error: 'Server configuration error' }, 500)
     const LOVABLE = Deno.env.get('LOVABLE_API_KEY')
     const GCAL = Deno.env.get('GOOGLE_CALENDAR_API_KEY')
     if (!LOVABLE || !GCAL) return json({ error: 'Google Calendar is not connected' }, 500)
@@ -27,51 +30,37 @@ Deno.serve(async (req) => {
     const { data: claims, error: cErr } = await userClient.auth.getClaims(auth.slice(7))
     if (cErr || !claims?.claims?.sub) return json({ error: 'Not signed in' }, 401)
     const admin = createClient(URL_, SERVICE)
-    const { data: staff } = await admin.rpc('is_staff', { _user_id: claims.claims.sub })
-    if (!staff) return json({ error: 'Staff only' }, 403)
+    const { data: staff, error: roleError } = await admin.rpc('is_staff', { _user_id: claims.claims.sub })
+    if (roleError || !staff) return json({ error: 'Staff only' }, 403)
 
-    const parsed = Body.safeParse(await req.json())
+    const parsed = Body.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400)
 
     const { data: ev, error: eErr } = await admin.from('candidate_events')
       .select('id,candidate_id,title,notes,starts_at,duration_minutes,status,google_event_id,meet_url')
       .eq('id', parsed.data.event_id).maybeSingle()
     if (eErr || !ev) return json({ error: 'Event not found' }, 404)
-    if (ev.google_event_id) return json({ google_event_id: ev.google_event_id, meet_url: ev.meet_url })
-    if (ev.status !== 'scheduled') return json({ error: 'Only scheduled calls get an invite' }, 400)
-
     const { data: cand } = await admin.from('candidates')
       .select('first_name,last_name,email').eq('id', ev.candidate_id).maybeSingle()
-    if (!cand?.email) return json({ error: 'This prospect has no email address' }, 400)
-
-    const start = new Date(ev.starts_at)
-    const end = new Date(start.getTime() + (ev.duration_minutes || 30) * 60000)
-    const res = await fetch(
-      `${GATEWAY}/calendars/${encodeURIComponent(CALENDAR_ID)}/events?conferenceDataVersion=1&sendUpdates=all`,
-      {
-        method: 'POST',
+    const result = await syncCalendarCall(ev, cand?.email ? {
+      email: cand.email, displayName: `${cand.first_name ?? ''} ${cand.last_name ?? ''}`.trim(),
+    } : null, (method, path, body) => fetch(
+      `${GATEWAY}/calendars/${encodeURIComponent(CALENDAR_ID)}${path}`, {
+        method,
         headers: { Authorization: `Bearer ${LOVABLE}`, 'X-Connection-Api-Key': GCAL, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          summary: `${ev.title} — Neuron Garage`,
-          description: ev.notes ?? '',
-          start: { dateTime: start.toISOString() },
-          end: { dateTime: end.toISOString() },
-          attendees: [{ email: cand.email, displayName: `${cand.first_name ?? ''} ${cand.last_name ?? ''}`.trim() }],
-          conferenceData: { createRequest: { requestId: ev.id, conferenceSolutionKey: { type: 'hangoutsMeet' } } },
-        }),
-      },
-    )
-    const text = await res.text()
-    if (!res.ok) {
-      console.error(`Google event create failed [${res.status}]: ${text}`)
-      return json({ error: 'Google Calendar request failed', status: res.status, details: text }, 502)
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      }), parsed.data.action === 'delete')
+    const { error: saveError } = await admin.from('candidate_events').update({
+      google_event_id: result.google_event_id, meet_url: result.meet_url,
+    }).eq('id', ev.id)
+    if (saveError) {
+      console.error('Google call result save failed', saveError.code)
+      return json({ error: 'Google changed the invite, but the app could not save the result. Please retry this call.' }, 500)
     }
-    const g = JSON.parse(text)
-    const meet = g.hangoutLink ?? g.conferenceData?.entryPoints?.find((p: any) => p.entryPointType === 'video')?.uri ?? null
-    await admin.from('candidate_events').update({ google_event_id: g.id, meet_url: meet }).eq('id', ev.id)
-    return json({ google_event_id: g.id, meet_url: meet })
+    return json(result)
   } catch (e) {
     console.error(e)
+    if (e instanceof CalendarProviderError) return json({ error: 'Google Calendar request failed', status: e.status, details: e.details }, e.status)
     return json({ error: e instanceof Error ? e.message : 'Unexpected error' }, 500)
   }
 })

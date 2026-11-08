@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
       stepTitle: z.string().max(255).optional(), callTitle: z.string().max(255).optional(),
       dateTime: z.string().max(255).optional(), hostName: z.string().max(255).nullable().optional(),
       duration: z.number().int().positive().max(480).optional(),
+      meetUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === 'https:' && url.hostname === 'meet.google.com' && !url.username && !url.password }).optional(),
     }).strict()
     const parsed = NoticeData.safeParse(templateData)
     if (!parsed.success || parsed.data.candidateId !== dispatch.candidate_id || !z.string().email().safeParse(effectiveRecipient).success || !idempotencyKey.startsWith('portal-')) {

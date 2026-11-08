@@ -20,9 +20,21 @@ export function callTemplateData(row: Record<string, unknown>, firstName: string
   return {
     firstName, callTitle: String(row.title ?? 'Neuron Garage call'), hostName,
     duration: Number(row.duration_minutes),
+    ...(safeMeetUrl(row.meet_url) ? { meetUrl: safeMeetUrl(row.meet_url) } : {}),
     dateTime: new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', dateStyle: 'full', timeStyle: 'long' })
       .format(new Date(String(row.starts_at))),
   }
+}
+export function safeMeetUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.hostname === 'meet.google.com' && !url.username && !url.password ? url.href : undefined
+  } catch { return undefined }
+}
+export function callReadyForNotice(savedStartsAt: string, live: { status: string; starts_at: string; notify_prospect: boolean; google_sync_pending: boolean; meet_url: string | null } | null): boolean {
+  return !!live && live.status === 'scheduled' && live.notify_prospect && !live.google_sync_pending
+    && !!safeMeetUrl(live.meet_url) && new Date(savedStartsAt).getTime() === new Date(live.starts_at).getTime()
 }
 // Day-before reminder: the call must still be scheduled at the same saved time,
 // and its Mountain-time calendar date must be the day after "now".

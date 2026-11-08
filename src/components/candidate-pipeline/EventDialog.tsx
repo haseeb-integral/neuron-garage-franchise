@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -158,12 +157,7 @@ export function EventDialog({
           ...(googleInviteOnly ? { notify_prospect: false } : {}),
         });
         if (googleInviteOnly) {
-          const { data: g, error: gErr } = await supabase.functions.invoke("google-calendar-event", { body: { event_id: created.id } });
-          if (gErr || !g?.meet_url) {
-            toast.error("Call saved, but the Google invite or Meet link is not ready. Open this call and save it again to retry.", { duration: 10000 });
-          } else {
-            toast.success("Google invite sent with a Meet link", { description: g.meet_url, duration: 8000 });
-          }
+          toast.success("Google invite sent with a Meet link", { duration: 8000 });
         }
         await logActivity(
           candidateId,
@@ -177,6 +171,8 @@ export function EventDialog({
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Could not save the event");
+      onSaved();
+      if (!editing && e?.message?.startsWith("Call saved")) onOpenChange(false);
     } finally {
       setSaving(false);
     }

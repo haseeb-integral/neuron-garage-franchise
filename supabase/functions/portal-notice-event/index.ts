@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
-import { opensStep, callNotice, callTemplateData, reminderDue, NOTICE_STEP_TITLES } from '../_shared/portalNoticeRules.ts'
+import { opensStep, callNotice, callTemplateData, reminderDue, callReadyForNotice, NOTICE_STEP_TITLES } from '../_shared/portalNoticeRules.ts'
 
 const Reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,11 +54,13 @@ Deno.serve(async req => {
     idempotencyKey = `portal-step-${cid}-${step}`
     templateData = { candidateId: cid, firstName: cand.first_name ?? '', stepTitle: NOTICE_STEP_TITLES[step] }
   } else {
+    const { data: live, error: liveError } = await admin.from('candidate_events')
+      .select('status,starts_at,notify_prospect,google_sync_pending,meet_url').eq('id', event.after.id).maybeSingle()
+    if (liveError) return Reply({ error: 'Call lookup failed' }, 500)
+    if (!callReadyForNotice(event.after.starts_at, live)) return Reply({ skipped: 'call_not_ready_or_changed' })
     let notice: string | null
     if (event.kind === 'reminder') {
       // Re-check the live call right before sending: canceled, done, or moved calls get no reminder.
-      const { data: live, error } = await admin.from('candidate_events').select('status,starts_at').eq('id', event.after.id).maybeSingle()
-      if (error) return Reply({ error: 'Call lookup failed' }, 500)
       if (!reminderDue(event.after.starts_at, live, new Date())) {
         await admin.from('portal_notice_dispatches').update({ delivered_at: new Date().toISOString() }).eq('id', request.data.dispatch_id)
         return Reply({ skipped: 'reminder_not_due' })
@@ -74,7 +76,7 @@ Deno.serve(async req => {
     }
     templateName = notice
     idempotencyKey = `portal-${notice}-${event.after.id}-${new Date(event.after.starts_at).toISOString()}`
-    templateData = { candidateId: cid, ...callTemplateData(event.after, cand.first_name ?? '', hostName) }
+    templateData = { candidateId: cid, ...callTemplateData({ ...event.after, meet_url: live?.meet_url }, cand.first_name ?? '', hostName) }
   }
   const { data, error } = await admin.functions.invoke('send-transactional-email', {
     body: { templateName, idempotencyKey, recipientEmail: account.user.email, templateData,

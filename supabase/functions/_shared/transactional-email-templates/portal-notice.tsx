@@ -9,6 +9,7 @@ interface Props {
   dateTime?: string
   hostName?: string
   duration?: number
+  meetUrl?: string
 }
 // Email clients require inline styling; these tokens mirror the portal theme.
 const theme = { background: '#ffffff', navy: 'hsl(214, 64%, 20%)', yellow: 'hsl(45, 96%, 56%)', foreground: 'hsl(210, 11%, 25%)' }
@@ -31,7 +32,7 @@ export const portalPreview = {
   dateTime: 'Wednesday, October 28, 2026 at 3:00 PM Mountain Time', hostName: 'Sam Reed', duration: 30,
 }
 export function noticeComponent(kind: NoticeKind) {
-  return function PortalNotice({ firstName, stepTitle, callTitle, dateTime, hostName, duration }: Props) {
+  return function PortalNotice({ firstName, stepTitle, callTitle, dateTime, hostName, duration, meetUrl }: Props) {
     const call = callTitle || 'Neuron Garage call'
     const time = dateTime || 'the time shown in your portal'
     const details = hostName && duration ? `You'll meet with ${hostName}, and we've set aside ${duration} minutes.` : hostName ? `You'll meet with ${hostName}.` : duration ? `We've set aside ${duration} minutes.` : null
@@ -46,6 +47,7 @@ export function noticeComponent(kind: NoticeKind) {
         </> : <>
           <Text style={styles.text}>{kind === 'booked' ? `Your ${call} is booked for ${time}. We're looking forward to taking the next step with you.` : kind === 'moved' ? `We've updated your ${call}. The new time is ${time}.` : `We're looking forward to your ${call} tomorrow at ${time}.`}</Text>
           {details && <Text style={styles.text}>{details}</Text>}
+          {meetUrl && <Button href={meetUrl} style={styles.button}>Join Google Meet</Button>}
           <Text style={styles.text}>{kind === 'booked' ? 'Before we talk, check your portal for anything still to complete. Each conversation builds on the one before.' : kind === 'moved' ? 'Your portal has the latest details. We look forward to continuing the conversation.' : 'Take a quick look at your portal for any remaining tasks before we talk. See you tomorrow!'}</Text>
         </>}
         <Button href="https://neuron-garage-franchise.lovable.app/portal" style={styles.button}>{labels[kind].button}</Button>

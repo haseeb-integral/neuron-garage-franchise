@@ -15,12 +15,13 @@ import { formForItem } from "@/lib/portalForms/logic";
 import logo from "@/assets/neuron-garage-logo.png";
 import { usePortalPathRefresh } from "@/hooks/usePortalPathRefresh";
 import { fddAccessAllowed } from "@/lib/fddPortalAccess";
+import { safeMeetUrl } from "../../../supabase/functions/_shared/portalNoticeRules";
 
 interface PathData {
   first_name: string | null;
   stage: string;
   step_dates: Record<string, string>;
-  next_call: { starts_at: string; duration_minutes: number; all_day: boolean; title: string; host: string | null } | null;
+  next_call: { starts_at: string; duration_minutes: number; all_day: boolean; title: string; host: string | null; meet_url?: string | null } | null;
 }
 
 const fmtDate = (iso: string) =>
@@ -230,6 +231,7 @@ function NextCallCard({ call }: { call: PathData["next_call"] }) {
             {call.duration_minutes ? <> · {call.duration_minutes} minutes</> : null}
           </div>
           {call.host && <div className="text-sm opacity-90">With {call.host}</div>}
+          {safeMeetUrl(call.meet_url) && <Button asChild variant="secondary" size="sm"><a href={safeMeetUrl(call.meet_url)} target="_blank" rel="noopener noreferrer">Join Google Meet</a></Button>}
         </div>
       ) : (
         <div>

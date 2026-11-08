@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteEvent, processCallStartsAt, syncProcessCallEvent, updateEvent } from "./candidateEvents";
+import { createEvent, deleteEvent, processCallStartsAt, syncProcessCallEvent, updateEvent } from "./candidateEvents";
 
-const mock = vi.hoisted(() => ({ upsert: vi.fn(), eq: vi.fn(), update: vi.fn(), remove: vi.fn(), invoke: vi.fn() }));
+const mock = vi.hoisted(() => ({ insert: vi.fn(), upsert: vi.fn(), eq: vi.fn(), update: vi.fn(), remove: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   auth: { getUser: async () => ({ data: { user: { email: "staff@example.com" } } }) },
-  from: () => ({ select: () => ({ eq: mock.eq }), upsert: mock.upsert, update: mock.update, delete: mock.remove }),
+  from: () => ({ insert: mock.insert, select: () => ({ eq: mock.eq }), upsert: mock.upsert, update: mock.update, delete: mock.remove }),
   functions: { invoke: mock.invoke },
 } }));
 
@@ -52,29 +52,43 @@ describe('linked Google call saving', () => {
     expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'delete' } });
     expect(mock.invoke.mock.invocationCallOrder[0]).toBeLessThan(mock.remove.mock.invocationCallOrder[0]);
   });
-  it('does not create invites for ordinary unlinked calls in Phase A', async () => {
+  it('creates invites for ordinary unlinked calls in Phase B', async () => {
     mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: null, notify_prospect: true, status: 'scheduled' }, error: null }) });
     await updateEvent('call-id', { notes: 'Updated' });
-    expect(mock.invoke).not.toHaveBeenCalled();
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'sync' } });
   });
   it('preserves completed Google history without a provider update', async () => {
     mock.eq.mockReturnValue({ maybeSingle: async () => ({ data: { google_event_id: 'google-id', notify_prospect: false, status: 'completed' }, error: null }) });
     await updateEvent('call-id', { status: 'completed' });
     expect(mock.invoke).not.toHaveBeenCalled();
   });
+  it('creates one Google invite after saving a new ordinary call', async () => {
+    mock.insert.mockReturnValue({ select: () => ({ single: async () => ({ data: { id: 'new-call' }, error: null }) }) });
+    await createEvent({ candidate_id: 'candidate', title: 'Call', event_type: 'call', starts_at: '2026-11-12T22:00:00Z', duration_minutes: 30, all_day: false });
+    expect(mock.invoke).toHaveBeenCalledTimes(1);
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'new-call', action: 'sync' } });
+    expect(mock.insert.mock.invocationCallOrder[0]).toBeLessThan(mock.invoke.mock.invocationCallOrder[0]);
+  });
 });
 
 describe("Step 2 next-call saving", () => {
   it("saves one Step 3 call linked to its Step 2 source", async () => {
-    mock.eq.mockReturnValue({ eq: mock.eq, maybeSingle: async () => ({ data: null, error: null }) });
-    mock.upsert.mockResolvedValue({ error: null });
+    mock.eq.mockReturnValue({ eq: mock.eq, maybeSingle: async () => ({ data: { id: 'saved-call', status: 'scheduled', notify_prospect: true }, error: null }) });
+    mock.upsert.mockReturnValue({ select: () => ({ single: async () => ({ data: { id: 'saved-call' }, error: null }) }) });
     expect(await syncProcessCallEvent("candidate", 2, "Business Immersion & Evaluation", {
       date: "2026-11-10", time: "15:00", timeZone: "MT (Mountain)",
-    })).toBe("created");
+    })).toBe("updated");
     expect(mock.upsert).toHaveBeenCalledWith(expect.objectContaining({
       candidate_id: "candidate", source_process_step: 2,
       starts_at: "2026-11-10T22:00:00.000Z", event_type: "call",
       title: "Step 3 — Business Immersion & Evaluation",
     }), { onConflict: "candidate_id,source_process_step" });
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'saved-call', action: 'sync' } });
+  });
+  it('creates a Google invite for a newly saved process call too', async () => {
+    mock.eq.mockReturnValueOnce({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) });
+    mock.upsert.mockReturnValue({ select: () => ({ single: async () => ({ data: { id: 'process-new' }, error: null }) }) });
+    expect(await syncProcessCallEvent('candidate', 1, 'Business Overview', { date: '2026-11-12', time: '15:00', timeZone: 'MT (Mountain)' })).toBe('created');
+    expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'process-new', action: 'sync' } });
   });
 });

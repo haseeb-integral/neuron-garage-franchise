@@ -76,7 +76,15 @@ export async function createEvent(input: CandidateEventInput): Promise<Candidate
     .select()
     .single();
   if (error) throw error;
-  return data as unknown as CandidateEvent;
+  const created = data as unknown as CandidateEvent;
+  try {
+    await syncLinkedGoogleEvent(created.id);
+  } catch (error) {
+    // Keep the saved call visible so staff can retry without creating a second one.
+    window.dispatchEvent(new Event("candidate-events-changed"));
+    throw error;
+  }
+  return created;
 }
 
 export async function updateEvent(id: string, patch: Partial<CandidateEventInput>): Promise<void> {
@@ -96,7 +104,8 @@ async function syncLinkedGoogleEvent(id: string, action: "sync" | "delete" = "sy
   const { data, error } = await supabase.from(TABLE)
     .select("google_event_id,notify_prospect,status").eq("id", id).maybeSingle();
   if (error) throw error;
-  if (!data || (!data.google_event_id && data.notify_prospect !== false)) return;
+  if (!data) return;
+  if (action === "sync" && data.status === "canceled" && !data.google_event_id) return;
   if (action === "sync" && data.status === "completed") return;
   const { data: result, error: invokeError } = await supabase.functions.invoke("google-calendar-event", {
     body: { event_id: id, action },
@@ -261,11 +270,11 @@ export async function syncProcessCallEvent(
     created_by: existing ? undefined : email,
     source_process_step: sourceStep,
   };
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from(TABLE)
-    .upsert(payload, { onConflict: "candidate_id,source_process_step" });
+    .upsert(payload, { onConflict: "candidate_id,source_process_step" }).select("id").single();
   if (error) throw error;
-  if (existing) await syncLinkedGoogleEvent(existing.id);
+  if (saved) await syncLinkedGoogleEvent(saved.id);
   return existing ? "updated" : "created";
 }
 

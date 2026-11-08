@@ -60,7 +60,7 @@ describe('Google call lifecycle', () => {
     await expect(syncCalendarCall(call, attendee, request, true)).rejects.toMatchObject({ status: 403, details: '{"error":"Forbidden"}' });
   });
   it('treats an already-canceled invite as a successful retry', async () => {
-    const request = vi.fn().mockResolvedValue(response({}, 410));
+    const request = vi.fn().mockResolvedValueOnce(response({}, 410)).mockResolvedValueOnce(response({}, 404));
     expect((await syncCalendarCall(call, null, request, true)).operation).toBe('canceled');
   });
   it('waits for a pending Meet link and does not claim one exists early', async () => {

@@ -58,10 +58,17 @@ export async function syncCalendarCall(
     return { google_event_id: call.google_event_id, meet_url: call.meet_url, operation: 'unchanged' };
   }
   if (removing || call.status === 'canceled') {
-    const id = call.google_event_id ?? call.id.replaceAll('-', '');
-    const response = await request('DELETE', `/events/${encodeURIComponent(id)}?sendUpdates=all`);
-    if (!response.ok && response.status !== 404 && response.status !== 410) await readEvent(response);
-    return { google_event_id: call.google_event_id, meet_url: null, operation: 'canceled' };
+    let id = call.google_event_id ?? call.id.replaceAll('-', '');
+    // Follow a restored invite whose Google creation succeeded but local save failed.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const response = await request('DELETE', `/events/${encodeURIComponent(id)}?sendUpdates=all`);
+      if (response.ok || response.status === 404) {
+        return { google_event_id: call.google_event_id ? id : null, meet_url: null, operation: 'canceled' };
+      }
+      if (response.status !== 410) await readEvent(response);
+      id = await replacementEventId(id);
+    }
+    throw new Error('Could not finish canceling this Google call. Please retry.');
   }
   if (call.status !== 'scheduled') throw new Error('Only scheduled calls get an invite');
   if (!attendee?.email) throw new Error('This prospect has no email address');

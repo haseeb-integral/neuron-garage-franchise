@@ -159,14 +159,13 @@ export function ContactIntakeSection({
             </span>
           </button>
           <div>
-            <button
+            <Button size="sm"
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-medium hover:underline block"
-              style={{ color: "#07142f" }}
+              className="text-xs font-medium"
             >
               {candidate.photoUrl ? "Change photo" : "Upload photo"}
-            </button>
+            </Button>
             <div className="text-[11px] mt-0.5" style={{ color: "#8893a7" }}>JPG or PNG. Auto-fits to circle.</div>
           </div>
           <input

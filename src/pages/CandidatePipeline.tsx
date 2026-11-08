@@ -1018,13 +1018,12 @@ const CandidatePipeline = () => {
 
 
         {filtersActive && (
-          <button
+          <Button size="sm"
             onClick={clearFilters}
             className="ml-auto text-xs font-medium flex items-center gap-1 px-2 py-1 rounded-md hover:bg-[#f1f3f5]"
-            style={{ color: "#dc3545" }}
           >
             <X size={12} /> Clear ({filteredCandidates.length} of {candidates.length})
-          </button>
+          </Button>
         )}
       </div>
 
@@ -1074,21 +1073,19 @@ const CandidatePipeline = () => {
         <div className="flex items-center gap-2">
           <CardLegendPopover />
           {collapsed.size > 0 && (
-            <button
+            <Button size="sm"
               onClick={() => setCollapsed(new Set())}
               className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f3f6fb]"
-              style={{ color: "#174be8" }}
             >
               Expand all
-            </button>
+            </Button>
           )}
-          <button
+          <Button size="sm"
             onClick={collapseEmpty}
             className="text-xs font-medium px-2 py-1 rounded-md hover:bg-[#f3f6fb] flex items-center gap-1"
-            style={{ color: "#526078" }}
           >
             <Minimize2 size={12} /> Collapse empty
-          </button>
+          </Button>
         </div>
         )}
       </div>

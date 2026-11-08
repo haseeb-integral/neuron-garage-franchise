@@ -47,6 +47,11 @@ describe('linked Google call saving', () => {
     await expect(deleteEvent('call-id')).rejects.toThrow('Call not deleted');
     expect(mock.remove).not.toHaveBeenCalled();
   });
+  it('keeps a real conflict as a normal call message and blocks deletion', async () => {
+    mock.invoke.mockResolvedValue({ data: { conflict: true, message: 'Reopen the changed call' }, error: null });
+    await expect(deleteEvent('call-id')).rejects.toThrow('Reopen the changed call');
+    expect(mock.remove).not.toHaveBeenCalled();
+  });
   it('deletes locally only after Google cancellation succeeds', async () => {
     await deleteEvent('call-id');
     expect(mock.invoke).toHaveBeenCalledWith('google-calendar-event', { body: { event_id: 'call-id', action: 'delete' } });

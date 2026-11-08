@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Button, PipelineButtonScope } from "@/components/ui/button";
 import { UserPlus, Rows3, Rows2, Minimize2, Filter, X, Plus, LayoutGrid, CalendarDays, Table2 } from "lucide-react";
 import { CandidateCalendar } from "@/components/candidate-pipeline/CandidateCalendar";
 import { CandidatesTable } from "@/components/candidate-pipeline/CandidatesTable";
@@ -866,7 +866,8 @@ const CandidatePipeline = () => {
   const chipInactive = { backgroundColor: "#ffffff", color: "#495057", border: "1px solid #cfe0ff" };
 
   return (
-    <div className="-mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: "#ffffff" }}>
+    <PipelineButtonScope.Provider value={true}>
+    <div className="candidate-pipeline -mx-3 md:-mx-5 lg:-mx-6 -my-3 px-3 md:px-5 lg:px-6 py-3 min-h-screen" style={{ backgroundColor: "#ffffff" }}>
       <div className="max-w-[1400px] mx-auto w-full">
       <PageHeader
         title="Candidate Pipeline"
@@ -1255,6 +1256,7 @@ const CandidatePipeline = () => {
       />
       </div>
     </div>
+    </PipelineButtonScope.Provider>
   );
 };
 

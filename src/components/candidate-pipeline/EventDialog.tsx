@@ -160,7 +160,7 @@ export function EventDialog({
         if (googleInviteOnly) {
           const { data: g, error: gErr } = await supabase.functions.invoke("google-calendar-event", { body: { event_id: created.id } });
           if (gErr || !g?.meet_url) {
-            toast.error("Call saved, but the Google invite didn't go out. Please try again or check the calendar.");
+            toast.error("Call saved, but the Google invite or Meet link is not ready. Open this call and save it again to retry.", { duration: 10000 });
           } else {
             toast.success("Google invite sent with a Meet link", { description: g.meet_url, duration: 8000 });
           }

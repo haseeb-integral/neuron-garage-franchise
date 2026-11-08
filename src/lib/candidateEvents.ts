@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { EVENT_TYPE_OPTIONS as PROCESS_EVENT_OPTIONS } from "@/lib/candidateProcessSteps";
 
 export type CandidateEventType = "call" | "follow_up";
@@ -81,11 +82,37 @@ export async function createEvent(input: CandidateEventInput): Promise<Candidate
 export async function updateEvent(id: string, patch: Partial<CandidateEventInput>): Promise<void> {
   const { error } = await supabase.from(TABLE).update(patch as any).eq("id", id);
   if (error) throw error;
+  await syncLinkedGoogleEvent(id);
 }
 
 export async function deleteEvent(id: string): Promise<void> {
+  // Do not lose the saved Google ID if cancellation fails.
+  await syncLinkedGoogleEvent(id, "delete");
   const { error } = await supabase.from(TABLE).delete().eq("id", id);
   if (error) throw error;
+}
+
+async function syncLinkedGoogleEvent(id: string, action: "sync" | "delete" = "sync"): Promise<void> {
+  const { data, error } = await supabase.from(TABLE)
+    .select("google_event_id,notify_prospect,status").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data || (!data.google_event_id && data.notify_prospect !== false)) return;
+  if (action === "sync" && data.status === "completed") return;
+  const { data: result, error: invokeError } = await supabase.functions.invoke("google-calendar-event", {
+    body: { event_id: id, action },
+  });
+  if (invokeError || result?.error) {
+    let detail = result?.error ?? invokeError?.message;
+    if (invokeError instanceof FunctionsHttpError) {
+      const response = await invokeError.context.json().catch(() => null);
+      detail = response?.details ?? response?.error ?? detail;
+    }
+    window.dispatchEvent(new Event("candidate-events-changed"));
+    throw new Error(`${action === "delete" ? "Call not deleted" : "Call saved"}, but Google could not update the invite. Save this call again to retry. ${detail ?? ""}`);
+  }
+  if (data.status === "scheduled" && action !== "delete" && !result?.meet_url) {
+    throw new Error("Call saved and Google invite created, but the Meet link is still being prepared. Save this call again to refresh it.");
+  }
 }
 
 const PROCESS_TIME_ZONES: Record<string, string> = {
@@ -196,12 +223,12 @@ export async function syncProcessCallEvent(
   const complete = !!(details.date && details.time && details.timeZone);
   if (!complete) {
     if (!existing || existing.status === "canceled") return "unchanged";
-    const { error } = await supabase.from(TABLE).update({ status: "canceled" }).eq("id", existing.id);
-    if (error) throw error;
+    await updateEvent(existing.id, { status: "canceled" });
     return "canceled";
   }
 
-  const startsAt = processCallStartsAt(details.date!, details.time!, details.timeZone!);
+  if (!details.date || !details.time || !details.timeZone) return "unchanged";
+  const startsAt = processCallStartsAt(details.date, details.time, details.timeZone);
   const option = details.typeOption
     ? PROCESS_EVENT_OPTIONS.find((o) => o.value === details.typeOption)
     : undefined;
@@ -234,6 +261,7 @@ export async function syncProcessCallEvent(
     .from(TABLE)
     .upsert(payload, { onConflict: "candidate_id,source_process_step" });
   if (error) throw error;
+  if (existing) await syncLinkedGoogleEvent(existing.id);
   return existing ? "updated" : "created";
 }
 

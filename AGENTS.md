@@ -15,6 +15,7 @@
 - Prospect email notices use registered templates on the existing app-email rail; saved stage/call changes trigger asynchronous server-only sends, keyed by opened step or call/time, and recipients must match a non-staff portal account. Database triggers cover manual and process calls without browser-dependent sends; reminders require a separate approved phase.
 - Auth invitation copy uses the signed webhook's portal setup destination to select prospect-only wording; all recovery and staff invitation paths retain their own copy, and confirmation links are passed through unchanged.
 - Google revision conflicts accept a read-back only for identical ready scheduled calls and identical provider results; genuine conflicts return a normal result and never authorize local deletion or overwrite newer details.
+- Qualification next-call fields autosave drafts only; explicit Schedule validates and saves the draft before syncing the existing call, with per-step click locks, so entering details never sends or cancels invites.
 - All call tools sync through candidateEvents and a staff-only Google action; stable IDs prevent duplicate retry invites, cancellation precedes local deletion, completed history stays intact, and edits preserve notify_prospect. Database pending/revision guards release app notices only after Google confirms the current call and Meet link; portal_my_path exposes only that prospect's ready Meet URL.
 
 ## Item 23 receipt + FDD version rules

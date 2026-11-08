@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ArrowRight, CheckCircle2, Info } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QualificationSection } from "../QualificationSection";
 import { nextProcessStage } from "@/lib/candidateWorkflow";
@@ -23,7 +23,7 @@ import { HomeworkUploadButton } from "../HomeworkUploadButton";
 import { FddSentDateField } from "../FddSentDateField";
 import { PortalInviteButton } from "../PortalInviteButton";
 import { SubmittedReferences } from "../SubmittedReferences";
-import { syncProcessCallEvent } from "@/lib/candidateEvents";
+import { scheduleProcessCall } from "@/lib/scheduleProcessCall";
 import { PROCESS_STEP_TITLES, EVENT_TYPE_OPTIONS } from "@/lib/candidateProcessSteps";
 
 import { SIGNAL_QUESTIONS, SIGNAL_NOTES_KEY, countRedFlags } from "@/lib/candidateStepSignals";
@@ -197,6 +197,8 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
   const [rows, setRows] = useState<Record<number, StepRow>>({});
   const [loading, setLoading] = useState(true);
   const saveTimers = useRef<Record<number, number>>({});
+  const schedulingLocks = useRef(new Set<number>());
+  const [schedulingSteps, setSchedulingSteps] = useState<Set<number>>(new Set());
   const needsReg = stateRequiresRegistration(candidate.state);
   const homeworkData = useQuery({
     queryKey: ["process-homework-status", dbId],
@@ -299,40 +301,47 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
           description,
           { step_number: stepNum, step_title: stepTitle, ...(change?.metadata ?? {}) },
         );
-        if (stepNum <= 4) {
-          try {
-            const result = await syncProcessCallEvent(
-              dbId,
-              stepNum,
-              PROCESS_STEP_TITLES[stepNum]?.title ?? `Step ${stepNum + 1}`,
-              {
-                date: row.data.tc_next_call_date as string | undefined,
-                time: row.data.tc_next_call_time as string | undefined,
-                timeZone: row.data.tc_next_call_tz as string | undefined,
-                typeOption: row.data.tc_next_call_type as string | undefined,
-                durationMinutes: row.data.tc_next_call_duration as number | undefined,
-                title: row.data.tc_next_call_title as string | undefined,
-                notes: row.data.tc_next_call_notes as string | undefined,
-              },
-            );
-            if (result !== "unchanged") {
-              logActivity(
-                dbId,
-                result === "created" ? "event_scheduled" : "event_updated",
-                `Step ${stepNum + 1} calendar call ${result}`,
-                { source_step_number: stepNum, calendar_action: result },
-              );
-            }
-          } catch (calendarError) {
-            const message = calendarError instanceof Error ? calendarError.message : "Unknown calendar error";
-            console.error("Failed to sync process call", calendarError);
-            toast.error("Step saved, but the calendar could not update", { description: message });
-          }
-        }
       }
     }, 450);
   };
 
+  const scheduleNextCall = async (stepNum: number) => {
+    if (!dbId || schedulingLocks.current.has(stepNum)) return;
+    const row = rows[stepNum] ?? emptyRow(dbId, stepNum);
+    schedulingLocks.current.add(stepNum);
+    setSchedulingSteps(new Set(schedulingLocks.current));
+    if (saveTimers.current[stepNum]) window.clearTimeout(saveTimers.current[stepNum]);
+    try {
+      const result = await scheduleProcessCall(dbId, stepNum, PROCESS_STEP_TITLES[stepNum]?.title ?? `Step ${stepNum + 1}`, {
+        date: row.data.tc_next_call_date,
+        time: row.data.tc_next_call_time,
+        timeZone: row.data.tc_next_call_tz,
+        typeOption: row.data.tc_next_call_type,
+        durationMinutes: row.data.tc_next_call_duration,
+        title: row.data.tc_next_call_title,
+        notes: row.data.tc_next_call_notes,
+      }, async () => {
+        const { error } = await supabase.from("candidate_process_steps").upsert({
+          candidate_id: dbId, step_number: stepNum, trial_close: row.trial_close,
+          post_call_actions: row.post_call_actions, homework: row.homework, data: row.data,
+          notes: row.notes, completed: row.completed,
+          completed_at: row.completed ? new Date().toISOString() : null,
+        } as any, { onConflict: "candidate_id,step_number" });
+        if (error) throw error;
+      });
+      const { logActivity } = await import("@/lib/candidateActivity");
+      await logActivity(dbId, result === "created" ? "event_scheduled" : "event_updated", `Step ${stepNum + 1} calendar call ${result}`, { source_step_number: stepNum, calendar_action: result });
+      window.dispatchEvent(new Event("candidate-events-changed"));
+      homeworkData.refetch();
+      toast.success("Call scheduled with a Google Meet invite");
+    } catch (error) {
+      window.dispatchEvent(new Event("candidate-events-changed"));
+      toast.error(error instanceof Error ? error.message : "Could not schedule the call");
+    } finally {
+      schedulingLocks.current.delete(stepNum);
+      setSchedulingSteps(new Set(schedulingLocks.current));
+    }
+  };
   const updateStep = (
     stepNum: number,
     patch: Partial<StepRow>,
@@ -378,7 +387,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
       value &&
       (!cur.data.tc_next_call_date || !cur.data.tc_next_call_time || !cur.data.tc_next_call_tz)
     ) {
-      toast.info("Add the date, time, and time zone to place this call on the calendar.");
+      toast.info("Choose the call details, then click Schedule.");
     }
   };
 
@@ -557,6 +566,8 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                     onToggle={(k, v) => toggleChecklist(step.num, "trial_close", k, v)}
                     onField={(k, v) => updateField(step.num, k, v)}
                     homeworkLabels={step.homework.map((h) => h.label)}
+                    onSchedule={() => scheduleNextCall(step.num)}
+                    scheduling={schedulingSteps.has(step.num)}
                   />
                 )}
 
@@ -824,9 +835,13 @@ function TrialCloseBlock({
   onToggle,
   onField,
   homeworkLabels = [],
+  onSchedule,
+  scheduling,
 }: {
   nameKey: string;
   homeworkLabels?: string[];
+  onSchedule: () => void;
+  scheduling: boolean;
   items: { key: string; label: string }[];
   state: ChecklistMap;
   data: Record<string, any>;
@@ -982,9 +997,11 @@ function TrialCloseBlock({
                     className="mt-1 text-sm"
                   />
                 </div>
-                <p className="sm:col-span-3 text-[11px]" style={{ color: "#526078" }}>
-                  Once the date, time, and time zone are filled in, this call shows on the Calendar.
-                </p>
+                <div className="sm:col-span-3 pt-1">
+                  <Button type="button" onClick={onSchedule} disabled={scheduling}>
+                    <CalendarClock className="h-4 w-4 mr-2" />{scheduling ? "Scheduling…" : "Schedule"}
+                  </Button>
+                </div>
               </div>
             )}
           </div>

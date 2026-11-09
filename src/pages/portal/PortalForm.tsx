@@ -403,7 +403,6 @@ function answerText(v: unknown) {
 function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise<void> }) {
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [reviewedFddId, setReviewedFddId] = useState<string | null>(null);
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="bg-portal-navy text-portal-navy-foreground">
@@ -509,6 +508,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
   const [typed, setTyped] = useState("");
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reviewedFddId, setReviewedFddId] = useState<string | null>(null);
   const noSig = form.noSignature === true;
   const nameOk = noSig || signatureMatches(typed, answers[form.nameKeys.first], answers[form.nameKeys.last]);
   const fddKnown = !form.dynamicSignedText || !!fddInfo?.fddFileId;

@@ -22,6 +22,7 @@ const Body = z.object({
   pdf_category: z.enum(['background_check', 'general']),
   pdf_item_key: z.string().regex(/^[a-z0-9_]{1,40}$/),
   fdd_issuance_date: z.string().min(4).max(40).nullable().optional(),
+  fdd_file_id: z.string().uuid().nullable().optional(),
   paper_order: z.boolean().optional(),
   no_signature: z.boolean().optional(),
   sections: z.array(z.object({ title: z.string().max(300), rows: z.array(Row).max(200) })).max(40),
@@ -162,7 +163,17 @@ Deno.serve(async (req) => {
       fddId = (ev?.fdd_file_id as string | null) ?? null
     }
     if (!fddId) return json({ error: "We can't confirm which FDD version you received yet. Please contact Skyler Bossen at 512-593-2750." }, 409)
-    const { data: f } = await admin.from('portal_step_files').select('fdd_issuance_date').eq('id', fddId).maybeSingle()
+    if (b.fdd_file_id !== fddId) return json({ error: 'Please open your full FDD before signing. Refresh if your FDD version has changed.' }, 409)
+    const { data: f } = await admin.from('portal_step_files').select('fdd_issuance_date,bucket_path,file_sha256').eq('id', fddId).maybeSingle()
+    if (!f?.bucket_path || !f.file_sha256) return json({ error: 'Your full FDD is unavailable. Nothing was submitted.' }, 409)
+    const { data: fullFdd, error: fullFddError } = await admin.storage.from('portal_files').download(f.bucket_path)
+    if (fullFddError || !fullFdd) return json({ error: 'Your full FDD is unavailable. Nothing was submitted.' }, 409)
+    try {
+      const bytes = new Uint8Array(await fullFdd.arrayBuffer())
+      if (await sha256(bytes) !== f.file_sha256) return json({ error: 'Your FDD could not be verified. Nothing was submitted.' }, 409)
+      const original = await PDFDocument.load(bytes)
+      if (original.getPageCount() < 1) throw new Error('Empty FDD')
+    } catch { return json({ error: 'Your full FDD could not be opened. Nothing was submitted.' }, 409) }
     item23Fdd = { id: fddId, date: (f?.fdd_issuance_date as string | null) ?? null, receivedAt: (comp?.fdd_received_at as string | null) ?? null }
     if (b.fdd_issuance_date && b.fdd_issuance_date !== item23Fdd.date) {
       return json({ error: 'The FDD version on file has changed. Please refresh this page and review your receipt again.' }, 409)

@@ -23,6 +23,8 @@ const STATE_ABBRS = [...new Set(Object.values(US_STATE_NAME_TO_ABBR))].sort();
 import logo from "@/assets/neuron-garage-logo.png";
 import { FormSubmissionHistory } from "@/components/portal/FormSubmissionHistory";
 import { fddAccessAllowed } from "@/lib/fddPortalAccess";
+import { FullFddViewer } from "@/components/portal/FullFddViewer";
+import { fddReviewAllowsSigning } from "@/lib/fddReview";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -401,6 +403,7 @@ function answerText(v: unknown) {
 function ConsentGate({ title, onAgree }: { title: string; onAgree: () => Promise<void> }) {
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reviewedFddId, setReviewedFddId] = useState<string | null>(null);
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="bg-portal-navy text-portal-navy-foreground">
@@ -509,10 +512,12 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
   const noSig = form.noSignature === true;
   const nameOk = noSig || signatureMatches(typed, answers[form.nameKeys.first], answers[form.nameKeys.last]);
   const fddKnown = !form.dynamicSignedText || !!fddInfo?.fddFileId;
-  const canSign = !locked && missing.length === 0 && (noSig || (nameOk && agree)) && !busy && !fddPending && fddKnown;
+  const fddLoaded = fddReviewAllowsSigning(form.key, fddInfo?.fddFileId ?? null, reviewedFddId);
+  const canSign = !locked && missing.length === 0 && (noSig || (nameOk && agree)) && !busy && !fddPending && fddKnown && fddLoaded;
   const item = PORTAL_STEPS.find((s) => s.num === form.stepNum)?.items.find((i) => i.key === form.itemKey);
 
   const submit = async () => {
+    if (!canSign) return;
     setBusy(true);
     await onBeforeSubmit();
     const derivedName = `${String(answers[form.nameKeys.first] ?? "").trim()} ${String(answers[form.nameKeys.last] ?? "").trim()}`.trim();
@@ -526,6 +531,7 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
         pre_text: noSig ? undefined : dynamicPreText ?? form.signature?.preText, pdf_category: form.pdf.category, pdf_item_key: form.pdf.itemKey,
         esign_consent_text: form.esignConsent ? ESIGN_CONSENT_FULL_TEXT : undefined,
         fdd_issuance_date: form.dynamicSignedText ? fddInfo?.issuanceDate ?? null : undefined,
+        fdd_file_id: form.key === "item23" ? reviewedFddId : undefined,
         paper_order: form.paperOrder === true,
         no_signature: noSig,
         sections: buildRows(form, answers),
@@ -605,6 +611,8 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
         </section>
       )}
       {!locked && !noSig && (
+        <>
+        {form.key === "item23" && fddInfo?.fddFileId && <FullFddViewer key={fddInfo.fddFileId} expectedId={fddInfo.fddFileId} onReady={setReviewedFddId} />}
         <section className="rounded-xl border-2 border-portal-navy p-5 space-y-4">
           <h3 className="font-bold text-portal-navy uppercase tracking-wide">{form.signature!.heading}</h3>
           {form.dynamicSignedText && (
@@ -637,7 +645,9 @@ function ReviewAndSign({ form, answers, locked, submittedAt, formId, pct, onEdit
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sign and Submit
           </Button>
           {missing.length > 0 && <p className="text-xs text-center text-muted-foreground">Finish the answers above to sign.</p>}
+          {!fddLoaded && form.key === "item23" && <p role="status" className="text-sm text-muted-foreground">Your full FDD must open before you can sign.</p>}
         </section>
+        </>
       )}
     </div>
   );

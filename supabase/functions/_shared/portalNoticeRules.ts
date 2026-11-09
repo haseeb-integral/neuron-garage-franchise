@@ -10,6 +10,11 @@ export function opensStep(before: string, after: string): number | null {
   const from = noticeStep(before), to = noticeStep(after)
   return from !== null && to !== null && to > from ? to : null
 }
+// Step 2 homework: the personality profile lives on an outside page.
+export const PERSONALITY_TEST_URL = 'https://zorakle.net/assessment-portal/welcome/neuron-garage'
+export function stepNoticeLinks(step: number): { personalityUrl?: string } {
+  return step === 2 ? { personalityUrl: PERSONALITY_TEST_URL } : {}
+}
 export function callNotice(before: { status: string; starts_at: string } | null,
   after: { status: string; starts_at: string }): 'portal-call-booked' | 'portal-call-moved' | null {
   if (after.status !== 'scheduled') return null

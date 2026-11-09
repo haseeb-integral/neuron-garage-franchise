@@ -181,6 +181,7 @@ Deno.serve(async (req) => {
       dateTime: z.string().max(255).optional(), hostName: z.string().max(255).nullable().optional(),
       duration: z.number().int().positive().max(480).optional(),
       meetUrl: z.string().url().refine(value => { const url = new URL(value); return url.protocol === 'https:' && url.hostname === 'meet.google.com' && !url.username && !url.password }).optional(),
+      personalityUrl: z.string().url().refine(value => new URL(value).protocol === 'https:').optional(),
     }).strict()
     const parsed = NoticeData.safeParse(templateData)
     if (!parsed.success || parsed.data.candidateId !== dispatch.candidate_id || !z.string().email().safeParse(effectiveRecipient).success || !idempotencyKey.startsWith('portal-')) {

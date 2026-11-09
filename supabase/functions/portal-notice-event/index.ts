@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
-import { opensStep, callNotice, callTemplateData, reminderDue, callReadyForNotice, NOTICE_STEP_TITLES } from '../_shared/portalNoticeRules.ts'
+import { opensStep, callNotice, callTemplateData, reminderDue, callReadyForNotice, NOTICE_STEP_TITLES, stepNoticeLinks } from '../_shared/portalNoticeRules.ts'
 
 const Reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -52,7 +52,7 @@ Deno.serve(async req => {
     if (!step) return Reply({ skipped: 'no_new_step' })
     templateName = 'portal-step-opened'
     idempotencyKey = `portal-step-${cid}-${step}`
-    templateData = { candidateId: cid, firstName: cand.first_name ?? '', stepTitle: NOTICE_STEP_TITLES[step] }
+    templateData = { candidateId: cid, firstName: cand.first_name ?? '', stepTitle: NOTICE_STEP_TITLES[step], ...stepNoticeLinks(step) }
   } else {
     const { data: live, error: liveError } = await admin.from('candidate_events')
       .select('status,starts_at,notify_prospect,google_sync_pending,meet_url').eq('id', event.after.id).maybeSingle()

@@ -3,6 +3,26 @@ const base = process.env.PORTAL_TEST_URL;
 const key = process.env.PORTAL_TEST_ANON_KEY;
 const prospect = process.env.PORTAL_TEST_PROSPECT_TOKEN;
 const staff = process.env.PORTAL_TEST_STAFF_TOKEN;
+describe.skipIf(!base || !key || !staff || !process.env.FDD_VERSION_ONE_CHECK)('FDD Version 1 replacement', () => {
+  it('offers only the approved Version 1 for future sends and latest downloads', async () => {
+    const res = await fetch(`${base}/rest/v1/portal_step_files?select=file_name,fdd_issuance_date,file_sha256&is_fdd=eq.true&deleted_at=is.null`, {
+      headers: { apikey: key ?? '', Authorization: `Bearer ${staff}` },
+    });
+    expect(res.ok).toBe(true);
+    expect(await res.json()).toEqual([{
+      file_name: 'Neuron Garage FDD - Version 1 - Nov 2026.pdf',
+      fdd_issuance_date: '2026-03-01',
+      file_sha256: 'c82dce5d8cf095066d0b6f02acf55697d8b9a6cb83a9f4d67d506a795d551ace',
+    }]);
+  });
+  it('keeps the earlier signed receipt linked to its original retired FDD', async () => {
+    const res = await fetch(`${base}/rest/v1/candidate_portal_signatures?select=fdd_file_id&fdd_file_id=eq.f60d6c69-f84a-4fb9-8db6-05295c5947d1`, {
+      headers: { apikey: key ?? '', Authorization: `Bearer ${staff}` },
+    });
+    expect(res.ok).toBe(true);
+    expect(await res.json()).toEqual([{ fdd_file_id: 'f60d6c69-f84a-4fb9-8db6-05295c5947d1' }]);
+  });
+});
 const candidateId = '871c0094-4091-451a-8594-c5d226c15c55';
 async function call(path: string, body: unknown, token?: string) {
   const res = await fetch(`${base}/${path}`, { method: 'POST', headers: { apikey: key ?? '', Authorization: `Bearer ${token ?? key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

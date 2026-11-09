@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { opensStep, callNotice, callTemplateData, callReadyForNotice, safeMeetUrl } from '../../supabase/functions/_shared/portalNoticeRules';
+import { opensStep, callNotice, callTemplateData, callReadyForNotice, safeMeetUrl, stepNoticeLinks, PERSONALITY_TEST_URL } from '../../supabase/functions/_shared/portalNoticeRules';
 describe('prospect notice rules', () => {
   it('opens step 3 when FDD review advances to immersion', () => {
     expect(opensStep('fdd_review', 'immersion')).toBe(3);
@@ -51,5 +51,11 @@ describe('Google call email safeguards', () => {
     expect(callTemplateData({ ...live, duration_minutes: 30 }, 'Sam').meetUrl).toBe(live.meet_url);
     expect(safeMeetUrl('https://meet.google.com.evil.example/a')).toBeUndefined();
     expect(safeMeetUrl('javascript:alert(1)')).toBeUndefined();
+  });
+  it('adds the personality test link to the Step 2 email only', () => {
+    expect(stepNoticeLinks(2)).toEqual({ personalityUrl: 'https://zorakle.net/assessment-portal/welcome/neuron-garage' });
+    expect(stepNoticeLinks(1)).toEqual({});
+    expect(stepNoticeLinks(3)).toEqual({});
+    expect(PERSONALITY_TEST_URL).toBe('https://zorakle.net/assessment-portal/welcome/neuron-garage');
   });
 });

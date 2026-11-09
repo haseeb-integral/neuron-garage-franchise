@@ -60,4 +60,10 @@ describe("homework due dates", () => {
     expect(itemDueDate("invalid", 1)).toBeNull();
     expect(homeworkSummary([{ key: "rfc", dueDaysBefore: 1 }], [], null).overdue).toBe(false);
   });
+  it("links the Step 2 personality profile to the assessment page", () => {
+    const item = STEPS2[1]?.items.find((i) => i.key === "personality");
+    expect(item?.url).toBe("https://zorakle.net/assessment-portal/welcome/neuron-garage");
+    expect(item?.urlLabel).toBe("Take the personality profile");
+    expect(STEPS2[0]?.items.find((i) => i.key === "rfc")?.url).toBeUndefined();
+  });
 });

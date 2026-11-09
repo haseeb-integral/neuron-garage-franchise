@@ -10,6 +10,7 @@ interface Props {
   hostName?: string
   duration?: number
   meetUrl?: string
+  personalityUrl?: string
 }
 // Email clients require inline styling; these tokens mirror the portal theme.
 const theme = { background: '#ffffff', navy: 'hsl(214, 64%, 20%)', yellow: 'hsl(45, 96%, 56%)', foreground: 'hsl(210, 11%, 25%)' }
@@ -20,6 +21,7 @@ const styles = {
   heading: { color: theme.navy, fontSize: '24px', lineHeight: '32px' },
   text: { fontSize: '16px', lineHeight: '26px' },
   button: { backgroundColor: theme.yellow, color: theme.navy, padding: '14px 24px', borderRadius: '6px', fontWeight: 700, fontSize: '16px', marginTop: '16px' },
+  buttonAlt: { backgroundColor: theme.navy, color: '#ffffff', padding: '14px 24px', borderRadius: '6px', fontWeight: 700, fontSize: '16px', marginTop: '16px' },
 }
 const labels: Record<NoticeKind, { heading: string; button: string }> = {
   step: { heading: 'Your next Neuron Garage step is ready', button: 'View my path' },
@@ -30,9 +32,10 @@ const labels: Record<NoticeKind, { heading: string; button: string }> = {
 export const portalPreview = {
   firstName: 'Sam', stepTitle: 'Business Overview and FDD Review', callTitle: 'Business Overview Call',
   dateTime: 'Wednesday, October 28, 2026 at 3:00 PM Mountain Time', hostName: 'Sam Reed', duration: 30,
+  personalityUrl: 'https://zorakle.net/assessment-portal/welcome/neuron-garage',
 }
 export function noticeComponent(kind: NoticeKind) {
-  return function PortalNotice({ firstName, stepTitle, callTitle, dateTime, hostName, duration, meetUrl }: Props) {
+  return function PortalNotice({ firstName, stepTitle, callTitle, dateTime, hostName, duration, meetUrl, personalityUrl }: Props) {
     const call = callTitle || 'Neuron Garage call'
     const time = dateTime || 'the time shown in your portal'
     const details = hostName && duration ? `You'll meet with ${hostName}, and we've set aside ${duration} minutes.` : hostName ? `You'll meet with ${hostName}.` : duration ? `We've set aside ${duration} minutes.` : null
@@ -44,6 +47,10 @@ export function noticeComponent(kind: NoticeKind) {
         {kind === 'step' ? <>
           <Text style={styles.text}>You're ready for the next conversation. {stepTitle || 'Your next step'} is now open in your portal.</Text>
           <Text style={styles.text}>Take a look at your next tasks and available files before we talk again. We're looking forward to learning more together.</Text>
+          {personalityUrl && <>
+            <Text style={styles.text}>One of your tasks is the personality profile. You can take it here:</Text>
+            <Button href={personalityUrl} style={styles.buttonAlt}>Take the personality profile</Button>
+          </>}
         </> : <>
           <Text style={styles.text}>{kind === 'booked' ? `Your ${call} is booked for ${time}. We're looking forward to taking the next step with you.` : kind === 'moved' ? `We've updated your ${call}. The new time is ${time}.` : `We're looking forward to your ${call} tomorrow at ${time}.`}</Text>
           {details && <Text style={styles.text}>{details}</Text>}

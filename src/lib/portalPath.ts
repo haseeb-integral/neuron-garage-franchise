@@ -9,7 +9,8 @@ export interface PortalStep {
   afterLabel: string;
   /** dueDaysBefore: days before the next call this item is due (from the form PDFs). Omitted = due before the next call. */
   /** noDue: never show a due date (e.g. info-only items). */
-  items: { key: string; label: string; dueDaysBefore?: number; noDue?: boolean }[];
+  /** url: a link the prospect can open straight from the homework item. */
+  items: { key: string; label: string; dueDaysBefore?: number; noDue?: boolean; url?: string }[];
 }
 
 export const PORTAL_STEPS: PortalStep[] = [

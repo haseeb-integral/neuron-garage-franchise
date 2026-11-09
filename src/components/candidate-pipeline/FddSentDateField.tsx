@@ -41,7 +41,7 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
   const [emailBusy, setEmailBusy] = useState(false);
   const [sendStatus, setSendStatus] = useState<string | null>(null);
   const [versionId, setVersionId] = useState<string>("");
-  const [versions, setVersions] = useState<{ id: string; file_name: string; fdd_issuance_date: string | null; created_at: string }[]>([]);
+  const [versions, setVersions] = useState<{ id: string; file_name: string; fdd_issuance_date: string | null; created_at: string; deleted_at: string | null }[]>([]);
   const [log, setLog] = useState<{ event: string; at: string; actor_email: string | null; fdd_file_id: string | null }[]>([]);
 
   const [packetBusy, setPacketBusy] = useState(false);
@@ -83,7 +83,7 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
       .eq("candidate_id", candidateDbId)
       .maybeSingle();
     const [{ data: v }, { data: ev }] = await Promise.all([
-      supabase.from("portal_step_files").select("id, file_name, fdd_issuance_date, created_at").eq("is_fdd", true).order("created_at", { ascending: false }),
+      supabase.from("portal_step_files").select("id, file_name, fdd_issuance_date, created_at, deleted_at").eq("is_fdd", true).order("created_at", { ascending: false }),
       supabase.from("fdd_delivery_events").select("event, at, actor_email, fdd_file_id").eq("candidate_id", candidateDbId).order("at", { ascending: false }).limit(50),
     ]);
     setVersions(v ?? []);
@@ -182,9 +182,9 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
         onChange={(e) => void save(value, e.target.value)}
       >
         <option value="">{versions.length ? "Pick the FDD version you emailed" : "No FDD uploaded in Portal files yet"}</option>
-        {versions.map((v) => (
-          <option key={v.id} value={v.id}>
-            Issued {v.fdd_issuance_date ? new Date(v.fdd_issuance_date + "T12:00:00").toLocaleDateString("en-US") : "(date not recorded)"} · {v.file_name}
+        {versions.filter((v) => !v.deleted_at || v.id === versionId).map((v) => (
+          <option key={v.id} value={v.id} disabled={!!v.deleted_at}>
+            Issued {v.fdd_issuance_date ? new Date(v.fdd_issuance_date + "T12:00:00").toLocaleDateString("en-US") : "(date not recorded)"} · {v.file_name}{v.deleted_at ? " · Retired — saved audit record" : ""}
           </option>
         ))}
       </select>

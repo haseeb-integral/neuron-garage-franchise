@@ -3,7 +3,7 @@ import confetti from "canvas-confetti";
 import { useEffect, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Lock, CalendarClock, Clock, AlarmClock } from "lucide-react";
+import { Check, Lock, CalendarClock, Clock, AlarmClock, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -360,6 +360,12 @@ function StepRow({ step, state, last, date, ticked, onToggle, files, forms, next
                     <Checkbox id={id} checked={on} onCheckedChange={(v) => { onToggle(step.num, it.key, it.label, !!v); if (v && isSigned) celebrate(); }} className="mt-0.5" />
                     <div className="space-y-1">
                       <label htmlFor={id} className={`block text-sm cursor-pointer ${on ? "font-semibold text-success" : "font-medium"}`}>{it.label}</label>
+                      {it.url && (
+                        <a className="inline-flex items-center gap-1 text-xs font-semibold text-portal-navy underline underline-offset-2 hover:text-portal-navy/80"
+                          href={it.url} target="_blank" rel="noopener noreferrer">
+                          {it.urlLabel ?? "Open in a new tab"} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
                       {it.key === "talk_site_director" && (
                         <ul className="text-xs text-muted-foreground space-y-1">
                           {SITE_DIRECTORS.map((d) => (

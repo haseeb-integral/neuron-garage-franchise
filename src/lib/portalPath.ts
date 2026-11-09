@@ -10,7 +10,7 @@ export interface PortalStep {
   /** dueDaysBefore: days before the next call this item is due (from the form PDFs). Omitted = due before the next call. */
   /** noDue: never show a due date (e.g. info-only items). */
   /** url: a link the prospect can open straight from the homework item. */
-  items: { key: string; label: string; dueDaysBefore?: number; noDue?: boolean; url?: string }[];
+  items: { key: string; label: string; dueDaysBefore?: number; noDue?: boolean; url?: string; urlLabel?: string }[];
 }
 
 export const PORTAL_STEPS: PortalStep[] = [
@@ -31,7 +31,7 @@ export const PORTAL_STEPS: PortalStep[] = [
       { key: "fdd_attorney", label: "Review the FDD" },
       { key: "item23", label: "Sign and return the Item 23 receipt" },
       { key: "bg_credit_funding", label: "Complete the Background, Credit, and Funding form", dueDaysBefore: 5 },
-      { key: "personality", label: "Complete the personality profile" },
+      { key: "personality", label: "Complete the personality profile", url: "https://zorakle.net/assessment-portal/welcome/neuron-garage", urlLabel: "Take the personality profile" },
     ],
   },
   {

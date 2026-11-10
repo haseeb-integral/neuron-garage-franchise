@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { initialPasswordSetupLink } from "@/lib/passwordSetupLink";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,29 +20,67 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState<"loading" | "ready" | "invalid" | "connection">("loading");
+  const [saveError, setSaveError] = useState("");
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState("");
   const isPortal = new URLSearchParams(window.location.search).get("portal") === "1";
+  const ready = status === "ready";
 
   useEffect(() => {
     document.title = "Reset password · Neuron Garage";
 
-    // Supabase puts the recovery session in the URL hash on arrival.
-    // The client auto-parses it; we just confirm a recovery session exists.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        setReady(true);
+    if (initialPasswordSetupLink === "invalid") {
+      setStatus("invalid");
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      active = false;
+      setStatus("connection");
+    }, 12000);
+    const validate = async () => {
+      try {
+        const initialized = await supabase.auth.initialize();
+        if (initialized.error) {
+          if (active) setStatus("invalid");
+          return;
+        }
+        const { data, error } = await supabase.auth.getUser();
+        if (active) setStatus(error || !data.user ? "invalid" : "ready");
+      } catch {
+        if (active) setStatus("connection");
+      } finally {
+        window.clearTimeout(timer);
       }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
-
-    return () => subscription.unsubscribe();
+    };
+    void validate();
+    return () => { active = false; window.clearTimeout(timer); };
   }, []);
+
+  const requestLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSending(true);
+    setSendError("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password${isPortal ? "?portal=1" : ""}`,
+      });
+      if (error) throw error;
+      setSent(true);
+    } catch {
+      setSendError("We couldn’t send the link. Please try again in a few minutes.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ready || submitting) return;
+    setSaveError("");
     const parsed = schema.safeParse({ password });
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
@@ -52,36 +91,58 @@ export default function ResetPassword() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError || !data.user) {
+        setStatus("invalid");
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      toast.success(isPortal ? "Password saved. Welcome!" : "Password updated. You're now signed in.");
+      navigate(isPortal ? "/portal" : "/", { replace: true });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "We couldn’t save your password. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(isPortal ? "Password saved. Welcome!" : "Password updated. You're now signed in.");
-    navigate(isPortal ? "/portal" : "/", { replace: true });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#f5f7fa" }}>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-6">
           <img src={logo} alt="Neuron Garage" className="w-10 h-10" />
-          <span className="text-xl font-bold tracking-tight" style={{ color: "#003c7e" }}>Neuron Garage</span>
+          <span className="text-xl font-bold text-primary">Neuron Garage</span>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>{isPortal ? "Welcome! Create your password" : "Set a new password"}</CardTitle>
+            <CardTitle>{status === "invalid" ? "You need a new password link" : isPortal ? "Welcome! Create your password" : "Set a new password"}</CardTitle>
             <CardDescription>
               {ready
                 ? isPortal
                   ? "Choose a password to open your Path to Ownership."
                   : "Enter a new password for your account."
-                : "Validating reset link…"}
+                : status === "invalid"
+                  ? "This link is missing, has expired, or has already been used. Request a new link below and use the newest email."
+                  : status === "connection"
+                    ? "We couldn’t check your link. Please reload this page or request a new link below."
+                    : "Validating reset link…"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {status === "invalid" || status === "connection" ? (
+              <form onSubmit={requestLink} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email address</Label>
+                  <Input id="reset-email" type="email" autoComplete="email" required maxLength={255} value={email} onChange={e => setEmail(e.target.value)} disabled={sending} />
+                </div>
+                {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
+                {sent && <p role="status" className="text-sm text-success">If an account uses this email, you’ll receive a new password link. Check your inbox and use the newest email.</p>}
+                <Button type="submit" className="w-full" disabled={sending}>{sending ? "Sending…" : "Send new password link"}</Button>
+                {status === "connection" && <Button type="button" variant="outline" className="w-full" onClick={() => window.location.reload()}>Retry checking link</Button>}
+              </form>
+            ) : <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="new-password">New password</Label>
                 <PasswordInput
@@ -91,7 +152,7 @@ export default function ResetPassword() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  disabled={!ready}
+                  disabled={!ready || submitting}
                 />
               </div>
               <div className="space-y-2">
@@ -103,20 +164,15 @@ export default function ResetPassword() {
                   onChange={(e) => setConfirm(e.target.value)}
                   required
                   minLength={6}
-                  disabled={!ready}
+                  disabled={!ready || submitting}
                 />
               </div>
+              {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
               <Button type="submit" className="w-full" disabled={submitting || !ready}>
                 {submitting ? "Saving…" : isPortal ? "Save password" : "Update password"}
               </Button>
-              <button
-                type="button"
-                onClick={() => navigate("/auth")}
-                className="w-full text-xs text-muted-foreground hover:text-foreground"
-              >
-                Back to sign in
-              </button>
-            </form>
+            </form>}
+            <Button type="button" variant="link" onClick={() => navigate(isPortal ? "/portal/sign-in" : "/auth")} className="mt-3 w-full text-xs text-muted-foreground">Back to sign in</Button>
           </CardContent>
         </Card>
       </div>

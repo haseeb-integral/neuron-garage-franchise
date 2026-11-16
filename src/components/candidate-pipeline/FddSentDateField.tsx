@@ -172,7 +172,7 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror, onComp
         </Button>
         {sendStatus && <span role="status" className="text-xs text-muted-foreground">{sendStatus}</span>}
       </div>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Label className="text-xs" style={{ color: "#07142f" }}>FDD sent date</Label>
         <Button size="sm" variant="outline" className="h-7 text-xs" disabled={packetBusy} onClick={() => void downloadPacket()}>
           <Download className="h-3.5 w-3.5" /> {packetBusy ? "Building…" : "Download proof packet (PDF)"}

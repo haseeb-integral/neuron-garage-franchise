@@ -12,10 +12,11 @@ describe("Qualification Process step 2 consolidation", () => {
   it("puts the required actions, homework, and result fields in step 2", () => {
     const step = QUALIFICATION_STEPS.find(({ num }) => num === 2);
     expect(step?.postCall.map(({ key }) => key)).toEqual([
+      "sent_fdd",
       "mvs_site_run",
       "sent_bg_auth",
     ]);
-    expect(step?.postCall.some(({ key }) => key === "sent_rfc_part2" || key === "sent_fdd")).toBe(false);
+    expect(step?.postCall.some(({ key }) => key === "sent_rfc_part2")).toBe(false);
     expect(step?.postCall.find(({ key }) => key === "mvs_site_run")?.label).toContain("INTERNAL ONLY");
     expect(step?.postCall.find(({ key }) => key === "sent_bg_auth")?.label).toBe("Run Background Check and Run Credit Check");
     expect(step?.homework.map(({ key }) => key)).toEqual([

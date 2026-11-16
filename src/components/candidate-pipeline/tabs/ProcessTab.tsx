@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Info } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, ExternalLink, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QualificationSection } from "../QualificationSection";
 import { nextProcessStage } from "@/lib/candidateWorkflow";
@@ -102,6 +102,7 @@ export const QUALIFICATION_STEPS: StepDef[] = [
     goal: "Provide a deeper understanding of the business and camp. Review the FDD, and key Franchise Agreement terms.",
     trialClose: true,
     postCall: [
+      { key: "sent_fdd", label: "Email FDD" },
       { key: "mvs_site_run", label: "Run Market Validation and Site Analysis on desired location — INTERNAL ONLY" },
       { key: "sent_bg_auth", label: "Run Background Check and Run Credit Check" },
     ],
@@ -196,6 +197,7 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
   const dbId = (candidate as any).dbId as string | undefined;
   const [rows, setRows] = useState<Record<number, StepRow>>({});
   const [loading, setLoading] = useState(true);
+  const [fddDelivery, setFddDelivery] = useState<{ candidateId: string; sent: boolean } | null>(null);
   const saveTimers = useRef<Record<number, number>>({});
   const schedulingLocks = useRef(new Set<number>());
   const [schedulingSteps, setSchedulingSteps] = useState<Set<number>>(new Set());
@@ -464,7 +466,9 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
       <Accordion type="multiple" defaultValue={STEPS.map((s) => `step-${s.num}`)} className="space-y-2">
         {STEPS.map((step) => {
           const row = rows[step.num] ?? emptyRow(dbId, step.num);
-          const { done, total } = stepProgress(step, row);
+          const fddSent = fddDelivery?.candidateId === dbId && fddDelivery.sent;
+          const postCallState = step.num === 2 ? { ...row.post_call_actions, sent_fdd: fddSent } : row.post_call_actions;
+          const { done, total } = stepProgress(step, { ...row, post_call_actions: postCallState });
           const pct = total === 0 ? 0 : Math.round((done / total) * 100);
           const portalStep = PORTAL_STEPS.find((s) => s.num === step.num);
           const aliases: Record<string, string> = { rfc_part1: "rfc", review_websites: "explore_sites", rfc_part2: "bg_credit_funding", signed_item23: "item23", personality_profile: "personality" };
@@ -575,8 +579,9 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                   <ChecklistBlock
                     title="Post-Call Actions"
                     items={step.postCall.filter((item) => step.num !== 4 || item.key !== "shared_personality_assessment_results")}
-                    state={row.post_call_actions}
+                    state={postCallState}
                     onToggle={(k, v) => toggleChecklist(step.num, "post_call_actions", k, v)}
+                    isReadOnly={(item) => step.num === 2 && item.key === "sent_fdd"}
                     leading={step.num === 1 ? <div className="pb-1"><PortalInviteButton candidateDbId={dbId} /></div> : undefined}
                     renderAction={
                       step.num === 2
@@ -600,7 +605,15 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                     }
                     renderDetail={step.num === 1 ? (item) => item.key === "update_qualification_scores" ? (
                       <div className="mt-3"><QualificationSection candidate={candidate} onScoresReplace={onScoresReplace} /></div>
-                    ) : null : step.num === 2 ? (item) => item.key === "sent_bg_auth" ? (
+                    ) : null : step.num === 2 ? (item) => item.key === "sent_fdd" ? (
+                      <FddSentDateField
+                        key={dbId}
+                        candidateDbId={dbId}
+                        fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
+                        onMirror={(v) => updateField(2, "fdd_sent_date", v)}
+                        onCompletionChange={(sent) => setFddDelivery({ candidateId: dbId, sent })}
+                      />
+                    ) : item.key === "sent_bg_auth" ? (
                       <StepFields
                         fields={step.fields?.filter((f) => f.key === "background_result" || f.key === "credit_score") ?? []}
                         data={row.data}
@@ -618,15 +631,6 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                   />
                 )}
 
-                {step.num === 2 && (
-                  <>
-                    <FddSentDateField
-                      candidateDbId={dbId}
-                      fallbackDate={(row.data?.fdd_sent_date as string) ?? ""}
-                      onMirror={(v) => updateField(2, "fdd_sent_date", v)}
-                    />
-                  </>
-                )}
 
 
 
@@ -655,16 +659,21 @@ export function ProcessTab({ candidate, teamMembers = [], onSaveProfile, onScore
                     </>}
                     renderDetail={(item) => {
                       const rule = homeworkItems.find((i) => i.key === item.key);
-                      if (!rule || rule.noDue) return null;
+                      if (!rule) return null;
                       const due = itemDueDate(homeworkData.data?.nextCall, rule.dueDaysBefore);
                       const complete = homeworkDone.includes(item.key);
                       const late = !complete && !!due && due.getTime() < Date.now();
                       return <div className="ml-6 mt-1 text-xs text-muted-foreground">
+                        {rule.url && <a href={rule.url} target="_blank" rel="noopener noreferrer" className="mb-1 inline-flex items-center gap-1 font-semibold text-primary underline underline-offset-2">
+                          {rule.urlLabel ?? "Open in a new tab"}<ExternalLink className="h-3 w-3" />
+                        </a>}
+                        {!rule.noDue && <div>
                         {complete ? <span className="text-success">Done — submitted</span> : <>
                           {rule.dueDaysBefore ? `Due ${rule.dueDaysBefore} ${rule.dueDaysBefore === 1 ? "day" : "days"} before the next call` : "Due before the next call"}
                           {due && <> · {due.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>}
                           {late && <Badge variant="destructive" className="ml-2">Overdue</Badge>}
                         </>}
+                        </div>}
                       </div>;
                     }}
                     renderAction={(item) =>
@@ -756,6 +765,7 @@ function ChecklistBlock({
   renderDetail,
   headingExtra,
   leading,
+  isReadOnly,
 }: {
   title: string;
   items: { key: string; label: string }[];
@@ -766,6 +776,7 @@ function ChecklistBlock({
   renderDetail?: (item: { key: string; label: string }) => React.ReactNode;
   headingExtra?: React.ReactNode;
   leading?: React.ReactNode;
+  isReadOnly?: (item: { key: string; label: string }) => boolean;
 }) {
   return (
     <div className="mt-3">
@@ -778,6 +789,7 @@ function ChecklistBlock({
               <label className="flex items-start gap-2 cursor-pointer flex-1 min-w-0">
                 <Checkbox
                   checked={!!state?.[i.key]}
+                  disabled={isReadOnly?.(i)}
                   onCheckedChange={(v) => onToggle(i.key, !!v)}
                   className="mt-0.5"
                 />

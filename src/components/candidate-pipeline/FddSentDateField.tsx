@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { earliestSigningDate, formatDay } from "@/lib/fddCompliance";
+import { fddPortalUnlocked } from "@/lib/fddPortalAccess";
 
 interface Props {
   candidateDbId: string;
@@ -13,6 +14,8 @@ interface Props {
   fallbackDate?: string;
   /** Mirror the value back into the process step row so old readers stay in sync. */
   onMirror?: (value: string) => void;
+  /** Display-only completion from saved delivery evidence, never from a staff tick. */
+  onCompletionChange?: (sent: boolean) => void;
 }
 
 function toDateInput(iso: string | null): string {
@@ -33,7 +36,7 @@ function fromDateInput(v: string): string | null {
  * Step 4 "FDD sent date" — writes straight to `candidate_compliance.fdd_sent_at`,
  * which is the single source the 16-day signing lock reads from.
  */
-export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Props) {
+export function FddSentDateField({ candidateDbId, fallbackDate, onMirror, onCompletionChange }: Props) {
   const [value, setValue] = useState("");
   const [received, setReceived] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,20 +80,28 @@ export function FddSentDateField({ candidateDbId, fallbackDate, onMirror }: Prop
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("candidate_compliance")
       .select("fdd_sent_at, fdd_received_at, fdd_file_id")
       .eq("candidate_id", candidateDbId)
       .maybeSingle();
-    const [{ data: v }, { data: ev }] = await Promise.all([
+    const [{ data: v, error: versionError }, { data: ev, error: eventError }, { data: sentEvents, error: sentError }] = await Promise.all([
       supabase.from("portal_step_files").select("id, file_name, fdd_issuance_date, created_at, deleted_at").eq("is_fdd", true).order("created_at", { ascending: false }),
       supabase.from("fdd_delivery_events").select("event, at, actor_email, fdd_file_id").eq("candidate_id", candidateDbId).order("at", { ascending: false }).limit(50),
+      supabase.from("fdd_delivery_events").select("event").eq("candidate_id", candidateDbId).eq("event", "emailed").limit(1),
     ]);
+    if (error || versionError || eventError || sentError) {
+      onCompletionChange?.(false);
+      setLoading(false);
+      toast.error("Couldn’t load the FDD delivery record. Reopen this card to try again.");
+      return;
+    }
     setVersions(v ?? []);
     setLog(ev ?? []);
     setVersionId(data?.fdd_file_id ?? "");
     setReceived(data?.fdd_received_at ?? null);
     setValue(toDateInput(data?.fdd_sent_at ?? null) || (fallbackDate ?? ""));
+    onCompletionChange?.(fddPortalUnlocked(2, data?.fdd_sent_at ?? null, (sentEvents ?? []).map((event) => event.event)));
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateDbId]);

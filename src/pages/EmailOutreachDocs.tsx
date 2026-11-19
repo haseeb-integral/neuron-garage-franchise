@@ -38,7 +38,7 @@ const EmailOutreachDocs = () => {
       }
     >
       <DocCard>
-        <article className={docProseClass}>
+        <article className={`${docProseClass} [overflow-wrap:anywhere]`}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{DOCS}</ReactMarkdown>
         </article>
       </DocCard>

@@ -86,3 +86,5 @@ No campaign will be created or started as part of this check.
 ## Aesthetics
 
 Keep the current document pages, colors, type, navigation, and download buttons. This update changes reference content, not the page design.
+
+Validation finding: long API paths need anywhere-wrapping inside these three document pages. Clip horizontal overflow at the API Spec page boundary so its existing decorative header cannot widen the phone screen. Keep these fixes scoped to the reviewed pages; do not restyle the shared document shell.

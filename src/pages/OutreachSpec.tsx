@@ -38,7 +38,7 @@ const OutreachSpec = () => {
       }
     >
       <DocCard>
-        <article className={docProseClass}>
+        <article className={`${docProseClass} [overflow-wrap:anywhere]`}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{SPEC}</ReactMarkdown>
         </article>
       </DocCard>

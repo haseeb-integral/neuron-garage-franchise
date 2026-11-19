@@ -211,7 +211,7 @@ The browser and Master Pool lead-push function reuse the mailing-address rule an
 | Function | Job | Who can call |
 | :---- | :---- | :---- |
 | smartlead-proxy | Passes browser requests to SmartLead | Signed-in users |
-| smartlead-push-leads | Compliance check, filter, push leads | Staff |
+| smartlead-push-leads | Compliance check, filter, push leads | Signed-in session with caller-context data reads; no explicit staff lookup in this function |
 | smartlead-webhook | Receives SmartLead events, sorts replies | SmartLead |
 | smartlead-unsubscribe-sync | Pulls unsubscribes into the list | Staff or nightly timer |
 | smartlead-sync-mailboxes | Pulls mailboxes and campaign links | Staff |

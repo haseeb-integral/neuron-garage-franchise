@@ -21,6 +21,7 @@ const SmartLeadSpec = () => {
   };
 
   return (
+    <div className="min-w-0 overflow-x-clip">
     <DocShell
       eyebrow="Integration reference"
       eyebrowIcon={Send}
@@ -38,11 +39,12 @@ const SmartLeadSpec = () => {
       }
     >
       <DocCard>
-        <article className={docProseClass}>
+        <article className={`${docProseClass} [overflow-wrap:anywhere]`}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{SPEC}</ReactMarkdown>
         </article>
       </DocCard>
     </DocShell>
+    </div>
   );
 };
 

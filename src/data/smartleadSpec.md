@@ -1,595 +1,271 @@
-**SmartLead API — Technical Specification**
+# SmartLead API — Technical Specification
 
-**Neuron Garage Prospecting App · Lovable \+ Supabase Integration**
+**Neuron Garage Prospecting App · Engineering reference**
 
-**Document Type:** Engineering Reference  
-**Audience:** Developers, contractors, technical leads  
-**Last Updated:** September 21, 2026 (CAN-SPAM enforcement — see §7.4)  
-**Status:** Production (Phases 1–5 complete)
+**Reviewed:** November 19, 2026
 
-**1\. System Architecture Overview**
+**Scope:** Installed integration, current provider documentation, and checks still needed.
 
-**1.1 Stack**
+## 1. Review basis and evidence
 
-| Layer | Technology | Role |
-| :---- | :---- | :---- |
-| Frontend | React \+ TypeScript \+ Vite \+ Tailwind (Lovable) | Client-facing UI |
-| Backend | Supabase (Lovable Cloud) | Database, auth, realtime, secrets |
-| Serverless | Supabase Edge Functions (Deno runtime) | API proxy, webhook ingestion |
-| Email Engine | SmartLead (server.smartlead.ai) | Campaign execution, lead management |
-| Realtime | Supabase Realtime (Postgres pub/sub) | Live inbox push to UI |
+The source is [SmartLead's official introduction](https://api.smartlead.ai/introduction) and its linked full API reference. The saved app documents already included September and October updates; they were not unchanged June copies. A difference from those documents does **not** establish a June-to-November release date. For the capabilities below, the introduction date is unknown unless a dated release source is supplied.
 
-**1.2 Security Model**
+Use three labels throughout this reference:
 
-The SmartLead API key is **never exposed to the browser**. All requests from the Lovable frontend go to the smartlead-proxy Edge Function, which appends the API key server-side before forwarding to SmartLead.
+- **Installed:** confirmed in the current app source. This is not a claim that every live flow has passed.
+- **Provider-documented:** present in the official reference; it may not be installed here.
+- **Needs live verification:** a write, response mapping, callback, or account-specific behavior still needs a controlled check.
 
-Browser (React UI)  
-    │  
-    │  fetch('/functions/v1/smartlead-proxy?path=campaigns/')  
-    ▼  
-smartlead-proxy (Deno Edge Function)  
-    │  Reads SMARTLEAD\_API\_KEY from Deno.env  
-    │  Appends ?api\_key=... to outbound request  
-    ▼  
-https://server.smartlead.ai/api/v1/{path}  
-    │  
-    ▼  
-JSON response → Edge Function → Browser
+### Comparison with the older spec
 
-**Two-way connection:**
+| Older claim | Current finding |
+| --- | --- |
+| Fixed 10 requests per 2 seconds for every V1 endpoint | Provider limits depend on plan, with additional endpoint limits. App pacing is not a shared quota guarantee. |
+| PATCH status with PAUSE / STOP | App uses POST with START / PAUSED / STOPPED. Provider notes and examples conflict; detailed fields support these app values. |
+| Global POST /webhooks registration | App registers per campaign. Provider also documents a separate singular /webhook/create association-based API. |
+| A/B payload uses variant_a / variant_b | Current sequence reference describes seq_variants. Current app campaign drawer submits a single body per step. |
+| Sequence text read supplies A/B performance | Provider documents a separate sequence-analytics endpoint. It is not used by the current aggregate helper. |
+| All analytics have a 30-day limit and app stitches ranges | The limit is explicitly documented for analytics-by-date. Installed aggregate code does not split date ranges. |
+| Global analytics uses analytics/overview | Installed code attempts that path; current detailed reference specifies analytics/overall-stats-v2. Compatibility needs checking. |
+| Four reply buckets and keyword-only classification | Installed handler uses seven buckets, rule checks, and an AI fallback. |
+| prospect_batches holds import history | Current direct import wizard writes teacher_import_batches and prospects_staging. |
+| SmartProspect uses /smart-prospect/search | Current contact search uses a separate prospect-api address and POST /search-email-leads/search-contacts. |
+| Exactly three mailboxes, all currently warming | Account count and warmup state are live data, not fixed rules. |
 
-SmartLead (event fired: reply, bounce, open)  
-    │  
-    │  POST to webhook URL (registered via API)  
-    ▼  
-smartlead-webhook (Deno Edge Function)  
-    │  Validates payload  
-    │  Classifies intent (HOT / NOT\_INTERESTED / OOO / NEUTRAL)  
-    │  Inserts into smartlead\_events table  
-    ▼  
-Supabase Realtime (table publication)  
-    │  
-    ▼  
-Browser (React Inbox panel, live update, no refresh)
+## 2. Architecture and secret handling
 
-**2\. Authentication**
+**Installed:** React calls `supabase.functions.invoke("smartlead-proxy", { body: { endpoint, method, payload, query } })`. The browser does not call SmartLead directly and does not receive the private key.
 
-**2.1 API Key**
+```text
+Staff page
+  -> authenticated POST to smartlead-proxy
+  -> server reads SMARTLEAD_API_KEY
+  -> server calls https://server.smartlead.ai/api/v1/{endpoint}
+  -> provider response returns through the app function
 
-* **Type:** Query parameter
+SmartLead callback
+  -> smartlead-webhook
+  -> smartlead_events and suppression handling
+  -> staff inbox / reply views
+```
 
-* **Header:** None (SmartLead does not use Bearer tokens)
+The proxy validates a signed-in user's claims. It does not perform a staff-role lookup itself. Staff-only pages are not a substitute for server-side role enforcement; do not describe the proxy as staff-verified. Mailbox and unsubscribe sync functions explicitly check staff access. Lead push validates sign-in and uses caller-context reads; it does not explicitly call `is_staff`. This review changes no access rules.
 
-* **Format:** ?api\_key=YOUR\_API\_KEY
+Server jobs such as lead push and mailbox/unsubscribe sync also call SmartLead from server-side code. Thus **browser traffic uses the proxy**, but not every server-to-provider call goes through that function.
 
-* **Storage:** Supabase secret → SMARTLEAD\_API\_KEY
+**Provider authentication:** `api_key` query parameter on the outbound V1 request. SmartLead provider auth is separate from the app's sign-in token. Base address and authentication still match the official reference.
 
-* **Access in Deno:** Deno.env.get('SMARTLEAD\_API\_KEY')
+Store `SMARTLEAD_API_KEY` through the secure secret panel. Replacing an existing value uses the secure replacement form. Never put it in a document, browser code, committed environment file, or logs. Lovable Cloud supplies its managed database connection credentials; users do not fetch service credentials from a separate dashboard.
 
-// smartlead-proxy/index.ts (simplified)  
-const SMARTLEAD\_KEY \= Deno.env.get('SMARTLEAD\_API\_KEY')  
-const BASE \= 'https://server.smartlead.ai/api/v1'
+### Proxy request and response contract
 
-const path \= url.searchParams.get('path')  
-const method \= req.method  
-const body \= method \!== 'GET' ? await req.json() : undefined
-
-const upstream \= await fetch(\`${BASE}/${path}?api\_key=${SMARTLEAD\_KEY}\`, {  
-  method,  
-  headers: { 'Content-Type': 'application/json' },  
-  body: body ? JSON.stringify(body) : undefined,  
-})
-
-return new Response(await upstream.text(), {  
-  status: upstream.status,  
-  headers: { 'Content-Type': 'application/json' },  
-})
-
-**2.2 Client-Level API Keys (Agency Feature)**
-
-SmartLead supports client-level API keys separate from the master account key. Each client key has its own rate limit (default 60 req/min) and can be scoped to a single white-label client workspace.
-
-* **Create:** POST /api/v1/client/api-key
-
-* **List:** GET /api/v1/client/api-key
-
-* **Reset:** PUT /api/v1/client/api-key/reset/:id
-
-* **Delete:** DELETE /api/v1/client/api-key/:id
-
-**For Neuron Garage:** The current integration uses a single account-level API key. Migrating to a client-level key is recommended before adding a second client workspace to avoid key collision.
-
-**3\. Rate Limits**
-
-| Scope | Limit | Notes |
-| :---- | :---- | :---- |
-| Account-level key | 10 requests / 2 seconds | Default for all V1 endpoints |
-| Client-level key | 60 requests / minute | Configurable per client key |
-| Lead import batch | 400 leads / request | Hard limit on /campaigns/{id}/leads |
-| Analytics window | 30 days max per call | Must paginate for longer history |
-| Get campaign leads | 100 leads / page | Use offset param to paginate |
-
-**3.1 Rate Limit Handling in the Proxy**
-
-// Exponential backoff on 429  
-async function fetchWithBackoff(url: string, options: RequestInit, retries \= 3\) {  
-  for (let i \= 0; i \< retries; i++) {  
-    const res \= await fetch(url, options)  
-    if (res.status \!== 429\) return res  
-    const delay \= Math.pow(2, i) \* 500 // 500ms, 1s, 2s  
-    await new Promise(r \=\> setTimeout(r, delay))  
-  }  
-  throw new Error('Rate limit exceeded after retries')  
+```json
+{
+  "endpoint": "campaigns",
+  "method": "GET",
+  "query": {}
 }
+```
 
-**3.2 Lead Import Chunking**
-
-// Import leads in chunks of 400 with 500ms gap  
-const CHUNK\_SIZE \= 400  
-const DELAY\_MS \= 500
-
-for (let i \= 0; i \< leads.length; i \+= CHUNK\_SIZE) {  
-  const chunk \= leads.slice(i, i \+ CHUNK\_SIZE)  
-  await pushChunkToSmartlead(campaignId, chunk)  
-  await new Promise(r \=\> setTimeout(r, DELAY\_MS))  
-}
-
-**4\. Endpoint Reference — Currently Implemented**
-
-**4.1 Campaigns**
-
-| Method | Endpoint | Description | Used In |
-| :---- | :---- | :---- | :---- |
-| GET | /campaigns/ | List all campaigns | Campaigns panel |
-| POST | /campaigns/create | Create new campaign | New Campaign Drawer |
-| PATCH | /campaigns/{id}/status | Activate / pause / stop | Campaign status controls |
-| POST | /campaigns/{id}/schedule | Set send window, timezone, days | Campaign wizard Step 2 |
-| POST | /campaigns/{id}/settings | Track opens/clicks, stop on reply | Campaign wizard Step 3 |
-| POST | /campaigns/{id}/sequences | Add email steps with delays | Campaign wizard Step 4 |
-| GET | /campaigns/{id}/analytics | Per-campaign performance data | Analytics panel (fallback) |
-| POST | /campaigns/{id}/reply-email-thread | Send reply to a lead | Inbox reply button |
-| GET | /campaigns/{id}/webhooks | List registered webhooks | Connection health check |
-| POST | /webhooks | Register global webhook | Register in SmartLead button |
-
-**Critical gotcha — campaign status values:**
-
-ACTIVATE campaign → status: "START"    ← NOT "ACTIVE"  
-PAUSE campaign    → status: "PAUSE"  
-STOP campaign     → status: "STOP"
-
-**Critical gotcha — track settings use negative flags:**
-
-{  
-  "track\_settings": \[  
-    "DONT\_TRACK\_EMAIL\_OPEN",  
-    "DONT\_TRACK\_LINK\_CLICK"  
-  \]  
-}
-
-Positive flag names like TRACK\_OPENS are rejected by the API with a 422\.
-
-**4.2 Leads**
-
-| Method | Endpoint | Description | Used In |
-| :---- | :---- | :---- | :---- |
-| POST | /campaigns/{id}/leads | Bulk import leads (max 400/req) | Import Wizard Step 4 |
-| GET | /campaigns/{id}/leads | Get leads for a campaign (paginated, max 100/page) | Campaign lead view |
-| POST | /campaigns/{id}/leads/pause | Pause a specific lead | Lead management |
-| POST | /campaigns/{id}/leads/resume | Resume a paused lead | Lead management |
-| DELETE | /campaigns/{id}/leads | Remove lead from campaign | Lead management |
-
-**Lead import payload:**
-
-{  
-  "lead\_list": \[  
-    {  
-      "email": "teacher@austinisd.org",  
-      "first\_name": "Sarah",  
-      "last\_name": "Johnson",  
-      "company\_name": "Austin ISD",  
-      "location": "Austin, TX",  
-      "custom\_fields": {  
-        "segment": "Teacher",  
-        "source": "Apollo",  
-        "city": "Austin",  
-        "state": "TX"  
-      }  
-    }  
-  \],  
-  "settings": {  
-    "ignore\_global\_block\_list": false,  
-    "ignore\_unsubscribe\_list": false,  
-    "ignore\_community\_bounce\_list": false  
-  }  
-}
-
-**4.3 Analytics**
-
-| Method | Endpoint | Description | Notes |
-| :---- | :---- | :---- | :---- |
-| GET | /analytics/overview | Aggregate stats across all campaigns | **Use this first** |
-| GET | /campaigns/{id}/analytics | Per-campaign stats | Use as fallback if overview returns empty |
-
-**Analytics overview response shape:**
-
-{  
-  "total\_sent": 4820,  
-  "total\_opened": 1205,  
-  "total\_clicked": 89,  
-  "total\_replied": 312,  
-  "total\_bounced": 47,  
-  "total\_unsubscribed": 23,  
-  "open\_rate": 24.9,  
-  "reply\_rate": 6.4,  
-  "bounce\_rate": 0.97  
-}
-
-**Per-campaign analytics — max 30-day window:**
-
-GET /campaigns/{id}/analytics?startDate=2026-04-20\&endDate=2026-05-20
-
-For ranges \> 30 days, the app fetches in chunks and concatenates:
-
-const ranges \= splitInto30DayWindows(startDate, endDate)  
-const results \= await Promise.all(ranges.map(r \=\> fetchAnalytics(id, r)))  
-const merged \= mergeAnalyticsResults(results)
-
-**4.4 Email Accounts**
-
-| Method | Endpoint | Description | Used In |
-| :---- | :---- | :---- | :---- |
-| GET | /email-accounts/ | List all connected sending accounts | Email Accounts tab |
-| POST | /email-accounts/save | Add new SMTP account | Add SMTP modal |
-| POST | /email-accounts/{id}/warmup | Toggle warmup on/off | Warmup toggle |
-| GET | /email-accounts/{id} | Get single account details | Account health card |
-
-**Email account response fields relevant to UI:**
-
-{  
-  "id": 1,  
-  "from\_name": "Rani Chung",  
-  "from\_email": "rani@mailerss.co",  
-  "smtp\_host": "smtp.mailerss.co",  
-  "daily\_limit": 15,  
-  "warmup\_enabled": true,  
-  "warmup\_reputation": 100,  
-  "sent\_today": 0,  
-  "is\_mailbox\_error": false,  
-  "expiry\_date": "2027-05-18"  
-}
-
-**5\. Webhook System**
-
-**5.1 Registration**
-
-The webhook is registered once via the API and persists in SmartLead until explicitly deleted. The smartlead-webhook Edge Function URL is registered as the global receiver.
-
-POST /api/v1/webhooks
-
-{  
-  "name": "Neuron Garage App Webhook",  
-  "webhook\_url": "https://hqvmltmboakixpwapzfe.supabase.co/functions/v1/smartlead-webhook",  
-  "event\_type\_map": {  
-    "EMAIL\_SENT": false,  
-    "EMAIL\_OPENED": true,  
-    "EMAIL\_CLICKED": true,  
-    "EMAIL\_REPLIED": true,  
-    "EMAIL\_BOUNCED": true,  
-    "EMAIL\_UNSUBSCRIBED": true  
-  }  
-}
-
-**Note:** EMAIL\_SENT is disabled to avoid volume noise. Enable it if per-send tracking is needed.
-
-**5.2 All Available Webhook Events**
-
-| Event | Trigger | Payload Key Fields |
-| :---- | :---- | :---- |
-| EMAIL\_SENT | Email delivered to lead | campaign\_id, lead\_id, sequence\_number |
-| EMAIL\_OPENED | Tracking pixel loaded | campaign\_id, lead\_id, opened\_count, first\_opened\_at |
-| EMAIL\_CLICKED | Tracked link clicked | campaign\_id, lead\_id, link.url, link.clicked\_at |
-| EMAIL\_REPLIED | Lead replies | campaign\_id, lead\_id, reply.body, reply.subject |
-| EMAIL\_BOUNCED | Delivery fails | campaign\_id, lead\_id, bounce\_type (hard/soft), bounce\_reason |
-| EMAIL\_UNSUBSCRIBED | Unsubscribe link clicked | campaign\_id, lead\_id, lead.email |
-
-**5.3 Webhook Handler (smartlead-webhook Edge Function)**
-
-// smartlead-webhook/index.ts (simplified)  
-import { createClient } from '@supabase/supabase-js'
-
-const supabase \= createClient(  
-  Deno.env.get('SUPABASE\_URL')\!,  
-  Deno.env.get('SUPABASE\_SERVICE\_ROLE\_KEY')\!  
-)
-
-Deno.serve(async (req) \=\> {  
-  const payload \= await req.json()  
-  const { event, lead, reply, campaign\_id, lead\_id, bounce\_type } \= payload
-
-  // Classify intent for reply events  
-  let reply\_intent \= null  
-  if (event \=== 'EMAIL\_REPLIED' && reply?.body) {  
-    reply\_intent \= classifyIntent(reply.body)  
-  }
-
-  // Insert into smartlead\_events (Realtime publication triggers UI update)  
-  await supabase.from('smartlead\_events').insert({  
-    event\_type: event,  
-    campaign\_id,  
-    lead\_id,  
-    lead\_email: lead?.email,  
-    lead\_first\_name: lead?.first\_name,  
-    reply\_body: reply?.body ?? null,  
-    reply\_subject: reply?.subject ?? null,  
-    bounce\_type: bounce\_type ?? null,  
-    reply\_intent,  
-    raw\_payload: payload,  
-    received\_at: new Date().toISOString(),  
-  })
-
-  return new Response(JSON.stringify({ status: 'received' }), { status: 200 })  
-})
-
-function classifyIntent(body: string): string {  
-  const lower \= body.toLowerCase()  
-  // OOO checked first — auto-replies often contain positive words  
-  if (/out of office|on vacation|away from|back on|returning on/.test(lower)) return 'OOO'  
-  if (/interested|sounds good|tell me more|yes|let's connect|schedule|call|available/.test(lower)) return 'HOT'  
-  if (/not interested|remove me|unsubscribe|wrong person|no thanks|stop emailing/.test(lower)) return 'NOT\_INTERESTED'  
-  return 'NEUTRAL'  
-}
-
-**5.4 Supabase Realtime Setup**
-
-The smartlead\_events table has Realtime publication enabled. The Inbox panel subscribes on mount:
-
-// SmartLeadInboxPanel.tsx (simplified)  
-useEffect(() \=\> {  
-  const channel \= supabase  
-    .channel('smartlead\_events\_inbox')  
-    .on(  
-      'postgres\_changes',  
-      { event: 'INSERT', schema: 'public', table: 'smartlead\_events' },  
-      (payload) \=\> {  
-        setEvents(prev \=\> \[payload.new, ...prev\])  
-        setUnreadCount(c \=\> c \+ 1\)  
-      }  
-    )  
-    .subscribe()
-
-  return () \=\> supabase.removeChannel(channel)  
-}, \[\])
-
-**6\. Database Schema**
-
-**6.1 Core SmartLead Tables**
-
-**smartlead\_events**
-
-CREATE TABLE smartlead\_events (  
-  id              uuid PRIMARY KEY DEFAULT gen\_random\_uuid(),  
-  event\_type      text NOT NULL,           \-- EMAIL\_REPLIED, EMAIL\_BOUNCED, etc.  
-  campaign\_id     integer,  
-  lead\_id         integer,  
-  lead\_email      text,  
-  lead\_first\_name text,  
-  reply\_body      text,  
-  reply\_subject   text,  
-  bounce\_type     text,                    \-- hard | soft  
-  reply\_intent    text,                    \-- HOT | NOT\_INTERESTED | OOO | NEUTRAL  
-  raw\_payload     jsonb,  
-  received\_at     timestamptz DEFAULT now(),  
-  read\_at         timestamptz              \-- null \= unread  
-);  
-\-- Realtime publication: ENABLED  
-\-- Index: campaign\_id, lead\_id, event\_type, received\_at
-
-**prospect\_batches**
-
-CREATE TABLE prospect\_batches (  
-  id           uuid PRIMARY KEY DEFAULT gen\_random\_uuid(),  
-  name         text NOT NULL,              \-- e.g. "Austin TX Teachers — May 2026"  
-  source       text,                       \-- Apollo | Clay | LinkedIn Navigator | etc.  
-  segment      text,                       \-- Teacher | Retired Teacher  
-  city         text,  
-  state        text,  
-  campaign\_id  integer,                    \-- SmartLead campaign ID  
-  total        integer DEFAULT 0,  
-  approved     integer DEFAULT 0,  
-  rejected     integer DEFAULT 0,  
-  imported     integer DEFAULT 0,  
-  failed       integer DEFAULT 0,  
-  status       text DEFAULT 'pending',     \-- pending | importing | complete | failed  
-  created\_by   uuid REFERENCES profiles(id),  
-  created\_at   timestamptz DEFAULT now(),  
-  updated\_at   timestamptz DEFAULT now()  
-);
-
-**prospects\_staging**
-
-CREATE TABLE prospects\_staging (  
-  id              uuid PRIMARY KEY DEFAULT gen\_random\_uuid(),  
-  batch\_id        uuid REFERENCES prospect\_batches(id),  
-  email           text NOT NULL,  
-  first\_name      text,  
-  last\_name       text,  
-  company\_name    text,  
-  city            text,  
-  state           text,  
-  segment         text,  
-  source          text,  
-  qa\_status       text DEFAULT 'pending',  \-- pending | approved | rejected  
-  rejection\_reason text,  
-  smartlead\_lead\_id integer,               \-- populated after successful import  
-  pushed\_at       timestamptz,  
-  error\_message   text,  
-  created\_at      timestamptz DEFAULT now()  
-);  
-\-- Index: batch\_id, qa\_status, email
-
-**campaign\_cache**
-
-CREATE TABLE campaign\_cache (  
-  id           integer PRIMARY KEY,        \-- SmartLead campaign ID  
-  name         text,  
-  status       text,                       \-- DRAFT | ACTIVE | PAUSED | STOPPED  
-  total\_leads  integer,  
-  raw\_data     jsonb,                      \-- full SmartLead response  
-  last\_synced  timestamptz DEFAULT now()  
-);  
-\-- TTL: stale after 10 minutes, refreshed on next fetch
-
-**7\. What Can Be Built Next — Full API Surface Map**
-
-The following SmartLead API capabilities are **not yet implemented** in the Neuron Garage app but are fully available. These represent the next layer of the product.
-
-**7.1 SmartProspect (Lead Sourcing Directly from SmartLead)**
-
-SmartLead has a built-in prospect search API that returns leads by industry, job title, location, and keywords without needing Apollo or Clay. This would allow the app to source teachers directly.
-
-| Endpoint | Description |
-| :---- | :---- |
-| GET /smart-prospect/search | Search prospect database by filters |
-| GET /smart-prospect/industries | List available industry categories |
-| GET /smart-prospect/keywords | Keyword-based prospect search |
-
-**Build opportunity:** A native "Find Teachers" search panel inside Neuron Garage that sources prospects directly from SmartLead's database — no Apollo subscription needed for initial sourcing.
-
-**7.2 A/B Testing on Email Sequences**
-
-SmartLead supports sequence-level A/B variants. Each sequence step can have variant A and variant B, and SmartLead randomly distributes and tracks which performs better.
-
-POST /campaigns/{id}/sequences  
-{  
-  "sequences": \[  
-    {  
-      "seq\_number": 1,  
-      "seq\_delay\_details": { "delay\_in\_days": 0 },  
-      "variant\_a": {  
-        "subject": "Quick question for you",  
-        "email\_body": "Hi {{first\_name}}, ..."  
-      },  
-      "variant\_b": {  
-        "subject": "Fellow educator question",  
-        "email\_body": "Hi {{first\_name}}, ..."  
-      }  
-    }  
-  \]  
-}
-
-**Build opportunity:** Add A/B toggle in the Campaign Wizard Step 4 sequence editor. Show variant performance side-by-side in the Analytics tab.
-
-**7.3 Lead Category Management (CRM-Level Tagging)**
-
-SmartLead supports assigning custom categories to leads beyond the auto-detected intent. Categories can be created, listed, and applied to individual leads.
-
-| Endpoint | Description |
-| :---- | :---- |
-| GET /campaigns/{id}/categories | List all categories for a campaign |
-| POST /campaigns/{id}/categories | Create a new category |
-| POST /campaigns/{id}/leads/{lead\_id}/category | Assign category to a lead |
-
-**Build opportunity:** Let Kaylie/Sam create custom tags like "Called," "Meeting Booked," "Needs Follow-Up" and apply them to reply leads from inside the Inbox. Categories persist in SmartLead and enable filtered lead views.
-
-**7.4 Global Block List Management**
-
-SmartLead maintains a master unsubscribe/block list across all campaigns. Leads on this list are automatically skipped on import.
-
-| Endpoint | Description |
-| :---- | :---- |
-| GET /block-list | View all blocked emails |
-| POST /block-list | Add emails to block list manually |
-| DELETE /block-list/{id} | Remove email from block list |
-
-**Build opportunity:** A Suppression List screen inside the app showing all blocked/unsubscribed emails, with the ability to manually add domains or emails before a campaign launches (e.g., block all @austinisd.org if a district asks to be removed).
-
-**Shipped September 21, 2026 — CAN-SPAM enforcement.** We no longer rely on SmartLead's block list alone:
-
-* \`smartlead-push-leads\` filters every candidate address against our own \`suppressed\_emails\` table (chunks of 500\) and returns a \`suppressed\` count. Pushes always send \`ignore\_global\_block\_list: false\` and \`ignore\_unsubscribe\_list: false\`.
-
-* \`smartlead-webhook\` upserts EMAIL\_BOUNCED / LEAD\_BOUNCED → \`bounce\`, LEAD\_UNSUBSCRIBED / EMAIL\_UNSUBSCRIBED → \`unsubscribe\`, SPAM\_COMPLAINT / EMAIL\_MARKED\_SPAM → \`complaint\` into \`suppressed\_emails\` (append-only, unique on email).
-
-* **Unsubscribe-tag gate.** GET /campaigns/{id}/sequences is read before activation (Campaigns panel, via smartlead-proxy) and before every lead push (dry run included). Any step body without \`{{unsubscribe}}\` blocks the action: the UI shows a toast, the edge function returns HTTP 400 with \`"Campaign sequences are missing {{unsubscribe}} tag…"\`. A campaign with zero steps is treated as non-compliant. Shared helpers: \`src/lib/canSpam.ts\` (\`sequenceBodyText\`, \`sequencesMissingUnsubscribe\`) with a mirrored copy inside the edge function. The campaign list renders a green/red compliance shield, cached 10 minutes, fetched 5 campaigns at a time.
-
-**7.5 Email Thread History per Lead**
-
-The full email thread between the app and a specific lead (all sent emails, opens, replies) is retrievable.
-
-GET /campaigns/{id}/leads/{lead\_id}/email-thread
-
-**Build opportunity:** A Lead Timeline view in the Inbox or Candidate Pipeline that shows the complete conversation history with each teacher — every email sent, every open, every reply — in a threaded view before deciding to Promote to Pipeline.
-
-**7.6 Campaign Folders**
-
-SmartLead supports organizing campaigns into folders for better management at scale.
-
-| Endpoint | Description |
-| :---- | :---- |
-| GET /campaigns/folders | List all folders |
-| POST /campaigns/folders | Create a folder |
-| PATCH /campaigns/{id}/folder | Move campaign to folder |
-
-**Build opportunity:** As Neuron Garage scales to multiple cities, folders let you organize campaigns by geography (Austin, Dallas, Houston) and display them as grouped sections in the Campaigns panel.
-
-**7.7 Sending Account Rotation Controls**
-
-Beyond the warmup toggle, SmartLead allows per-campaign control over which sending accounts are used and at what ratios.
-
-POST /campaigns/{id}/email-accounts  
-{  
-  "email\_account\_ids": \[1, 2, 3\],  
-  "sending\_priority": "EQUAL"  // EQUAL | CUSTOM  
-}
-
-**Build opportunity:** When creating a campaign, let the user pick which of the 3 mailboxes to use and whether to distribute equally or prioritize one over the others.
-
-**7.8 AI-Powered Reply Classification Upgrade**
-
-The current intent classification is keyword-based. SmartLead has a native AI categorization feature that classifies replies into more nuanced categories using their own ML model. This runs automatically without any API call — the categorization arrives in the LEAD\_CATEGORY\_UPDATED webhook event payload.
-
-**Build opportunity:** Subscribe to LEAD\_CATEGORY\_UPDATED webhook events and replace the keyword classifier with SmartLead's native AI tags for higher accuracy — especially useful for ambiguous replies.
-
-**8\. Environment Variables Reference**
-
-| Secret Name | Value Source | Used In |
-| :---- | :---- | :---- |
-| SMARTLEAD\_API\_KEY | SmartLead → Settings → API | smartlead-proxy |
-| SUPABASE\_URL | Supabase project settings | smartlead-webhook |
-| SUPABASE\_SERVICE\_ROLE\_KEY | Supabase project settings | smartlead-webhook |
-| SUPABASE\_ANON\_KEY | Supabase project settings | Frontend client |
-
-**9\. Error Reference**
-
-| HTTP Status | Meaning | Action |
-| :---- | :---- | :---- |
-| 200 | Success | Process response |
-| 400 | Bad request — malformed payload | Check request body shape |
-| 401 | Invalid API key | Verify SMARTLEAD\_API\_KEY in secrets |
-| 404 | Campaign or lead not found | Check ID; campaign may have been deleted in SmartLead |
-| 422 | Unprocessable — invalid field values | Check track\_settings flags; check status values |
-| 429 | Rate limit exceeded | Exponential backoff (implemented in proxy) |
-| 500 | SmartLead server error | Retry after delay; log for monitoring |
-
-**10\. Testing Checklist for New Endpoints**
-
-Before merging any new SmartLead API feature:
-
-* \[ \] Test against live SmartLead account (not mocked) — account has 0 campaigns initially
-
-* \[ \] Confirm API key is read from Deno.env, not hardcoded
-
-* \[ \] Confirm response is forwarded through proxy, not called direct from browser
-
-* \[ \] Handle empty array \[\] response gracefully — do not error on empty campaign list
-
-* \[ \] Handle 429 with backoff — do not surface raw rate limit error to UI
-
-* \[ \] Verify UI shows clean empty state when SmartLead returns no data
-
-* \[ \] For any write operation: verify the change appears in actual SmartLead dashboard within 5 seconds
-
-* \[ \] For webhook additions: register in SmartLead, trigger event manually, confirm row in smartlead\_events
-
-*Neuron Garage Prospecting App — Built by Integral Outbound*  
-*SmartLead API V1 — Base URL: https://server.smartlead.ai/api/v1*  
-*API Reference: https://api.smartlead.ai*
+`payload` is the optional provider JSON body; `query` holds extra provider query parameters. Leading slashes are stripped. Successful provider objects/arrays are returned as JSON. For a provider failure the proxy normally returns **app HTTP 200**, with `{ "ok": false, "status": 401, "endpoint": "campaigns", "method": "GET", "error": { "message": "Invalid API Key" } }` as an example failure shape. App authentication/configuration failures can return non-200 directly.
+
+A caller must inspect the JSON error as well as the app HTTP status. Some older helpers only check the function client's `error`; this is a remaining review item, not a repair made in this documentation update.
+
+## 3. Request limits and retries
+
+[Introduction](https://api.smartlead.ai/introduction) says limits vary by subscription. The [detailed guide](https://api.smartlead.ai/guides/rate-limits) currently lists:
+
+| Plan | Per minute | Per hour | Burst |
+| --- | --- | --- | --- |
+| Standard | 60 | 1,000 | 10/second |
+| Pro | 120 | 3,000 | 20/second |
+| Enterprise | Custom | Custom | Custom |
+
+These are **provider-documented**, not a verified description of this account's plan. All calls on the same key share the plan budget.
+
+Additional limits documented now:
+
+- `GET /campaigns/{id}/leads-statistics`: 10 requests per 60 seconds per account, across campaigns.
+- `GET /campaigns/all-leads-activities`: 10 per 60 seconds per account.
+- `GET /analytics/mailbox/domain-wise-health-metrics`: 10 per 60 seconds per account.
+- `GET /campaigns/{id}/leads`: at most 10 concurrent requests per account; client keys have a per-key scope. Excess calls queue; after 30 seconds a queued call can receive 429.
+
+Dedicated endpoint limits stack with plan limits. Their 429 body can be plain text and may lack rate-limit headers. The guide recommends a wait of up to 60 seconds when no retry delay is given. Else honor `Retry-After` and available quota headers.
+
+**Installed pacing:** proxy makes up to three attempts on 429, waiting 1, 2, and 4 seconds. Mailbox sync waits 250 ms before reads and retries 429. Unsubscribe sync waits 250 ms between pages/campaigns and retries 429. Direct import sends up to 400 leads with a 500 ms gap. Master Pool push uses 100-lead chunks and does not implement the proxy's retry loop. These separate waits do not enforce a shared per-minute/per-hour budget. Coordinated pacing and endpoint-specific retry handling require a separate approved code phase.
+
+## 4. Installed endpoint map
+
+Paths below are relative to the V1 base. Installation means a call exists in source, not that a controlled live write was performed during this review.
+
+| Method | Path | App use |
+| --- | --- | --- |
+| GET | /campaigns | List campaigns |
+| POST | /campaigns/create | New campaign |
+| POST | /campaigns/{id}/status | Launch, pause, stop |
+| POST | /campaigns/{id}/schedule | Days, times, time zone, gap, daily cap |
+| POST | /campaigns/{id}/settings | Tracking / stop conditions |
+| GET / POST | /campaigns/{id}/sequences | Read email text for checks / save steps |
+| GET / POST | /campaigns/{id}/email-accounts | Read / assign senders |
+| POST | /campaigns/{id}/leads | Direct imports, Test Mode, Master Pool pushes |
+| GET | /campaigns/{id}/leads | Lead reads and unsubscribe sync |
+| GET | /campaigns/{id}/analytics | Aggregate helper fallback |
+| GET | /analytics/overview | Aggregate helper's initial attempt; differs from current detailed reference |
+| POST | /campaigns/{id}/reply-email-thread | Staff reply tools |
+| GET / POST | /campaigns/{id}/webhooks | Read / register campaign callbacks |
+| DELETE | /campaigns/{id}/webhooks/{webhookId} | Remove campaign callback |
+| GET | /email-accounts | Sending account list and sync |
+| POST | /email-accounts/save | Add SMTP sender |
+| POST | /email-accounts/{id}/warmup | Warmup on/off |
+
+### Campaign status and settings
+
+**Installed:** `POST /campaigns/{id}/status` with `START`, `PAUSED`, or `STOPPED`. Launch uses `START`, never `ACTIVE`.
+
+**Provider conflict:** [status reference](https://api.smartlead.ai/api-reference/campaigns/update-status) lists POST and fields START / PAUSED / STOPPED / ARCHIVED, but its note says PAUSE / STOP and some code examples send ACTIVE. The short documentation index also says PATCH. Do not change the app based on these conflicting summaries. Verify pause/stop on an approved test campaign before any repair.
+
+[Settings reference](https://api.smartlead.ai/api-reference/campaigns/update-settings) documents POST and negative `track_settings` flags: `DONT_TRACK_EMAIL_OPEN`, `DONT_TRACK_LINK_CLICK`, and `DONT_TRACK_REPLY_TO_AN_EMAIL`; `[]` enables tracking. The app currently uses the first two. It sends `REPLY_TO_AN_EMAIL` for stop-on-reply, or `CLICK_ON_A_LINK` otherwise. Provider overview prose and the listed stop-setting fields are inconsistent; this also needs a controlled live check.
+
+Other documented provider options include plain-text sending, follow-up percentage, AI sender/provider matching, and company-domain auto-pause on replies. These are not automatically added to the app by updating this spec.
+
+### Sequences and A/B versions
+
+[Sequence update reference](https://api.smartlead.ai/api-reference/campaigns/update-sequences) documents POST, `seq_number`, `subject`, `email_body`, `seq_delay_details.delay_in_days`, and IDs for updating steps. It describes `seq_variants` for A/B tests and says active campaigns must be paused before editing.
+
+The installed drawer submits one subject/body per step. Its existing compliance helpers understand `seq_variants` returned by SmartLead and check each version separately. That does **not** establish an installed A/B editor or results table.
+
+For results, [sequence analytics](https://api.smartlead.ai/api-reference/campaign-statistics/sequence-analytics) documents:
+
+```text
+GET /campaigns/{id}/sequence-analytics
+start_date=<ISO 8601 timestamp>
+end_date=<ISO 8601 timestamp>
+time_zone=<IANA zone, defaults UTC>
+```
+
+Response: `data.sequences[]`, each with `seq_number`, `subject_line`, `total_stats`, and `variants[]`. Versions carry `id`, `variant_label`, `is_baseline`, and `stats` including sent/open/reply/bounce/positive-reply counts and percentages. Configuration text and performance are separate reads. The installed aggregate helper does not use this result endpoint.
+
+### Lead imports and suppression
+
+Provider still documents a **400-lead maximum per import**. App Master Pool push chooses smaller 100-lead chunks; direct import uses 400. Required provider field is email; names, company, and custom fields are optional.
+
+Master Pool push selects verified `valid` emails, optionally `catch_all`, with a maximum request selection of 5,000 and default query limit 1,000. It excludes existing queue entries and addresses in `suppressed_emails`. It sends `ignore_global_block_list: false`, `ignore_unsubscribe_list: false`, and `ignore_duplicate_leads_in_other_campaign: false`.
+
+A successful import response is not proof an email reached a prospect. Master Pool pushes write queue state `pushed`; other queue actions use states such as assigned, sending, sent, failed, snoozed, suppressed, and promoted. A queue label `sent` may describe a successful push, not recipient delivery. Counts and partial import errors need read-back verification.
+
+## 5. Analytics: actual app behavior versus provider rules
+
+**Installed:** `src/lib/smartleadAnalytics.ts` tries `/analytics/overview`, then lists campaigns and reads `/campaigns/{id}/analytics` one at a time. It normalizes selected count fields, sums campaign counts, computes rates locally, and caches for 10 minutes. Refresh bypasses that cache. It does not request dates or split long periods into 30-day windows. Do not claim historical charts or per-version results from this helper.
+
+App formulas are open/sent, reply/sent, click/sent, bounce/sent, and interested/reply, multiplied by 100. These are **app-calculated ratios**, not guaranteed to match SmartLead's native dashboard formulas. Zero/missing data or an error must not be described as verified zero activity.
+
+**Provider-documented current reads:**
+
+| Endpoint | Date fields | Notes |
+| --- | --- | --- |
+| /analytics/overall-stats-v2 | start_date, end_date, timezone | Account-wide totals; detailed current replacement/reference for overview |
+| /campaigns/{id}/analytics-by-date | start_date, end_date, time_zone | Inclusive calendar dates; maximum 30-day range |
+| /campaigns/{id}/sequence-analytics | ISO start_date, end_date, time_zone | Step and version breakdown |
+
+[Provider metric rules](https://api.smartlead.ai/api-reference/analytics/how-metrics-are-calculated) distinguish raw events from unique people. Raw events may be additive; distinct-person counts are not additive across date windows. Do not sum window-level unique counts or average percentages to reconstruct a long period.
+
+For Global Analytics the reference gives open rate = unique opens / unique leads, bounce rate = bounces / unique leads, positive reply rate = positive replies / replies, and reply rate = replies / unique opens, falling back to unique leads when open tracking is off. Different endpoints can attribute counts to send date, reply date, or event date. Positive categories are mutable, so recategorizing a lead can change historical totals. Always check the specific endpoint's metric definitions.
+
+## 6. Webhooks and replies
+
+**Installed registration:** the connection panel lists callbacks per campaign and registers `POST /campaigns/{id}/webhooks` with `name`, `webhook_url`, and `event_types`. Existing matching receiver URLs are skipped. New campaigns need callback coverage; no campaign means there is nothing to register.
+
+[Campaign callback reference](https://api.smartlead.ai/api-reference/campaigns/save-webhooks) documents this path but uses LEAD_REPLIED / LEAD_OPENED / LEAD_CLICKED / LEAD_BOUNCED / LEAD_UNSUBSCRIBED examples. Installed registration uses EMAIL-prefixed event names. [Events reference](https://api.smartlead.ai/api-reference/webhooks/events) and real payloads must be checked before changing accepted names.
+
+A separate [association-based API](https://api.smartlead.ai/api-reference/webhooks/create) uses `POST /webhook/create`, with association type and event map for user/client/campaign scope. It is provider-documented, not the app's installed registration flow. Do not substitute generic `/webhooks` examples.
+
+The installed receiver reads several alternative event/campaign/lead fields, stores payload and reply classification in `smartlead_events`, and adds recognized unsubscribe, bounce, and complaint emails to `suppressed_emails`. It uses seven categories: INTERESTED, MEETING_REQUEST, INFO_REQUEST, SOFT_NO, WRONG_PERSON, NOT_INTERESTED, and OOO. Rule checks run first; an AI fallback can classify unclear messages; unresolved replies need human review.
+
+**Limits:** current receiver source does not verify a provider signature/shared callback secret. It logs insert failures yet returns `{ok:true}`; that acknowledgement alone is not proof the event was saved. Payload/event-name mapping, replay handling, delivery retry, persistence, and inbox visibility require a separate safety review and live callback test. No callback was triggered in this document phase.
+
+## 7. Mailboxes and unsubscribe sync
+
+Mailbox sync explicitly verifies staff, pages `/email-accounts` in sets of 100, and saves `email_accounts`. It reads current cached numeric campaigns and their assigned mailboxes into `campaign_mailbox_assignments`. It never deletes mailbox records. Campaign links are replaced only after a successful provider read; delete-and-insert is not an atomic replacement. Partial failures are reported.
+
+Warmup status can come from `warmup_details.status` or `warmup_enabled`; reputation is clamped to 0–100. Sending limit maps from `message_per_day` or `daily_limit`; sent-today maps from `daily_sent_count` or `daily_sent`. Missing counts can default to zero, so current provider response mapping needs checking before treating every card as exact live health.
+
+[Warmup settings](https://api.smartlead.ai/api-reference/email-accounts/warmup-settings) still document POST with `warmup_enabled`. Additional documented options include min/max warmup counts, weekday-only warmup, and automatic adjustment. The app's toggle only sets `warmup_enabled`. Mailbox count, reputation, and warmup readiness must be read from current data.
+
+Unsubscribe sync reads **campaign IDs in the local cache**, then pages each campaign's leads with `status=unsubscribed`. It does not query a global provider block-list endpoint. Missing/stale cached campaigns can limit coverage. It adds new suppressed emails, reports failed campaigns, and does not erase prior suppressions.
+
+The installed timer is configured for 07:00 UTC: 2:00 AM Central in winter and 1:00 AM in summer. Staff can run the same check manually. The timer uses its private stored pass and a database claim limiting it to one run per 20 hours; the manual button's 60-second wait is a browser control, not a shared server rate limiter. Hosted timer execution was not tested during this review.
+
+## 8. Compliance rules — preserved, not newly changed
+
+Every email step and every A/B version must contain `{{unsubscribe}}` and the saved company mailing address. Empty sequences fail. The drawer warns while editing; launch and Master Pool push/dry-run check compliance. List shields cache checks for 10 minutes, while launch rechecks live text.
+
+The company address lives in `company_settings`; admins edit it. Browser and server reuse the mailing-address validation rule. Master Pool pushes filter the local do-not-email list before import. Recognized callback suppressions and unsubscribe sync provide additional inputs.
+
+**Scope caveat:** these controls do not prove every legacy direct-import or manual queue path uses the same server gate. The old direct wizard and Test Mode perform their own provider lead imports. Test Mode is a convenience for adding test recipients, not a provider-enforced protection against later real lead additions. Inspect each path in a separate approved review before claiming universal enforcement.
+
+## 9. App data reference
+
+| Table | Current purpose |
+| --- | --- |
+| teacher_import_batches | Import batch history |
+| prospects_staging | Direct wizard's staged/QA rows |
+| teacher_prospects | Master Teacher Pool |
+| outreach_queue | Teacher/campaign push and follow-up work state |
+| campaign_cache | Campaign mirrors and cached aggregate analytics; do not assume integer-only IDs |
+| smartlead_events | Received callback payload, reply message/ID, category, confidence, explanation |
+| suppressed_emails | Local do-not-email addresses |
+| company_settings | Company mailing address and timer bookkeeping |
+| email_accounts | Saved sending mailbox information |
+| campaign_mailbox_assignments | Saved campaign-to-mailbox links |
+
+This table is a descriptive reference, not executable schema. The old illustrative CREATE TABLE blocks were removed because they did not match current fields. No tables or access rules changed in this review.
+
+## 10. Other provider capabilities — not newly installed
+
+| Capability | Current documented route / source | Status |
+| --- | --- | --- |
+| Client API keys | /client/api-key and reset/delete operations; [reference](https://api.smartlead.ai/api-reference/clients/api-keys) | Account-level key remains installed; no verified client-specific quota claim |
+| Lead categories | GET /leads/fetch-categories; POST /leads/categories; PATCH/DELETE /leads/categories/{id}; [reference](https://api.smartlead.ai/api-reference/leads/categories) | Provider supports global and custom categories; do not confuse them with the app's seven reply buckets |
+| Block lists | GET /leads/get-domain-block-list; POST /leads/add-domain-block-list; DELETE /leads/delete-domain-block-list with id; [reference](https://api.smartlead.ai/api-reference/utilities/domain-block-list) | Separate from installed local suppression and campaign unsubscribe sync |
+| SmartProspect contacts | POST https://prospect-api.smartlead.ai/api/v1/search-email-leads/search-contacts; [reference](https://api.smartlead.ai/api-reference/smart-prospect/search-contacts) | Separate API host; not installed as a teacher-source replacement |
+| Move campaigns to folders | POST /campaigns/update-folder; [reference](https://api.smartlead.ai/api-reference/campaigns/update-folder) | Do not use the old guessed folder CRUD paths or confuse deliverability-test folders with campaign folders |
+| Mailbox reallocation | POST /campaigns/{id}/reallocate-mailboxes | Provider capability; not claimed as an app control |
+| Deliverability tests / expanded inbox tools | Separate sections in the full official reference | Not automatically installed by this documentation refresh |
+
+The old guessed SmartProspect, folder, block-list, and category examples are not implementation instructions. Account eligibility and exact request bodies must be checked before adding these capabilities.
+
+## 11. Connection evidence and remaining checks
+
+**Read-only check on November 19, 2026:** authenticated requests through the deployed app proxy returned 7 email accounts and an empty campaign list. The replacement key was accepted for these reads. No campaign was created, launched, paused, stopped, or changed, and no email was sent.
+
+This does not verify:
+
+1. This account's plan quota or endpoint throttling under load.
+2. Live campaign creation, schedules, settings, status writes, and partial draft-save failures.
+3. Current overall-stats-v2 response mapping or date-boundary/unique-count math.
+4. A/B editor/results support or the new sequence-analytics integration.
+5. Per-campaign callback registration, event names, authenticated delivery, saved rows, or inbox arrival.
+6. Warmup toggle writes, mailbox field mappings, partial link replacement, or real send counts.
+7. Unsubscribe filter compatibility, full cache coverage, timer execution, and legacy push gate coverage.
+8. Import partial-success counts and prevention of unsafe write retries after uncertain delivery.
+
+Each runtime change needs a separate plan and approval. Retest reads safely; check provider state before retrying a write whose delivery is uncertain. A failed call should preserve the provider status and body rather than be treated as empty data.
+
+## 12. Reference links
+
+- [Introduction and API versions](https://api.smartlead.ai/introduction)
+- [Authentication](https://api.smartlead.ai/authentication)
+- [Rate limits and concurrency](https://api.smartlead.ai/guides/rate-limits)
+- [Campaign status](https://api.smartlead.ai/api-reference/campaigns/update-status)
+- [Campaign settings](https://api.smartlead.ai/api-reference/campaigns/update-settings)
+- [Sequence configuration](https://api.smartlead.ai/api-reference/campaigns/update-sequences)
+- [Sequence analytics](https://api.smartlead.ai/api-reference/campaign-statistics/sequence-analytics)
+- [Overall analytics](https://api.smartlead.ai/api-reference/analytics/overview)
+- [Campaign analytics by date](https://api.smartlead.ai/api-reference/campaigns/get-analytics-by-date)
+- [Metric calculation rules](https://api.smartlead.ai/api-reference/analytics/how-metrics-are-calculated)
+- [Campaign webhooks](https://api.smartlead.ai/api-reference/campaigns/save-webhooks)
+- [Scoped webhook creation](https://api.smartlead.ai/api-reference/webhooks/create)
+- [Webhook events](https://api.smartlead.ai/api-reference/webhooks/events)
+- [Warmup settings](https://api.smartlead.ai/api-reference/email-accounts/warmup-settings)
+
+*Neuron Garage Prospecting App — Built by Integral Outbound. Document review only; no runtime changes.*

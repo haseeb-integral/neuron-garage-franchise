@@ -1,307 +1,204 @@
-**SmartLead Integration — How It Works in Neuron Garage**
+# Outreach Guide — Neuron Garage
 
-**A plain-English guide for the team**
+**Plain-English team guide · Updated November 19, 2026**
 
-**What Is SmartLead and Why Are We Using It?**
+## 1. What SmartLead does
 
-SmartLead is the email sending engine behind the Neuron Garage prospecting system. Think of it as the post office — it takes your list of teacher prospects, sends personalized emails on a schedule, tracks who opened them, who replied, and who bounced, and then reports all of that back to us in real time.
+SmartLead sends outreach emails from the mailboxes assigned to a campaign. A campaign is a named list of people, a set of emails, and a sending schedule.
 
-The Neuron Garage app is the front desk. Kaylie and Sam never need to log into SmartLead directly. Everything SmartLead knows — campaigns, replies, lead statuses, sending health — flows into the Neuron Garage app automatically. The connection runs 24/7 in the background.
+The Neuron Garage app helps the team import teachers, prepare campaigns, review replies, and move interested people into the Candidate Pipeline. The app and SmartLead are separate systems. A saved teacher, an imported lead, and a delivered email are not the same thing.
 
-**The Big Picture: How Data Flows**
+## 2. Where to work
 
-There are two directions data moves between SmartLead and the Neuron Garage app:
+On **Email Outreach**, choose the right scope at the top.
 
-**Pushing OUT to SmartLead (things we send to SmartLead):**
+**SmartLead scope:**
 
-* New campaigns we create from inside the app
+- **Act on replies:** review replies and choose what happens next.
+- **Campaigns & sending:** view campaigns and the Outreach Queue.
+- **Mailboxes:** view saved sending-account details, refresh them, change warmup, or sync unsubscribes.
+- **Setup & reference:** check the connection, set the company mailing address, and view analytics.
 
-* Teacher prospect lists we import via CSV
+**Master Teacher DB scope:**
 
-* Campaign schedule and settings
+- Review the Master Teacher Pool.
+- View recent imports and enrichment runs.
+- Pick verified teachers to push to a campaign.
 
-* Email sequences (the actual email copy with follow-up timing)
+The menu also has **Outreach Spec** for app rules and **SmartLead API Spec** for the detailed connection reference. Each guide has a **Download .md** button. That downloads a text file you can keep or give to another reviewer.
 
-* Replies we send back to interested teachers
+## 3. Before starting a real campaign
 
-**Pulling IN from SmartLead (things SmartLead sends back to us):**
+1. Save the real company postal address in **Company mailing address**. An admin must do this.
+2. Check the sending mailboxes. Do not assume every account is ready just because it appears in the list.
+3. Review the schedule, time zone, daily limit, and assigned mailboxes.
+4. Check every email version for the unsubscribe tag and company address.
+5. Use an approved test recipient before sending to real teachers.
+6. Check that the campaign has a registered reply connection and confirm a test reply appears in the app.
 
-* Campaign performance stats (opens, replies, bounces)
+SmartLead's warmup guide recommends at least 14 days for new accounts and often 21–30 days for new domains. Time alone does not prove a mailbox is ready. Review its health and delivery results too.
 
-* Lead statuses (who has been emailed, who replied, who bounced)
+## 4. Import teachers into the Master Pool
 
-* Email account health (inbox warmup scores, daily send limits)
+This is the recommended starting point when you want teacher records and their evidence in the app.
 
-* Real-time events via webhook (the moment a teacher replies, we know instantly)
+1. Choose **Import to Master Pool**.
+2. Upload the CSV. The importer recognizes the 27-column Manus format.
+3. Review the field mapping and preview.
+4. Choose **Fill blanks only** for a safer repeat import. **Overwrite** can replace existing values.
+5. Review the new, updated, and skipped counts.
 
-**The 5 Core Features Powered by the SmartLead API**
+The importer keeps signal text and does not replace a filled field with a blank. Records are checked for duplicates. Import history is saved in the app.
 
-**Feature 1: Campaigns**
+An import into the Master Pool does **not** start emailing those teachers.
 
-A campaign is a named outreach sequence aimed at a specific audience — for example, "Austin TX Teachers — Spring 2026." Each campaign has:
+## 5. Push verified teachers to SmartLead
 
-* A list of teacher prospects
+Pick the teachers and destination campaign, then use **Dry run** first. It shows what the push would do without importing anyone.
 
-* A series of emails (Step 1 cold outreach, Step 2 follow-up 3 days later, Step 3 final follow-up on day 7\)
+The Master Pool push checks:
 
-* A sending schedule (Mon–Fri, 9am–5pm Central, max 40 new prospects per day)
+- Every email step and every A/B version for the unsubscribe tag and saved address.
+- Teachers already recorded in that campaign's queue.
+- The app's do-not-email list.
+- Email verification status. Valid emails are the normal choice; catch-all emails are optional and less certain.
 
-* 3 rotating sending mailboxes (Rani Chung, Elizabeth Gray, Isabella Aquino)
+The push sends groups of 100. Read the success, skipped, and error counts. A record pushed into SmartLead is not proof an email was delivered.
 
-**What you can do from the Neuron Garage app:**
+### Older direct-import option
 
-* See all campaigns and their current status at a glance
+**Import to SmartLead** is a separate four-step tool: batch details, upload and map, review, then import. It sends approved rows directly to the chosen campaign in groups of up to 400. It records the batch and staged rows in the app.
 
-* Create a new campaign with a built-in 4-step wizard (no SmartLead login needed)
+This older tool is not the same as the Master Pool push. Do not assume it has all of the same checks. Use the Master Pool route when you need its verification and do-not-email review.
 
-* Activate, pause, or stop any campaign with one click
+## 6. Create and manage campaigns
 
-* View how many prospects are in each campaign and where they are in the sequence
+The new-campaign window walks through the name, sending schedule, sender/settings choices, and email steps. New email bodies include the unsubscribe tag and saved address. Do not remove either.
 
-* See reply rate, open rate, and bounce rate per campaign in real time
+- **Draft:** prepares the campaign without starting normal scheduled outreach. Read any warnings; a saved draft can still need setup work.
+- **Launch:** starts sending under the saved schedule once setup and checks pass.
+- **Pause:** pauses the campaign.
+- **Stop:** stops the campaign. Confirm the result before assuming it changed.
 
-**How the campaign status system works:**  
-When you first create a campaign it starts as a DRAFT — nothing sends yet. You add your leads and email sequences, then activate it. Once active, SmartLead sends emails automatically on your schedule. You can pause at any time and resume without losing your place.
+A campaign can use multiple assigned mailboxes. There is no fixed rule that it always uses three. Choose the senders shown in the app.
 
-**Feature 2: Lead Import Pipeline**
+### Test Mode
 
-This is how teacher prospects get from Apollo or Clay into SmartLead. The Neuron Garage app has a built-in 4-step Import Wizard so contractors never need to touch SmartLead directly.
+Test Mode adds test recipients using the chosen test email and, when requested, email aliases. Use an address you own or have approval to test. Make sure that mailbox accepts aliases.
 
-**The 4 steps:**
+Test Mode is not a permanent lock that prevents someone from adding real leads later. Check the actual lead list before launch. Launching a test campaign can send real test emails.
 
-**Step 1 — Batch Info**  
-Name your batch (e.g., "Austin Retired Teachers — May 2026"), select the source (Apollo, Clay, LinkedIn Navigator, Manual CSV), pick the city, state, and segment (Teacher or Retired Teacher).
+### Email versions
 
-**Step 2 — Upload \+ Map**  
-Drag and drop your CSV file. The app reads the columns and lets you map them to the right fields: email, first name, last name, school/company, city, state, segment, source. Only the email column is required. Preview the first 10 rows before proceeding.
+SmartLead supports A/B versions: two or more versions of an email step. The app's checks inspect each version returned by SmartLead. A compliant Version A does not cover Version B.
 
-**Step 3 — QA Review**  
-Every lead is shown in a table with validation flags — missing email, bad email format, duplicate within the batch. You approve or reject each row individually, or use "Approve All" for clean batches. Live counts show how many are approved vs. rejected.
+The current app campaign window writes one subject and body per step. Do not assume an A/B editor or a live side-by-side results table exists here just because SmartLead supports them.
 
-**Step 4 — Import to SmartLead**  
-Select which campaign these leads go into. The app sends them to SmartLead in chunks of 400 with a small delay between chunks to respect SmartLead's rate limits. A live progress bar shows "Batch 2 of 5 · 800 of 2,000 leads." When done, the batch record is saved showing how many were imported successfully vs. skipped.
+## 7. Unsubscribe and address rules
 
-**SmartLead automatically checks every imported lead against:**
+Every email step and every version must contain:
 
-* Global block list (anyone who has previously unsubscribed across all accounts)
+1. `{{unsubscribe}}`, which SmartLead uses to make the unsubscribe link.
+2. The saved company mailing address.
 
-* Known bounce list (emails flagged as invalid across the SmartLead network)
+The app warns while you write. The campaign launch check and Master Pool push refuse missing items. The campaign list uses a shield: green means the saved check passed; red means something is missing; no shield means a result is not ready. The list check can be up to 10 minutes old. Launch checks the email text again.
 
-* Duplicates already in the target campaign
+If the company address is not set, these launch and Master Pool push checks refuse to proceed. An admin can save or change the address in **Setup & reference**. Check existing email bodies after changing it; saving the address does not rewrite every old email for you.
 
-**Feature 3: Live Inbox**
+The app also has its own do-not-email list. Recognized unsubscribe, bounce, and spam reports add addresses. Master Pool pushes skip those addresses. Do not treat a queue-only label as proof an address was added to the shared do-not-email list.
 
-The Inbox is the most important screen for daily use. Every time a teacher replies to one of our outreach emails, their reply appears here in real time — no refresh needed, no logging into SmartLead.
+## 8. Sync unsubscribes
 
-**How it works technically:** SmartLead fires a webhook event the instant a reply is received. That event hits our Neuron Garage server, gets stored in our database, and appears on the Inbox screen within seconds.
+The app has a backup check for unsubscribes, in addition to reply alerts.
 
-**Each reply card shows:**
+- **Automatic time:** configured for 07:00 UTC each day. This is 2:00 AM Central in winter and 1:00 AM in summer.
+- **Manual button:** use **Sync Unsubscribes** in Mailboxes. Read the number added and any failed campaigns.
+- **Button wait:** after a manual run, the button waits 60 seconds before another press.
+- **Last new unsubscribe:** the time the latest new address was added, not the time every check ran.
 
-* Teacher's name and email
+The sync checks campaigns saved in the app's campaign list. Refresh campaigns so newly created ones are included. If a campaign fails, it is not fully checked. A result with zero new addresses does not prove there have never been unsubscribes.
 
-* Which campaign they're from
+## 9. Review replies
 
-* When the reply arrived (e.g., "2 hours ago")
+SmartLead can send reply alerts to the app through a registered callback. A callback is the connection that tells the app an event happened. It must be set up for the campaign. Its presence alone does not prove every reply is arriving.
 
-* The full reply text
+Replies are saved and placed into seven groups:
 
-* An intent badge automatically assigned by the system
+| Group | Meaning |
+| --- | --- |
+| Interested | Clear interest |
+| Meeting request | Wants a call |
+| Information request | Needs an answer or more details |
+| Soft no | Not now or later |
+| Wrong person | Another contact may be needed |
+| Not interested | Clear no or opt-out |
+| Out of office | An automatic away message |
 
-**The 4 intent badges:**
+The app uses wording checks and an AI fallback. These suggestions can be wrong. Read the actual reply before acting. Unclear or low-confidence replies need a person to review them.
 
-* 🟢 **HOT** — reply contains positive signals: "yes," "interested," "tell me more," "sounds good," "let's connect," "schedule a call"
+Staff can correct a group, reply in the email thread, snooze work, or promote a suitable teacher to the Candidate Pipeline. Promotion rules depend on the group and confidence; an interest badge is not proof a franchise agreement exists.
 
-* ⚪ **NOT INTERESTED** — reply contains: "not interested," "remove me," "wrong person," "no thanks"
+A working account connection does not prove incoming replies work. After setting up a new campaign, confirm a test reply reaches the app and is saved correctly.
 
-* 🔵 **OUT OF OFFICE** — auto-reply detected: "out of office," "on vacation," "back on"
+## 10. Use the Outreach Queue
 
-* 🟡 **NEUTRAL** — reply received but intent is unclear
+The queue tracks app work for each teacher and campaign. It can show queued, assigned, sending, pushed, sent, failed, snoozed, suppressed, or promoted states. Some replies are shown by matching saved reply events rather than a single queue state.
 
-**The unread badge:** A red number on the Inbox header shows how many new replies have arrived since you last checked. Click "Mark all read" to clear it.
+Read the action and result, not just the label. In some paths **sent** means a lead was imported into SmartLead. It does not prove the prospect received an email. For a failed action, review the saved error before retrying. Avoid repeating an import if you do not know whether the first attempt reached SmartLead.
 
-**Replying directly from the app:** Click the Reply button on any HOT or NEUTRAL card to send a response directly back to the teacher. The reply is threaded — it arrives in the teacher's inbox as a continuation of the original conversation, not a new email.
+## 11. Read analytics carefully
 
-**Feature 4: Analytics**
+The Analytics section shows saved campaign totals and app-calculated rates. Data can be cached for 10 minutes; **Refresh** asks for new data.
 
-The Analytics tab gives a full performance picture across all campaigns without needing to check each one individually.
+The current summary tries an overall read and falls back to reading campaign totals. It does not currently build date-window history or fetch SmartLead's separate per-version performance report.
 
-**Global KPI tiles (top row):**
+App rates use these comparisons:
 
-* Total Emails Sent
+- Open rate: opens divided by sends.
+- Reply rate: replies divided by sends.
+- Bounce rate: bounces divided by sends.
+- Interested rate: interested count divided by replies.
 
-* Open Rate (% of sent emails that were opened)
+SmartLead's own reports can use different rules, such as counting unique people rather than email events. One person may receive several emails. Some reports group replies by the day sent; others use the day answered. This can make totals differ.
 
-* Reply Rate (% of sent emails that got a reply)
+Do not add daily unique-person counts to make a monthly count; the same person can appear on several days. Missing data or a failed read should not be treated as proof of zero activity.
 
-* Interested Count (leads tagged HOT)
+## 12. Manage mailboxes
 
-* Bounce Rate (% of emails that failed to deliver)
+Mailbox cards show a saved copy of sending-account information. The number of accounts and their names come from current data, not a fixed list.
 
-**Charts:**
+Each card can show the address, provider, warmup status, reputation, send limit/progress, and attached campaigns. Reputation colors are app labels: green at 80 or higher, amber from 50 to 79, red below 50. They are not a guarantee of delivery.
 
-* Line chart showing sends, opens, and replies over time per campaign
+- **Refresh Mailboxes:** asks SmartLead for current accounts and links from the saved campaign list.
+- **Warmup On/Off:** requests a warmup change, then refreshes the information.
+- **Add SMTP:** adds a sending account with the required account details.
+- **Last synced:** tells you how old the saved copy is.
 
-* Bar chart showing the reply funnel: Sent → Opened → Replied → Interested
+A refresh does not delete old mailbox cards. A mailbox removed in SmartLead may still appear in the saved copy. Failed reads keep prior details, so check the warning and sync time. Missing provider fields may show defaults; a zero send count alone is not proof nothing was sent.
 
-* Per-campaign performance table with all metrics side by side
+## 13. Check the connection
 
-**Important note on date ranges:** SmartLead's API returns analytics in maximum 30-day windows. For longer history, the app automatically pulls in 30-day chunks and stitches them together. Analytics data is cached for 10 minutes to avoid hitting rate limits.
+Use **Test Connection** in Setup & reference to check account access. Campaigns and sending accounts should load when the saved key is accepted.
 
-**Feature 5: Mailboxes (Email Account Health)**
+Check reply coverage separately using the campaign callback list and received-event history. No recent reply alerts may simply mean no one replied, but they may also mean a missing connection. Confirm with a controlled test rather than guessing.
 
-The three sending mailboxes (Rani Chung, Elizabeth Gray, Isabella Aquino at [mailerss.co](http://mailerss.co)) are what actually deliver the emails. They now have their own **Mailboxes** section on the Email Outreach page, right below "Campaigns & sending" (it is no longer hidden inside "Setup & reference").
+If SmartLead rejects the key, replace it through the secure secret panel. Never paste it into chat. If a call says there were too many requests, allow time before another refresh. Request limits depend on the SmartLead plan and the type of call.
 
-**At the top of the section:** the "Sync Unsubscribes" button and the "Last new unsubscribe" time (see Unsubscribe Rules below).
+If a send or import may already have happened, read back the result before repeating it. Do not start a real campaign just to test the connection.
 
-**Each mailbox card shows:**
+## 14. Team responsibilities
 
-* Email address and provider (Gmail/Outlook/SMTP)
+| Work | Where |
+| --- | --- |
+| Import and review teacher records | Master Teacher DB / Import to Master Pool |
+| Preview and push verified leads | Master Pool push |
+| Write email copy and manage campaigns | Campaigns & sending |
+| Save the company postal address | Company mailing address, admin access |
+| Refresh accounts and review warmup | Mailboxes |
+| Pull backup unsubscribe results | Sync Unsubscribes |
+| Answer replies and choose next actions | Act on replies |
+| Move suitable prospects into the process | Promote to Pipeline |
+| Review detailed app rules | Outreach Spec |
+| Review provider differences and untested checks | SmartLead API Spec |
 
-* Warmup reputation score, colored 🟢 green (80 or higher), 🟡 amber (50–79), 🔴 red (under 50)
-
-* Daily send progress bar: for example "12 / 50 sent today"
-
-* A warmup **On/Off switch** — flip it to start or stop warmup for that mailbox. The app tells SmartLead, then refreshes the card.
-
-* **Campaigns** — which campaigns this mailbox is sending for
-
-**"Refresh Mailboxes" button:** pulls the latest mailbox list, warmup info, and campaign links from SmartLead and saves a copy in the app. The section header shows "Last synced N minutes ago" (or "Never synced"). The cards read from this saved copy, so the page loads fast. Mailboxes are never deleted by a refresh — if one disappears in SmartLead, its card stays so nothing is lost by mistake. If a refresh fails, an amber line explains why and the last saved copy stays on screen.
-
-**Warmup explained:** New email accounts can't send 100 emails on day one — that triggers spam filters. SmartLead gradually increases the sending volume over 2–3 weeks while also exchanging warmup emails with other SmartLead accounts to build sender reputation. The warmup reputation score on each mailbox reflects how trusted that inbox is. All three mailboxes are currently warming up — do not send real campaigns until warmup has run for at least 2–3 weeks.
-
-**The Connection Health Panel**
-
-At the top of the Email Outreach page is a SmartLead Connection panel that shows the system's health at a glance:
-
-* **API Status:** Green pill reading "Connected · \[X\] campaigns" — confirms the live link to SmartLead is working
-
-* **Sending Mailbox:** Shows the primary active sending account
-
-* **Recent Webhook Events:** Shows when SmartLead last fired an event to our app
-
-* **Last Successful API Call:** Timestamp of the most recent successful SmartLead request
-
-* **Webhook Active in Last 24h:** Yes/No indicator showing whether the two-way connection is live
-
-If the API Status pill goes gray or red, the connection needs to be re-tested. Click the "Test Connection" button to diagnose.
-
-**Unsubscribe Rules — Read This Before You Launch (updated September 21, 2026\)**
-
-The law (CAN-SPAM) says every cold email must give the reader a way to opt out and must show a real postal address. The app checks this for you, so a non-compliant campaign simply cannot go out.
-
-**What you must put in every email step:** the tag {{unsubscribe}} and the company mailing address. New campaigns already come with both at the bottom of each step — do not delete them.
-
-**A/B versions are checked one by one:** if a step has two versions (Variant A and Variant B), each version needs its own {{unsubscribe}} tag and address. A tag in Variant A does not cover Variant B. When something is missing, the app tells you exactly where — for example "Step 2, Variant B."
-
-**The company mailing address (saved once, used everywhere):** an admin types the real business postal address into the **Company mailing address** card (in Setup & reference) and saves it. The app keeps it in the database and drops it into the footer of new campaigns automatically. Every check below compares emails against this saved address. If no address is saved, the card says "Not set — campaigns can't launch," and launches and lead pushes are blocked until it is filled in.
-
-**Where the app checks:**
-
-* **While you write —** if a step has no {{unsubscribe}} or no saved address, an amber warning appears under that step. You can still save the draft, but you cannot launch it.
-
-* **When you press Launch —** the app reads the campaign's real email steps from SmartLead first. If even one step or one version is missing the tag or the address, it refuses to start the campaign and tells you which one. A campaign with no steps at all also counts as not compliant.
-
-* **When you push leads —** the push refuses with a compliance error if the tag or address is missing in any version. The dry-run preview refuses too, so you see the problem before sending anything.
-
-* **On the campaign list —** a small shield next to each campaign name: green shield \= every step and every version has the link and address, red shield \= something is missing. No shield yet means the check is still running. The result is remembered for 10 minutes, and pressing Launch always re-checks live.
-
-**Our own do-not-email list:** before any push, the app removes anyone on our suppressed list (people who unsubscribed, bounced, or marked us as spam) and tells you how many were skipped. When SmartLead reports a bounce, an unsubscribe, or a spam complaint, that address is added to the list automatically and is never emailed again.
-
-**Unsubscribe sync (nightly + button):** as a backup to the instant alerts, the app also asks SmartLead every night for anyone who unsubscribed in any campaign, and adds them to our do-not-email list.
-
-* **Nightly —** runs on its own every day at 2:00 AM Central (1:00 AM during Daylight Saving Time). No action needed.
-
-* **"Sync Unsubscribes" button —** at the top of the Mailboxes section. Click it to run the same check right now. A pop-up says "Synced X new unsubscribes" and lists any campaign that could not be checked. The button then rests for 60 seconds before it can be pressed again.
-
-* **"Last new unsubscribe"** — shows when the most recent new person was added to the list (not just when the sync last ran).
-
-**What SmartLead Does Automatically (No Action Needed)**
-
-Once a campaign is active and leads are imported, SmartLead handles all of this without any manual intervention:
-
-* Sends emails on the configured schedule (respecting timezone and send hours)
-
-* Rotates between the 3 sending mailboxes automatically for deliverability
-
-* Stops emailing a prospect the moment they reply (default setting)
-
-* Adds anyone who clicks "unsubscribe" to a permanent global block list
-
-* Retries soft-bounced emails automatically
-
-* Continues warming up all mailboxes in the background daily
-
-**What Requires a Human Action**
-
-| Action | Who Does It | Where |
-| :---- | :---- | :---- |
-| Upload new prospect CSV | Haseeb / Contractor | Import Wizard in Neuron Garage app |
-| QA review of imported leads | Haseeb | Import Wizard Step 3 |
-| Activate a new campaign | Haseeb | Campaigns panel — one click |
-| Reply to a HOT lead | Kaylie / Sam | Inbox — Reply button |
-| Promote interested teacher to Pipeline | Kaylie / Sam | Inbox — Promote button |
-| Add new email accounts | Haseeb | Mailboxes section — Add SMTP |
-| Refresh mailbox info / turn warmup on or off | Haseeb | Mailboxes section — Refresh Mailboxes / warmup switch |
-| Pull new unsubscribes right now (optional) | Haseeb / Kaylie | Mailboxes section — Sync Unsubscribes |
-| Save or change the company mailing address | Admin | Setup & reference — Company mailing address card |
-| Write new email sequence copy | Kaylie / Integral Outbound | Campaign wizard Step 4 |
-
-**Technical Notes for Developers**
-
-**API Base URL:** https://server.smartlead.ai/api/v1
-
-**Authentication:** API key passed as query parameter ?api\_key= — stored in Supabase secrets as SMARTLEAD\_API\_KEY
-
-**Proxy Architecture:** All SmartLead calls go through the smartlead-proxy Edge Function. The API key never touches the browser.
-
-**Webhook Receiver:** smartlead-webhook Edge Function receives real-time events from SmartLead. Events are stored in the smartlead\_events table with intent classification applied on insert.
-
-**Rate Limit:** 10 requests per 2 seconds. The proxy implements exponential backoff on 429 responses. Lead pushes from the Master Pool are chunked at 100 leads per request (smartlead-push-leads). Compliance checks on the campaign list are batched 5 at a time with a ~1.2s pause and cached for 10 minutes.
-
-**Compliance gate:** GET /campaigns/{id}/sequences is read before campaign activation (browser, via smartlead-proxy) and before any lead push (smartlead-push-leads, dry run included). Every A/B variant of every step is checked on its own for {{unsubscribe}} and for the saved company mailing address. If any variant fails, the action is refused and the error names it (e.g. "Step 2, Variant B"). Shared helpers: src/lib/canSpam.ts (browser) and supabase/functions/\_shared/canSpamAddress.ts (server) use the same rule.
-
-**Unsubscribe sync:** smartlead-unsubscribe-sync pulls unsubscribed leads from every campaign into suppressed\_emails. It runs nightly at 07:00 UTC (2:00 AM Central in winter, 1:00 AM in summer) and from the "Sync Unsubscribes" button. Only signed-in staff or the nightly timer (with its private stored pass, limited to one run per 20 hours) can run it.
-
-**Mailbox sync:** smartlead-sync-mailboxes (staff only) pulls all email accounts and which campaigns each one is attached to. It updates mailboxes but never deletes them, and only replaces a campaign's mailbox links after a successful read from SmartLead.
-
-**Key Supabase Tables:**
-
-* smartlead\_events — all incoming webhook events (replies, bounces, unsubscribes, category updates)
-
-* prospect\_batches — history of every CSV import batch
-
-* prospects\_staging — individual leads pending QA or retry
-
-* campaign\_cache — local mirror of SmartLead campaign data for fast reads
-
-* company\_settings — the company mailing address used in every email footer (admins edit, staff read)
-
-* suppressed\_emails — our do-not-email list (server-only)
-
-* email\_accounts — saved copy of each sending mailbox (provider, warmup, reputation, sent today)
-
-* campaign\_mailbox\_assignments — which mailbox is attached to which campaign
-
-**Key Endpoints Used:**
-
-| Action | Endpoint |
-| :---- | :---- |
-| List campaigns | GET /campaigns/ |
-| Create campaign | POST /campaigns/create |
-| Activate campaign | PATCH /campaigns/{id}/status → {"status":"START"} |
-| Set schedule | POST /campaigns/{id}/schedule |
-| Add sequences | POST /campaigns/{id}/sequences |
-| Import leads | POST /campaigns/{id}/leads (max 400/req) |
-| Get campaign leads | GET /campaigns/{id}/leads |
-| Reply to lead | POST /campaigns/{id}/reply-email-thread |
-| Global analytics | GET /analytics/overview |
-| List email accounts | GET /email-accounts/ |
-| Toggle warmup | POST /email-accounts/{id}/warmup |
-| Create webhook | POST /webhooks |
-
-**Critical API Gotcha:** Campaign status activation uses "START" not "ACTIVE". Track settings use negative flags: DONT\_TRACK\_EMAIL\_OPEN, DONT\_TRACK\_LINK\_CLICK — not positive flags.
-
-*This document covers the SmartLead integration as built in Phases 1–5 (completed May 18, 2026), the CAN-SPAM compliance update of September 21, 2026, and the October 2026 outreach upgrade (A/B version checks, saved company mailing address, unsubscribe sync, and the Mailboxes section).*
-
-*Two known stale spots in the older sections above: the reply classifier now has 7 buckets (INTERESTED, MEETING\_REQUEST, INFO\_REQUEST, SOFT\_NO, WRONG\_PERSON, NOT\_INTERESTED, OOO), not the 4 badges described, and there is no prospect\_batches table — imports are recorded in teacher\_import\_batches.*  
-*Neuron Garage Prospecting App — Built by Integral Outbound*
+**Source:** [SmartLead's current reference](https://api.smartlead.ai/introduction). This guide describes installed app behavior. Reading a new provider feature does not add it to the app.

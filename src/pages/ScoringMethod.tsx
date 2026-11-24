@@ -4,8 +4,9 @@
 // Plus how the four tiers (A/B/C/D) are assigned by absolute Total Score
 // (A ≥ 90, B ≥ 80, C ≥ 70, D < 70) so tier counts respond to weight changes.
 
-import { Gauge, Info, ArrowRight } from "lucide-react";
+import { Gauge, Info, ArrowRight, Download } from "lucide-react";
 import { DocShell, DocCard } from "@/components/DocShell";
+import { Button } from "@/components/ui/button";
 
 
 function FormulaBlock({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,86 @@ const TIER_ROWS = [
   { tier: "D", scoreBand: "< 70",     rawBand: "raw < 41",    reads: "D / F — below cutoff",   bg: "#fff1e6", fg: "#c2410c" },
 ];
 
+function downloadScoringMethod() {
+  const markdown = `# From Weighted Composite Index to Total Score
+
+How city scores are computed, calibrated for display, and bucketed into Tiers A–D.
+
+## Section 1: Two numbers, one truth
+
+Every market in this tool carries **two numbers** that describe the same underlying truth on two different scales. They are always shown side-by-side wherever the math is exposed (popovers, drawers, XLSX exports) so the calibration is fully auditable.
+
+### Internal — the math: Weighted Composite Index
+
+The raw weighted sum of the three pillars. Used for sorting cities and assigning Tiers A–D. This is the engine's ground truth and is never altered for display.
+
+### Display — the grade: Total Score
+
+The same number passed through a **monotonic curve** so the scale reads like a school grade (A–F). Sort order and tiers are mathematically identical to the Index — only the displayed value shifts up.
+
+## Section 2: How the Weighted Composite Index is calculated
+
+The Index is a weighted sum of two pillar scores, each on a 0–100 scale where **higher = better**:
+
+- **Demand** — child population, dual-income families, household income, college-educated parents.
+- **Operator & Venue Supply** — elementary teacher supply, school counts, cost-of-living-adjusted salaries.
+
+\`\`\`text
+Weighted Composite Index
+  = (master_weight_demand × DemandScore)
+  + (master_weight_tam    × TAMTeachersScore)
+
+where master weights are normalized to sum to 100%.
+\`\`\`
+
+*Note (2026-07-07): the CSI-derived Competitive Opportunity pillar was removed from the composite. Provider counts and saturation still appear as reference data on the selected-market panel, but they no longer influence the score or the rank.*
+
+The Index is stored in the database (\`composite_score_default\`) so the national ranking is instant at query time. When a user adjusts master weights or sub-metric weights in the right panel, the Index is recomputed client-side from the same pillar inputs — never from the calibrated display number.
+
+## Section 3: Why we calibrate for display
+
+In practice the strongest U.S. metros land in the raw 60s–70s on the Index (current observed max ≈ 74, median ≈ 41). A teacher looking at a Tier A city labeled **63** silently reads "C-/D+" and discounts the market. That is a UI calibration problem, not a math problem.
+
+The fix is a **monotonic curve** — a strictly-increasing piecewise-linear function that stretches the raw 0–100 scale into the intuitive A–F grade range. Every displayed Total Score is the raw Index passed through this single function in \`src/lib/marketView.ts\`.
+
+Properties of the curve we rely on: **monotonic** (relative ordering is preserved exactly), **anchored at 0 and 100** (the scale still claims "/100"), **tier-aligned** (the 70/80/90 display cutoffs correspond to fixed raw cutoffs so tier counts respond to weight changes), **pure** (same input → same output, so the drift detector still works).
+
+## Section 4: The calibration curve (anchor table)
+
+Total Score is computed by linear interpolation between these anchors. The curve is strictly increasing, so two cities cannot swap rank under it.
+
+| Raw Weighted Composite Index | Total Score (displayed) |
+| ---: | ---: |
+${ANCHORS.map(([raw, display]) => `| ${raw} | ${display} |`).join("\n")}
+
+Source of truth: \`CALIBRATION_ANCHORS\` in \`src/lib/marketView.ts\`. Changing these anchors requires Brett or Haseeb sign-off; ordering and tiers stay invariant as long as the sequence remains strictly increasing in both axes.
+
+## Section 5: Tiers A–D: by absolute Total Score
+
+Tiers are assigned by **absolute Total Score** using the same A–F cutoffs every teacher knows from school. Because each cutoff is a fixed score, tier *counts* respond to weight changes: bump a preset and you'll see cities cross the 90 / 80 / 70 thresholds in the Weighting Preview pills.
+
+| Tier | Total Score | Equivalent Raw Index | Reads Like |
+| --- | --- | --- | --- |
+${TIER_ROWS.map((row) => `| Tier ${row.tier} | ${row.scoreBand} | ${row.rawBand} | ${row.reads} |`).join("\n")}
+
+The raw-Index cutoffs are derived from the monotonic curve, so the two columns are two views of the same boundary. We compare against the raw Index internally so the tier of a city is determined the instant its weighted composite is computed — no extra rounding step.
+
+## Section 6: Correctness guarantees
+
+- **One mint point.** Every Total Score and raw Index displayed anywhere in the app is minted by \`buildMarketView()\` in \`src/lib/marketView.ts\`. Components never compute, never re-derive, and never round either value inside JSX. The branded \`CompositeScore\` TypeScript type enforces this at compile time.
+- **Drift detector.** In dev, a guard rail throws a red console error if the same \`(cityId, weightsHash)\` ever mints two different composites in one render pass. This rule exists because we once shipped a bug where a table cell showed \`88\` while the gauge above it showed \`23\` for the same city.
+- **Auditable everywhere.** The "Why this tier?" popover, the city detail drawer, and the XLSX export all show both the raw Weighted Composite Index and the calibrated Total Score side-by-side. The curve cannot hide.
+`;
+  const url = URL.createObjectURL(new Blob([markdown], { type: "text/markdown;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "neuron-garage-scoring-method.md";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 export default function ScoringMethod() {
   return (
     <DocShell
@@ -53,6 +134,11 @@ export default function ScoringMethod() {
       eyebrowIcon={Gauge}
       title={<>From Weighted Composite Index to Total Score</>}
       subtitle="How city scores are computed, calibrated for display, and bucketed into Tiers A–D."
+      action={
+        <Button variant="outline" size="sm" onClick={downloadScoringMethod} className="gap-2">
+          <Download className="h-4 w-4" /> Download MD
+        </Button>
+      }
     >
       <DocCard>
         <div className="text-[#07142f]">

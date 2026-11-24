@@ -30,7 +30,7 @@ const docsNavItems = [
   { title: "Prompts & AI Workflows", url: "/docs/prompts-and-ai-workflows", icon: Wand2 },
   { title: "APIs & Data Sources", url: "/docs/apis", icon: Plug },
   { title: "Guardrails", url: "/docs/guardrails", icon: ShieldCheck },
-  { title: "Scoring Method", url: "/scoring-method", icon: Gauge },
+  { title: "City Scoring", url: "/scoring-method", icon: Gauge },
   { title: "City Search Spec", url: "/city-search-spec", icon: Map },
   { title: "City Search Guide", url: "/city-search-guide", icon: BookOpen },
   { title: "City Search Methodology", url: "/city-search-methodology", icon: Map },
